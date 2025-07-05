@@ -7,7 +7,10 @@ import {
   Outlet,
   Navigate,
 } from "react-router-dom";
+
 import Home from "./pages/home/Home";
+import Proveedores from "./pages/proveedores/Proveedores";
+import ProveedoresList from "./pages/proveedores/ProveedoresList";
 import { useContext } from "react";
 import { DarkModeContext } from "./context/darkModeContext";
 import { AuthContext } from "./context/authContext";
@@ -49,6 +52,14 @@ function App() {
         {
           path: "/",
           element: <Home />,
+        },
+        {
+          path: "/proveedores",
+          element: <Proveedores />,
+        },
+        {
+          path: "/proveedores/listar",
+          element: <ProveedoresList />,
         }
       ],
     },

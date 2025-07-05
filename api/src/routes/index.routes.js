@@ -15,4 +15,6 @@ router.put('/usuarios', (req, res) => res.send('Actualizando usuarios'));
 
 router.delete('/usuarios', (req, res) => res.send('Eliminando usuario'));
 
+
+
 export default router;

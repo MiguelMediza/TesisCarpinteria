@@ -2,7 +2,7 @@ import React from 'react'
 import { useContext, useEffect } from "react";
 import { AuthContext } from "../context/authContext";
 import { Collapse, Dropdown } from 'flowbite';
-
+import { Link } from 'react-router-dom';
 const Nav = () =>{
     const { currentUser, logout } = useContext(AuthContext);
 
@@ -276,7 +276,16 @@ const Nav = () =>{
 
             {/* Otros menús */}
             <li>
-              <a href="#" className="block py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent">Proveedores</a>
+              <Link
+                to="/proveedores"
+                className="block py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 
+                          md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
+                          md:p-0 dark:text-white md:dark:hover:text-blue-500 
+                          dark:hover:bg-gray-700 dark:hover:text-white 
+                          md:dark:hover:bg-transparent"
+              >
+                Proveedores
+              </Link>
             </li>
             <li>
               <a href="#" className="block py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent">Encargos</a>
