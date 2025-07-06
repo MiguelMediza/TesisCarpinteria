@@ -1,10 +1,12 @@
-import { Link } from "react-router-dom";
-import { useState } from "react";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
 import tablasBackground from "../assets/tablasBackground.jpg";
 
 const Proveedores = () => {
+  const { id } = useParams();                // 1. id viene de /proveedores/:id?
+  const navigate = useNavigate();
+
   const [inputs, setInputs] = useState({
     rut: "",
     nombre: "",
@@ -15,10 +17,29 @@ const Proveedores = () => {
   });
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
-  const navigate = useNavigate();
+
+  const initialInputs = {
+    rut: "",
+    nombre: "",
+    nombre_empresa: "",
+    telefono: "",
+    correo_electronico: "",
+    comentarios: "",
+  };
+  // 2. Si hay id, cargamos datos para editar
+  useEffect(() => {
+    if (!id) return;
+    axios.get(`http://localhost:4000/api/src/proveedores/${id}`)
+      .then(({ data }) => setInputs(data))
+      .catch(() => {
+        setErr("No se pudo cargar el proveedor.");
+        setMessageType("error");
+      });
+  }, [id]);
 
   const validateInputs = () => {
     if (!inputs.rut) return "El RUT es requerido.";
+    if (inputs.rut.length !== 22) return "Ingresa un RUT válido (Debe tener 22 dígitos).";
     if (!inputs.nombre) return "El nombre es requerido.";
     if (!inputs.nombre_empresa) return "El nombre de la empresa es requerido.";
     if (!inputs.telefono) return "El teléfono es requerido.";
@@ -29,14 +50,10 @@ const Proveedores = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-  
-    if ((name === "rut" || name === "telefono") && !/^\d*$/.test(value)) {
-        return;
-    }
-    if (name === "telefono" && value.length > 9) {
-        return;
-    }
-    setInputs(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    if ((name === "rut" || name === "telefono") && !/^\d*$/.test(value)) return;
+    if (name === "rut" && value.length > 22) return;
+    if (name === "telefono" && value.length > 9) return;
+    setInputs(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -48,13 +65,33 @@ const Proveedores = () => {
       return;
     }
     try {
-      await axios.post("http://localhost:4000/api/src/proveedores/agregar", inputs);
-      setErr("Proveedor creado exitosamente.");
+      if (id) {
+        // EDITAR
+        await axios.put(
+          `http://localhost:4000/api/src/proveedores/${id}`,
+          inputs
+        );
+        setErr("Proveedor actualizado correctamente.");
+        setInputs(initialInputs);
+      } else {
+        // CREAR
+        await axios.post(
+          "http://localhost:4000/api/src/proveedores/agregar",
+          inputs
+        );
+        setErr("Proveedor creado exitosamente.");
+        setInputs(initialInputs);
+      }
       setMessageType("success");
-      setInputs({ rut: "", nombre: "", nombre_empresa: "", telefono: "", correo_electronico: "", comentarios: "" });
-      navigate("/proveedores");
+      // Después de un breve delay o directamente:
+      setTimeout(() => navigate("/proveedores"), 500);
     } catch (error) {
-      const msg = error.response?.data?.message || "Error al crear proveedor.";
+      let msg = "Error al guardar proveedor.";
+      if (error.response) {
+        const payload = error.response.data;
+        if (typeof payload === "string")       msg = payload;
+        else if (payload.message)              msg = payload.message;
+      }
       setErr(msg);
       setMessageType("error");
       console.error(error);
@@ -63,6 +100,7 @@ const Proveedores = () => {
 
   return (
     <section className="relative flex items-center justify-center min-h-screen bg-neutral-50">
+      {/* Fondo difuminado */}
       <div
         className="absolute inset-0 bg-cover bg-center filter blur opacity-90"
         style={{ backgroundImage: `url(${tablasBackground})` }}
@@ -77,17 +115,20 @@ const Proveedores = () => {
         </Link>
 
         <h1 className="text-2xl font-bold text-neutral-900 text-center mb-4">
-          Nuevo Proveedor
+          {id ? "Editar Proveedor" : "Nuevo Proveedor"}
         </h1>
 
         <form className="space-y-4 md:space-y-6" onSubmit={handleSubmit}>
           {/* RUT */}
           <div>
-            <label htmlFor="rut" className="block mb-1 text-sm font-medium text-neutral-800">RUT</label>
+            <label htmlFor="rut" className="block mb-1 text-sm font-medium text-neutral-800">
+              RUT
+            </label>
             <input
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
+              maxLength={22}
               name="rut"
               id="rut"
               value={inputs.rut}
@@ -99,7 +140,9 @@ const Proveedores = () => {
 
           {/* Nombre */}
           <div>
-            <label htmlFor="nombre" className="block mb-1 text-sm font-medium text-neutral-800">Nombre</label>
+            <label htmlFor="nombre" className="block mb-1 text-sm font-medium text-neutral-800">
+              Nombre
+            </label>
             <input
               type="text"
               name="nombre"
@@ -113,7 +156,9 @@ const Proveedores = () => {
 
           {/* Empresa */}
           <div>
-            <label htmlFor="nombre_empresa" className="block mb-1 text-sm font-medium text-neutral-800">Empresa</label>
+            <label htmlFor="nombre_empresa" className="block mb-1 text-sm font-medium text-neutral-800">
+              Empresa
+            </label>
             <input
               type="text"
               name="nombre_empresa"
@@ -127,7 +172,9 @@ const Proveedores = () => {
 
           {/* Teléfono */}
           <div>
-            <label htmlFor="telefono" className="block mb-1 text-sm font-medium text-neutral-800">Teléfono</label>
+            <label htmlFor="telefono" className="block mb-1 text-sm font-medium text-neutral-800">
+              Teléfono
+            </label>
             <input
               type="text"
               inputMode="numeric"
@@ -142,9 +189,11 @@ const Proveedores = () => {
             />
           </div>
 
-          {/* Correo Electrónico */}
+          {/* Correo */}
           <div>
-            <label htmlFor="correo_electronico" className="block mb-1 text-sm font-medium text-neutral-800">Correo Electrónico</label>
+            <label htmlFor="correo_electronico" className="block mb-1 text-sm font-medium text-neutral-800">
+              Correo Electrónico
+            </label>
             <input
               type="email"
               name="correo_electronico"
@@ -158,7 +207,9 @@ const Proveedores = () => {
 
           {/* Comentarios */}
           <div>
-            <label htmlFor="comentarios" className="block mb-1 text-sm font-medium text-neutral-800">Comentarios</label>
+            <label htmlFor="comentarios" className="block mb-1 text-sm font-medium text-neutral-800">
+              Comentarios
+            </label>
             <textarea
               name="comentarios"
               id="comentarios"
@@ -178,14 +229,16 @@ const Proveedores = () => {
           )}
 
           {/* Submit */}
-          <button type="submit" className="w-full py-2.5 text-white bg-neutral-700 hover:bg-neutral-800 rounded transition">
-            Crear Proveedor
+          <button
+            type="submit"
+            className="w-full py-2.5 text-white bg-neutral-700 hover:bg-neutral-800 rounded transition"
+          >
+            {id ? "Guardar Cambios" : "Crear Proveedor"}
           </button>
 
           <p className="mt-4 text-sm text-neutral-700 text-center">
-            Ver lista de{' '}
             <Link to="/proveedores/listar" className="font-medium underline">
-              Proveedores
+              Volver al listado de proveedores
             </Link>
           </p>
         </form>

@@ -12,7 +12,16 @@ export const createProveedor = async (req, res) => {
       [rut]
     );
     if (existing.length > 0) {
-      return res.status(409).json("El RUT ya está registrado!");
+      return res.status(409).json({ message: "El RUT ya está registrado!" });
+    }
+
+    // Verificar correo duplicado
+    const [existingEmail] = await pool.query(
+      "SELECT * FROM proveedores WHERE correo_electronico = ?",
+      [correo_electronico]
+    );
+    if (existingEmail.length > 0) {
+      return res.status(409).json({ message: "El correo electrónico ya está registrado!" });
     }
 
     // Insertar proveedor
@@ -34,6 +43,24 @@ export const createProveedor = async (req, res) => {
     return res.status(201).json({ id_proveedor: result.insertId, message: "Proveedor creado exitosamente!" });
   } catch (err) {
     console.error("❌ Error en createProveedor:", err);
+    return res.status(500).json({ error: "Internal server error", details: err.message });
+  }
+};
+
+// Obtener un proveedor por ID
+export const getProveedorById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [rows] = await pool.query(
+      "SELECT * FROM proveedores WHERE id_proveedor = ?",
+      [id]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json("Proveedor no encontrado!");
+    }
+    return res.status(200).json(rows[0]);
+  } catch (err) {
+    console.error("❌ Error en getProveedorById:", err);
     return res.status(500).json({ error: "Internal server error", details: err.message });
   }
 };

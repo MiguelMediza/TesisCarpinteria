@@ -9,7 +9,7 @@ import {
 } from "react-router-dom";
 
 import Home from "./pages/home/Home";
-import Proveedores from "./pages/proveedores/Proveedores";
+import Proveedores from "./pages/proveedores/proveedores";
 import ProveedoresList from "./pages/proveedores/ProveedoresList";
 import { useContext } from "react";
 import { DarkModeContext } from "./context/darkModeContext";
@@ -60,7 +60,11 @@ function App() {
         {
           path: "/proveedores/listar",
           element: <ProveedoresList />,
-        }
+        },
+        { 
+          path: "proveedores/:id", 
+          element: <Proveedores />,
+         }
       ],
     },
     {

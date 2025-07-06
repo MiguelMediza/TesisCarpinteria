@@ -6,6 +6,7 @@ import ProveedorCard from "../components/ProveedorCard";
 const ProveedoresList = () => {
   const [proveedores, setProveedores] = useState([]);
   const [error, setError] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -22,7 +23,7 @@ const ProveedoresList = () => {
   }, []);
 
   const handleEdit = (id) => {
-    navigate(`/proveedores/${id}/editar`);
+    navigate(`/proveedores/${id}`);
   };
 
   const handleDelete = async (id) => {
@@ -36,12 +37,17 @@ const ProveedoresList = () => {
     }
   };
 
+  // Filtrar proveedores por nombre según searchTerm
+  const filteredProveedores = proveedores.filter(p =>
+    p.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <section className="p-4 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Proveedores</h1>
         <Link
-          to="/proveedores"
+          to="/proveedores/nuevo"
           className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
         >
           + Nuevo Proveedor
@@ -50,8 +56,19 @@ const ProveedoresList = () => {
 
       {error && <p className="mb-4 text-red-500">{error}</p>}
 
+      {/* Buscador de proveedores */}
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Buscar proveedor por nombre..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        {proveedores.map((p) => (
+        {filteredProveedores.map((p) => (
           <ProveedorCard
             key={p.id_proveedor}
             proveedor={p}
@@ -59,6 +76,11 @@ const ProveedoresList = () => {
             onDelete={handleDelete}
           />
         ))}
+        {filteredProveedores.length === 0 && (
+          <p className="col-span-full text-center text-gray-500">
+            No se encontraron proveedores.
+          </p>
+        )}
       </div>
     </section>
   );

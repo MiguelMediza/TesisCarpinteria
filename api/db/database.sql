@@ -1,4 +1,3 @@
-show databases
 create database tesisdb;
 use tesisdb;
 show tables;
@@ -14,7 +13,7 @@ CREATE TABLE usuarios(
 
 CREATE TABLE proveedores (
     id_proveedor INT AUTO_INCREMENT PRIMARY KEY,
-    rut INT NOT NULL,
+    rut CHAR(22) NOT NULL UNIQUE,
     nombre VARCHAR(100),
     nombre_empresa VARCHAR(100),
     telefono VARCHAR(20),

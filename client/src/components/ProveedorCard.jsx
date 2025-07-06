@@ -18,6 +18,9 @@ const ProveedorCard = ({ proveedor, onEdit, onDelete }) => {
 
         <p className="text-sm font-medium text-gray-600">Email</p>
         <p className="mb-4 text-gray-800">{proveedor.correo_electronico}</p>
+
+        <p className="text-sm font-medium text-gray-600">Comentario</p>
+        <p className="mb-4 text-gray-800">{proveedor.comentarios}</p>
       </div>
 
       <div className="mt-4 flex space-x-2">
