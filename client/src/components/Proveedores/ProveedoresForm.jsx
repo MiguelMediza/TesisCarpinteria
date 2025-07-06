@@ -1,10 +1,10 @@
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
-import tablasBackground from "../assets/tablasBackground.jpg";
+import tablasBackground from "../../assets/tablasBackground.jpg"; 
 
 const Proveedores = () => {
-  const { id } = useParams();                // 1. id viene de /proveedores/:id?
+  const { id } = useParams();                
   const navigate = useNavigate();
 
   const [inputs, setInputs] = useState({

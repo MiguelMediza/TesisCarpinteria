@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
-import ProveedorCard from "../components/ProveedorCard";
+import ProveedorCard from "./ProveedorCard"; 
 
 const ProveedoresList = () => {
   const [proveedores, setProveedores] = useState([]);
