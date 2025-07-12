@@ -11,9 +11,11 @@ import {
 import Home from "./pages/home/Home";
 import Proveedores from "./pages/proveedores/proveedores";
 import ProveedoresList from "./pages/proveedores/ProveedoresList";
+import Tablas from "./pages/tablas/Tablas";
 import { useContext } from "react";
 import { DarkModeContext } from "./context/darkModeContext";
 import { AuthContext } from "./context/authContext";
+import TablasList from "./pages/tablas/TablasList";
 
 function App() {
   const {currentUser} = useContext(AuthContext);
@@ -64,7 +66,20 @@ function App() {
         { 
           path: "proveedores/:id", 
           element: <Proveedores />,
+         },
+        { 
+          path: "/tablas", 
+          element: <Tablas />,
+         },
+        { 
+          path: "/tablas/listar", 
+          element: <TablasList />,
+         },
+         {
+          path: "/tablas/:id",
+          element: <Tablas />,
          }
+
       ],
     },
     {

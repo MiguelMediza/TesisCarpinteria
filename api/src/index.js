@@ -5,28 +5,49 @@ import authRoutes from "./routes/usuarios.routes.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import proveedoresRouter from "./routes/proveedores.routes.js";
+import tablasRouter from "./routes/tablas.routes.js";
 
+// Para resolver __dirname en ESM
+import path from "path";
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// ✅ Middlewares PRIMERO
+// ─── Middlewares ───────────────────────────────────────────────────────────────
+
+// Servir archivos estáticos de /images
+app.use(
+  "/images/tablas",
+  express.static(path.join(__dirname, "images", "tablas"))
+);
+
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Credentials", true)
-  next()
+  res.header("Access-Control-Allow-Credentials", true);
+  next();
 });
 app.use(express.json());
-app.use(cors({
-    origin: "http://localhost:5173", 
-}));
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true
+  })
+);
 app.use(cookieParser());
 
-// ✅ Luego tus rutas
-app.use("/api/src/usuarios", authRoutes); // <-- contiene /register
+// ─── Rutas ────────────────────────────────────────────────────────────────────
+
+app.use("/api/src/usuarios", authRoutes);
 app.use("/api/src/proveedores", proveedoresRouter);
+app.use("/api/src/tablas", tablasRouter);
 app.use(indexRoutes);
 
-app.listen(PORT);
-console.log(`Server is running on port ${PORT}`);
+// ─── Arranque del servidor ────────────────────────────────────────────────────
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
 
 
 
