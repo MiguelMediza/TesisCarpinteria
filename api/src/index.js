@@ -6,7 +6,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import proveedoresRouter from "./routes/proveedores.routes.js";
 import tablasRouter from "./routes/tablas.routes.js";
-
+import palosRouter from "./routes/palos.routes.js";
 // Para resolver __dirname en ESM
 import path from "path";
 import { fileURLToPath } from "url";
@@ -21,6 +21,10 @@ const app = express();
 app.use(
   "/images/tablas",
   express.static(path.join(__dirname, "images", "tablas"))
+);
+app.use(
+  "/images/palos",
+  express.static(path.join(__dirname, "images", "palos"))
 );
 
 app.use((req, res, next) => {
@@ -41,6 +45,7 @@ app.use(cookieParser());
 app.use("/api/src/usuarios", authRoutes);
 app.use("/api/src/proveedores", proveedoresRouter);
 app.use("/api/src/tablas", tablasRouter);
+app.use("/api/src/palos", palosRouter);
 app.use(indexRoutes);
 
 // ─── Arranque del servidor ────────────────────────────────────────────────────

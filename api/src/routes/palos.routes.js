@@ -3,7 +3,7 @@ import multer from "multer";
 import path from 'path';
 import { fileURLToPath } from "url";
 const router = Router();
-import { createTabla, listTablas, getTablaById, updateTabla, deleteTabla } from "../controllers/tablas.js";
+import { createPalo, listPalos, getPaloById, updatePalo, deletePalo } from "../controllers/palos";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename);
 const storage = multer.diskStorage({
   destination(req, file, cb) {
     // la carpeta images está un nivel arriba de /routes
-    cb(null, path.join(__dirname, "../images/tablas"));
+    cb(null, path.join(__dirname, "../images/palos"));
   },
   filename(req, file, cb) {
     cb(null, Date.now() + "_" + file.originalname);
@@ -23,23 +23,23 @@ export const upload = multer({ storage });
 router.post(
   "/agregar",
   upload.single('foto'),
-  createTabla
+  createPalo
 );
 
 // Listar
-router.get("/listar", listTablas);
+router.get("/listar", listPalos);
 
 // Obtener por ID
-router.get("/:id", getTablaById);
+router.get("/:id", getPaloById);
 
 // Actualizar (con foto opcional)
 router.put(
   "/:id",
   upload.single('foto'),
-  updateTabla
+  updatePalo
 );
 
 // Eliminar
-router.delete("/:id", deleteTabla);
+router.delete("/:id", deletePalo);
 
 export default router;

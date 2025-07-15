@@ -2,6 +2,7 @@ import React from 'react'
 import { useContext, useEffect } from "react";
 import { AuthContext } from "../context/authContext";
 import { Collapse, Dropdown } from 'flowbite';
+import imanodLogo from '../assets/logoImanod.png';
 import { Link } from 'react-router-dom';
 const Nav = () =>{
     const { currentUser, logout } = useContext(AuthContext);
@@ -36,7 +37,7 @@ const Nav = () =>{
     <nav className="bg-white border-gray-200 dark:bg-gray-900">
       <div className="max-w-screen-s flex flex-wrap items-center justify-between mx-auto p-4">
         <a href="/" className="flex items-center space-x-3 rtl:space-x-reverse">
-          <img src="https://flowbite.com/docs/images/logo.svg" className="h-8" alt="Flowbite Logo" />
+          <img src={imanodLogo} className="h-15" alt="Flowbite Logo" />
           <span className="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">Imanod</span>
         </a>
         <button
