@@ -7,6 +7,9 @@ import cors from "cors";
 import proveedoresRouter from "./routes/proveedores.routes.js";
 import tablasRouter from "./routes/tablas.routes.js";
 import palosRouter from "./routes/palos.routes.js";
+import clavosRouter from "./routes/clavos.routes.js";
+import fibrasRouter from "./routes/fibras.routes.js";
+import tiposTablasRouter from "./routes/tipostablas.routes.js";
 // Para resolver __dirname en ESM
 import path from "path";
 import { fileURLToPath } from "url";
@@ -25,6 +28,18 @@ app.use(
 app.use(
   "/images/palos",
   express.static(path.join(__dirname, "images", "palos"))
+);
+app.use(
+  "/images/clavos",
+  express.static(path.join(__dirname, "images", "clavos"))
+);
+app.use(
+  "/images/fibras",
+  express.static(path.join(__dirname, "images", "fibras"))
+);
+app.use(
+  "/images/tipo_tablas",
+  express.static(path.join(__dirname, "images", "tipo_tablas"))
 );
 
 app.use((req, res, next) => {
@@ -46,6 +61,9 @@ app.use("/api/src/usuarios", authRoutes);
 app.use("/api/src/proveedores", proveedoresRouter);
 app.use("/api/src/tablas", tablasRouter);
 app.use("/api/src/palos", palosRouter);
+app.use("/api/src/clavos", clavosRouter);
+app.use("/api/src/fibras", fibrasRouter);
+app.use("/api/src/tipotablas", tiposTablasRouter);
 app.use(indexRoutes);
 
 // ─── Arranque del servidor ────────────────────────────────────────────────────

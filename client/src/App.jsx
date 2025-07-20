@@ -15,6 +15,12 @@ import Tablas from "./pages/tablas/Tablas";
 import TablasList from "./pages/tablas/TablasList";
 import Palos from "./pages/palos/Palos";
 import PalosList from "./pages/palos/PalosList";
+import Clavos from "./pages/clavos/Clavos";
+import ClavosList from "./pages/clavos/ClavosList";
+import Fibras from "./pages/fibras/Fibras";
+import FibrasList from "./pages/fibras/FibrasList";
+import TipoTablas from "./pages/tipoTablas/TipoTablas";
+import TipoTablasList from "./pages/tipoTablas/TipoTablasList";
 import { useContext } from "react";
 import { DarkModeContext } from "./context/darkModeContext";
 import { AuthContext } from "./context/authContext";
@@ -93,8 +99,43 @@ function App() {
          {
           path: "/palos/:id",
           element: <Palos />,
+         },
+         {
+          path: "/clavos",
+          element: <Clavos />,
+         },
+         {
+          path: "/clavos/listar",
+          element: <ClavosList />,
+         },
+         {
+          path: "/clavos/:id",
+          element: <Clavos />,
+         },
+         {
+          path: "/fibras",
+          element: <Fibras />,
+         },
+         {
+          path: "/fibras/listar",
+          element: <FibrasList />,
+         },
+         {
+          path: "/fibras/:id",
+          element: <Fibras />,
+         },
+         {
+          path: "/tipoTablas",
+          element: <TipoTablas />,
+         },
+         {
+          path: "/tipoTablas/listar",
+          element: <TipoTablasList />,
+         },
+         {
+          path: "/tipoTablas/:id",
+          element: <TipoTablas />,
          }
-
       ],
     },
     {
