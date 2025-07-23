@@ -2,12 +2,17 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import TipoTablasCard from "./TipoTablasCard";
+import DeleteConfirm from "../Modals/DeleteConfirm";
 
 const TipoTablasList = () => {
   const [tipos, setTipos] = useState([]);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [modalData, setModalData] = useState(null);
   const navigate = useNavigate();
+
+  // estado para el modal
+  const [toDelete, setToDelete] = useState(null); // { id, titulo } o null
 
   useEffect(() => {
     const fetchTipos = async () => {
@@ -26,18 +31,28 @@ const TipoTablasList = () => {
     navigate(`/tipotablas/${id}`);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("¿Eliminar este tipo de tabla?")) return;
+  // en lugar de eliminar de golpe, abrimos modal
+  const handleDeleteClick = (tipo) => {
+    setToDelete(tipo);
+  };
+
+  // al confirmar, llamamos al API
+  const confirmDelete = async () => {
     try {
-      await axios.delete(`http://localhost:4000/api/src/tipotablas/${id}`);
-      setTipos(prev => prev.filter(t => t.id_tipo_tabla !== id));
+      await axios.delete(`http://localhost:4000/api/src/tipotablas/${toDelete.id_tipo_tabla}`);
+      setTipos(prev => prev.filter(t => t.id_tipo_tabla !== toDelete.id_tipo_tabla));
+      setToDelete(null);
     } catch (err) {
       console.error(err);
       setError("Error al eliminar el tipo de tabla.");
+      setToDelete(null);
     }
   };
 
-  // Filtrar por título
+  const cancelDelete = () => {
+    setToDelete(null);
+  };
+
   const filteredTipos = tipos.filter(t =>
     t.titulo.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -72,7 +87,7 @@ const TipoTablasList = () => {
             key={t.id_tipo_tabla}
             tipoTabla={t}
             onEdit={handleEdit}
-            onDelete={handleDelete}
+            onDelete={() => setModalData(t)} // abrimos modal
           />
         ))}
         {filteredTipos.length === 0 && (
@@ -81,8 +96,20 @@ const TipoTablasList = () => {
           </p>
         )}
       </div>
+
+      <DeleteConfirm
+        isOpen={!!modalData}
+        title={modalData?.titulo}
+        imageSrc={modalData && `http://localhost:4000/images/tipo_tablas/${modalData.foto}`}
+        onCancel={() => setModalData(null)}
+        onConfirm={() => {
+          handleDelete(modalData.id_tipo_tabla);
+          setModalData(null);
+        }}
+      />
     </section>
   );
 };
 
 export default TipoTablasList;
+
