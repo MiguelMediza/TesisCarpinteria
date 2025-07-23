@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
-import ProveedorCard from "./ProveedorCard"; 
+import ProveedorCard from "./ProveedorCard";
+import DeleteConfirm from "../Modals/DeleteConfirm";
 
 const ProveedoresList = () => {
   const [proveedores, setProveedores] = useState([]);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [toDelete, setToDelete] = useState(null); // proveedor seleccionado para borrar
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -26,18 +28,32 @@ const ProveedoresList = () => {
     navigate(`/proveedores/${id}`);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("¿Eliminar este proveedor?")) return;
+  // Abrir modal
+  const handleDeleteClick = (proveedor) => {
+    setToDelete(proveedor);
+  };
+
+  // Confirmar borrado
+  const confirmDelete = async () => {
     try {
-      await axios.delete(`http://localhost:4000/api/src/proveedores/${id}`);
-      setProveedores(prev => prev.filter(p => p.id_proveedor !== id));
+      await axios.delete(`http://localhost:4000/api/src/proveedores/${toDelete.id_proveedor}`);
+      setProveedores(prev =>
+        prev.filter(p => p.id_proveedor !== toDelete.id_proveedor)
+      );
     } catch (err) {
       console.error(err);
       setError("Error al eliminar el proveedor.");
+    } finally {
+      setToDelete(null);
     }
   };
 
-  // Filtrar proveedores por nombre según searchTerm
+  // Cancelar borrado
+  const cancelDelete = () => {
+    setToDelete(null);
+  };
+
+  // Filtrar por nombre
   const filteredProveedores = proveedores.filter(p =>
     p.nombre.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -73,7 +89,7 @@ const ProveedoresList = () => {
             key={p.id_proveedor}
             proveedor={p}
             onEdit={handleEdit}
-            onDelete={handleDelete}
+            onDelete={() => handleDeleteClick(p)}
           />
         ))}
         {filteredProveedores.length === 0 && (
@@ -82,6 +98,14 @@ const ProveedoresList = () => {
           </p>
         )}
       </div>
+
+      <DeleteConfirm
+        isOpen={!!toDelete}
+        title={toDelete?.nombre}
+        // si quieres mostrar una imagen del proveedor: imageSrc={...}
+        onCancel={cancelDelete}
+        onConfirm={confirmDelete}
+      />
     </section>
   );
 };

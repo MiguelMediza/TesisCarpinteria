@@ -2,11 +2,13 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import ClavosCard from "./ClavosCard";
+import DeleteConfirm from "../Modals/DeleteConfirm";
 
 const ClavosList = () => {
   const [clavos, setClavos] = useState([]);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [toDelete, setToDelete] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -26,18 +28,31 @@ const ClavosList = () => {
     navigate(`/clavos/${id}`);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("¿Eliminar este clavo?")) return;
+  // Abrir modal
+  const handleDeleteClick = (clavo) => {
+    setToDelete(clavo);
+  };
+
+  // Confirmar
+  const confirmDelete = async () => {
     try {
-      await axios.delete(`http://localhost:4000/api/src/clavos/${id}`);
-      setClavos(prev => prev.filter(c => c.id_materia_prima !== id));
+      await axios.delete(`http://localhost:4000/api/src/clavos/${toDelete.id_materia_prima}`);
+      // quitarlo del array
+      setClavos(prev => prev.filter(c => c.id_materia_prima !== toDelete.id_materia_prima));
     } catch (err) {
       console.error(err);
       setError("Error al eliminar el clavo.");
+    } finally {
+      setToDelete(null);
     }
   };
 
-  // Filtrar clavos por título según searchTerm
+  // Cancelar
+  const cancelDelete = () => {
+    setToDelete(null);
+  };
+
+  // Filtrado
   const filteredClavos = clavos.filter(c =>
     c.titulo.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -56,7 +71,6 @@ const ClavosList = () => {
 
       {error && <p className="mb-4 text-red-500">{error}</p>}
 
-      {/* Buscador de clavos */}
       <div className="mb-4">
         <input
           type="text"
@@ -68,12 +82,12 @@ const ClavosList = () => {
       </div>
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        {filteredClavos.map((c) => (
+        {filteredClavos.map(c => (
           <ClavosCard
             key={c.id_materia_prima}
             clavo={c}
             onEdit={handleEdit}
-            onDelete={handleDelete}
+            onDelete={() => handleDeleteClick(c)}
           />
         ))}
         {filteredClavos.length === 0 && (
@@ -82,6 +96,14 @@ const ClavosList = () => {
           </p>
         )}
       </div>
+
+      <DeleteConfirm
+        isOpen={!!toDelete}
+        title={toDelete?.titulo}
+        imageSrc={toDelete ? `http://localhost:4000/images/clavos/${toDelete.foto}` : null}
+        onCancel={cancelDelete}
+        onConfirm={confirmDelete}
+      />
     </section>
   );
 };

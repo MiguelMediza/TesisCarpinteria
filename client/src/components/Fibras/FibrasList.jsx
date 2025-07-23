@@ -2,11 +2,13 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import FibrasCard from "./FibrasCard";
+import DeleteConfirm from "../Modals/DeleteConfirm";
 
 const FibrasList = () => {
   const [fibras, setFibras] = useState([]);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [toDelete, setToDelete] = useState(null); // fibra seleccionada para borrar
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -26,18 +28,30 @@ const FibrasList = () => {
     navigate(`/fibras/${id}`);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("¿Eliminar esta fibra?")) return;
+  // Abrir modal
+  const handleDeleteClick = (fibra) => {
+    setToDelete(fibra);
+  };
+
+  // Confirmar borrado
+  const confirmDelete = async () => {
     try {
-      await axios.delete(`http://localhost:4000/api/src/fibras/${id}`);
-      setFibras(prev => prev.filter(f => f.id_materia_prima !== id));
+      await axios.delete(`http://localhost:4000/api/src/fibras/${toDelete.id_materia_prima}`);
+      setFibras(prev => prev.filter(f => f.id_materia_prima !== toDelete.id_materia_prima));
     } catch (err) {
       console.error(err);
       setError("Error al eliminar la fibra.");
+    } finally {
+      setToDelete(null);
     }
   };
 
-  // Filtrar fibras por título según searchTerm
+  // Cancelar borrado
+  const cancelDelete = () => {
+    setToDelete(null);
+  };
+
+  // Filtrar por título
   const filteredFibras = fibras.filter(f =>
     f.titulo.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -56,7 +70,6 @@ const FibrasList = () => {
 
       {error && <p className="mb-4 text-red-500">{error}</p>}
 
-      {/* Buscador de fibras */}
       <div className="mb-4">
         <input
           type="text"
@@ -68,12 +81,12 @@ const FibrasList = () => {
       </div>
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        {filteredFibras.map((f) => (
+        {filteredFibras.map(f => (
           <FibrasCard
             key={f.id_materia_prima}
             fibra={f}
             onEdit={handleEdit}
-            onDelete={handleDelete}
+            onDelete={() => handleDeleteClick(f)}
           />
         ))}
         {filteredFibras.length === 0 && (
@@ -82,6 +95,14 @@ const FibrasList = () => {
           </p>
         )}
       </div>
+
+      <DeleteConfirm
+        isOpen={!!toDelete}
+        title={toDelete?.titulo}
+        imageSrc={toDelete ? `http://localhost:4000/images/fibras/${toDelete.foto}` : null}
+        onCancel={cancelDelete}
+        onConfirm={confirmDelete}
+      />
     </section>
   );
 };

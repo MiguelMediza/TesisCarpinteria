@@ -8,11 +8,8 @@ const TipoTablasList = () => {
   const [tipos, setTipos] = useState([]);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [modalData, setModalData] = useState(null);
+  const [toDelete, setToDelete] = useState(null); 
   const navigate = useNavigate();
-
-  // estado para el modal
-  const [toDelete, setToDelete] = useState(null); // { id, titulo } o null
 
   useEffect(() => {
     const fetchTipos = async () => {
@@ -31,24 +28,25 @@ const TipoTablasList = () => {
     navigate(`/tipotablas/${id}`);
   };
 
-  // en lugar de eliminar de golpe, abrimos modal
+  // Abre modal de elinminación
   const handleDeleteClick = (tipo) => {
     setToDelete(tipo);
   };
 
-  // al confirmar, llamamos al API
+  // Confirmación de eliminación
   const confirmDelete = async () => {
     try {
       await axios.delete(`http://localhost:4000/api/src/tipotablas/${toDelete.id_tipo_tabla}`);
       setTipos(prev => prev.filter(t => t.id_tipo_tabla !== toDelete.id_tipo_tabla));
-      setToDelete(null);
     } catch (err) {
       console.error(err);
       setError("Error al eliminar el tipo de tabla.");
+    } finally {
       setToDelete(null);
     }
   };
 
+  // Cancela la eliminación
   const cancelDelete = () => {
     setToDelete(null);
   };
@@ -87,7 +85,7 @@ const TipoTablasList = () => {
             key={t.id_tipo_tabla}
             tipoTabla={t}
             onEdit={handleEdit}
-            onDelete={() => setModalData(t)} // abrimos modal
+            onDelete={() => handleDeleteClick(t)}
           />
         ))}
         {filteredTipos.length === 0 && (
@@ -98,18 +96,16 @@ const TipoTablasList = () => {
       </div>
 
       <DeleteConfirm
-        isOpen={!!modalData}
-        title={modalData?.titulo}
-        imageSrc={modalData && `http://localhost:4000/images/tipo_tablas/${modalData.foto}`}
-        onCancel={() => setModalData(null)}
-        onConfirm={() => {
-          handleDelete(modalData.id_tipo_tabla);
-          setModalData(null);
-        }}
+        isOpen={!!toDelete}
+        title={toDelete?.titulo}
+        imageSrc={toDelete ? `http://localhost:4000/images/tipo_tablas/${toDelete.foto}` : null}
+        onCancel={cancelDelete}
+        onConfirm={confirmDelete}
       />
     </section>
   );
 };
 
 export default TipoTablasList;
+
 

@@ -2,11 +2,13 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import PaloCard from "./PaloCard";
+import DeleteConfirm from "../Modals/DeleteConfirm";
 
 const PalosList = () => {
   const [palos, setPalos] = useState([]);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [toDelete, setToDelete] = useState(null); // palo seleccionado para borrar
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -26,18 +28,30 @@ const PalosList = () => {
     navigate(`/palos/${id}`);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("¿Eliminar este palo?")) return;
+  // Abrir modal
+  const handleDeleteClick = (palo) => {
+    setToDelete(palo);
+  };
+
+  // Confirmar borrado
+  const confirmDelete = async () => {
     try {
-      await axios.delete(`http://localhost:4000/api/src/palos/${id}`);
-      setPalos(prev => prev.filter(p => p.id_materia_prima !== id));
+      await axios.delete(`http://localhost:4000/api/src/palos/${toDelete.id_materia_prima}`);
+      setPalos(prev => prev.filter(p => p.id_materia_prima !== toDelete.id_materia_prima));
     } catch (err) {
       console.error(err);
       setError("Error al eliminar el palo.");
+    } finally {
+      setToDelete(null);
     }
   };
 
-  // Filtrar palos por título según searchTerm
+  // Cancelar borrado
+  const cancelDelete = () => {
+    setToDelete(null);
+  };
+
+  // Filtrar por título
   const filteredPalos = palos.filter(p =>
     p.titulo.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -73,7 +87,7 @@ const PalosList = () => {
             key={p.id_materia_prima}
             palo={p}
             onEdit={handleEdit}
-            onDelete={handleDelete}
+            onDelete={() => handleDeleteClick(p)}
           />
         ))}
         {filteredPalos.length === 0 && (
@@ -82,6 +96,15 @@ const PalosList = () => {
           </p>
         )}
       </div>
+
+      {/* Modal de confirmación */}
+      <DeleteConfirm
+        isOpen={!!toDelete}
+        title={toDelete?.titulo}
+        imageSrc={toDelete ? `http://localhost:4000/images/palos/${toDelete.foto}` : null}
+        onCancel={cancelDelete}
+        onConfirm={confirmDelete}
+      />
     </section>
   );
 };

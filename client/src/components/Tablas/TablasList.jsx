@@ -2,11 +2,13 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import TablaCard from "./TablasCard";
+import DeleteConfirm from "../Modals/DeleteConfirm";
 
 const TablasList = () => {
   const [tablas, setTablas] = useState([]);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [toDelete, setToDelete] = useState(null); // tabla seleccionada para borrar
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -26,18 +28,32 @@ const TablasList = () => {
     navigate(`/tablas/${id}`);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("¿Eliminar esta tabla?")) return;
+  // Abrir modal
+  const handleDeleteClick = (tabla) => {
+    setToDelete(tabla);
+  };
+
+  // Confirmar borrado
+  const confirmDelete = async () => {
     try {
-      await axios.delete(`http://localhost:4000/api/src/tablas/${id}`);
-      setTablas(prev => prev.filter(t => t.id_materia_prima !== id));
+      await axios.delete(`http://localhost:4000/api/src/tablas/${toDelete.id_materia_prima}`);
+      setTablas(prev =>
+        prev.filter(t => t.id_materia_prima !== toDelete.id_materia_prima)
+      );
     } catch (err) {
       console.error(err);
       setError("Error al eliminar la tabla.");
+    } finally {
+      setToDelete(null);
     }
   };
 
-  // Filtrar tablas por título según searchTerm
+  // Cancelar borrado
+  const cancelDelete = () => {
+    setToDelete(null);
+  };
+
+  // Filtrar por título
   const filteredTablas = tablas.filter(t =>
     t.titulo.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -73,7 +89,7 @@ const TablasList = () => {
             key={t.id_materia_prima}
             tabla={t}
             onEdit={handleEdit}
-            onDelete={handleDelete}
+            onDelete={() => handleDeleteClick(t)}
           />
         ))}
         {filteredTablas.length === 0 && (
@@ -82,6 +98,14 @@ const TablasList = () => {
           </p>
         )}
       </div>
+
+      <DeleteConfirm
+        isOpen={!!toDelete}
+        title={toDelete?.titulo}
+        imageSrc={toDelete ? `http://localhost:4000/images/tablas/${toDelete.foto}` : null}
+        onCancel={cancelDelete}
+        onConfirm={confirmDelete}
+      />
     </section>
   );
 };
