@@ -70,7 +70,7 @@ export const createTipoTabla = async (req, res) => {
       parseFloat(espesor_mm),
       foto,
       parseFloat(precio_unidad),
-      cepillada === "si" ? 1 : 0,
+      cepillada === "1" ? 1 : 0,
       parseInt(cantidadDeseada, 10)
     ]);
 
@@ -141,7 +141,7 @@ export const updateTipoTabla = async (req, res) => {
     const newFoto   = req.file?.filename || null;
     const newLargo  = parseFloat(newLargoCm);
     const newStockI = parseInt(newStock, 10);
-    const cep       = cepillada === "si" ? 1 : 0;
+    const cep       = cepillada === "1" ? 1 : 0;
 
     await connection.beginTransaction();
 
