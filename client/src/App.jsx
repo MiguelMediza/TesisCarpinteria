@@ -21,6 +21,8 @@ import Fibras from "./pages/fibras/Fibras";
 import FibrasList from "./pages/fibras/FibrasList";
 import TipoTablas from "./pages/tipoTablas/TipoTablas";
 import TipoTablasList from "./pages/tipoTablas/TipoTablasList";
+import TipoTacos from "./pages/tipoTacos/TipoTacos";
+import TipoTacosList from "./pages/tipoTacos/TipoTacosList";
 import { useContext } from "react";
 import { DarkModeContext } from "./context/darkModeContext";
 import { AuthContext } from "./context/authContext";
@@ -135,7 +137,19 @@ function App() {
          {
           path: "/tipoTablas/:id",
           element: <TipoTablas />,
-         }
+         },
+         {
+          path: "/tipotacos",
+          element: <TipoTacos />,
+         },
+         {
+          path: "/tipotacos/:id",
+          element: <TipoTacos />,
+         },
+         {
+           path: "/tipotacos/listar",
+           element: <TipoTacosList />,
+         },
       ],
     },
     {

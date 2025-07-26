@@ -86,28 +86,62 @@ export const createTipoTaco = async (req, res) => {
   }
 };
 
-// LISTAR TODOS LOS TIPO_TACOS
-export const listTipoTacos = (req, res) => {
-  const q = `
-    SELECT tt.*, p.titulo AS palo_padre, p.stock AS stock_palo
-    FROM tipo_tacos tt
-    JOIN palos p ON tt.id_materia_prima = p.id_materia_prima
-  `;
-  db.query(q, (err, data) => {
-    if (err) return res.status(500).json(err);
-    res.json(data);
-  });
+// Listar todos los tipos de taco
+export const listTipoTacos = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `
+      SELECT
+        tt.*,
+        mp.titulo AS palo_padre
+      FROM tipo_tacos AS tt
+      JOIN materiaprima AS mp
+        ON tt.id_materia_prima = mp.id_materia_prima
+      ORDER BY tt.titulo ASC
+      `
+    );
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error("❌ Error en listTipoTacos:", err);
+    return res
+      .status(500)
+      .json({ error: "Internal server error", details: err.message });
+  }
 };
 
-// OBTENER UN TIPO_TACO POR ID
-export const getTipoTacoById = (req, res) => {
-  const q = "SELECT * FROM tipo_tacos WHERE id_tipo_taco = ?";
-  db.query(q, [req.params.id], (err, data) => {
-    if (err) return res.status(500).json(err);
-    if (data.length === 0) return res.status(404).json("Tipo de taco no encontrado.");
-    res.json(data[0]);
-  });
+
+
+// Obtener un tipo de taco por ID
+export const getTipoTacoById = async (req, res) => {
+  try {
+    const { id } = req.params; // id_tipo_taco
+    const [rows] = await pool.query(
+      `
+      SELECT
+        tt.*,
+        mp.titulo AS palo_padre,
+        mp.foto   AS palo_padre_foto
+      FROM tipo_tacos AS tt
+      JOIN materiaprima AS mp
+        ON tt.id_materia_prima = mp.id_materia_prima
+      WHERE tt.id_tipo_taco = ?
+      `,
+      [id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json("Tipo de taco no encontrado!");
+    }
+
+    return res.status(200).json(rows[0]);
+  } catch (err) {
+    console.error("❌ Error en getTipoTacoById:", err);
+    return res
+      .status(500)
+      .json({ error: "Internal server error", details: err.message });
+  }
 };
+
 
 
 // Modificar un tipo de taco existente y ajustar stock de palo padre
