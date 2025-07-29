@@ -11,6 +11,7 @@ import clavosRouter from "./routes/clavos.routes.js";
 import fibrasRouter from "./routes/fibras.routes.js";
 import tiposTablasRouter from "./routes/tipostablas.routes.js";
 import tiposTacosRouter from "./routes/tipostacos.routes.js";
+import tiposPatinesRouter from "./routes/tipospatines.routes.js";
 // Para resolver __dirname en ESM
 import path from "path";
 import { fileURLToPath } from "url";
@@ -46,6 +47,10 @@ app.use(
   "/images/tipo_tacos",
   express.static(path.join(__dirname, "images", "tipo_tacos"))
 );
+app.use(
+  "/images/tipo_patines",
+  express.static(path.join(__dirname, "images", "tipo_patines"))
+);
 
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Credentials", true);
@@ -70,6 +75,8 @@ app.use("/api/src/clavos", clavosRouter);
 app.use("/api/src/fibras", fibrasRouter);
 app.use("/api/src/tipotablas", tiposTablasRouter);
 app.use("/api/src/tipotacos", tiposTacosRouter);
+app.use("/api/src/tipospatines", tiposPatinesRouter);
+
 app.use(indexRoutes);
 
 // ─── Arranque del servidor ────────────────────────────────────────────────────
