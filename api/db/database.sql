@@ -1,7 +1,6 @@
 create database tesisdb;
 use tesisdb;
 show tables;
-
 CREATE TABLE usuarios(
 	idUser INT PRIMARY KEY AUTO_INCREMENT,
 	username VARCHAR(45) NOT NULL,
@@ -95,12 +94,14 @@ CREATE TABLE tipo_tablas (
     stock INT DEFAULT 0,
     FOREIGN KEY (id_materia_prima) REFERENCES tablas(id_materia_prima)
 );
-    
+
 CREATE TABLE tipo_tacos (
     id_tipo_taco INT AUTO_INCREMENT PRIMARY KEY,
     id_materia_prima INT NOT NULL,
     titulo VARCHAR(100) NOT NULL,
-    medidas VARCHAR(100),
+    largo_cm FLOAT,
+    ancho_cm FLOAT,
+    espesor_mm FLOAT,
     stock INT DEFAULT 0,
     precio_unidad FLOAT,
     logo VARCHAR(255),
@@ -116,6 +117,7 @@ CREATE TABLE tipo_patines (
     medidas VARCHAR(100),
     logo VARCHAR(255),
     precio_unidad FLOAT,
+    stock FLOAT,
     comentarios VARCHAR(255),
     FOREIGN KEY (id_tipo_tabla) REFERENCES tipo_tablas(id_tipo_tabla),
     FOREIGN KEY (id_tipo_taco)  REFERENCES tipo_tacos(id_tipo_taco)
