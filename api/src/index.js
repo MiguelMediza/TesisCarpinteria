@@ -75,7 +75,7 @@ app.use("/api/src/clavos", clavosRouter);
 app.use("/api/src/fibras", fibrasRouter);
 app.use("/api/src/tipotablas", tiposTablasRouter);
 app.use("/api/src/tipotacos", tiposTacosRouter);
-app.use("/api/src/tipospatines", tiposPatinesRouter);
+app.use("/api/src/tipopatines", tiposPatinesRouter);
 
 app.use(indexRoutes);
 

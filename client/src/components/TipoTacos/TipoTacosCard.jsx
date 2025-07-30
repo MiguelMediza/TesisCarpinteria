@@ -7,7 +7,8 @@ const TipoTacosCard = ({ tipoTaco, onEdit, onDelete }) => {
     id_tipo_taco,
     titulo,
     largo_cm,
-    diametro_mm,
+    ancho_cm,
+    espesor_mm,
     foto,
     precio_unidad,
     stock
@@ -27,7 +28,7 @@ const TipoTacosCard = ({ tipoTaco, onEdit, onDelete }) => {
         <p className="text-lg font-semibold text-gray-800 mb-2">{titulo}</p>
 
         <p className="text-sm text-gray-600">Dimensiones:</p>
-        <p className="mb-2 text-gray-800">{`${largo_cm} cm × ${diametro_mm} mm`}</p>
+        <p className="mb-2 text-gray-800">{`${largo_cm} cm × ${ancho_cm} cm x ${espesor_mm} mm`}</p>
 
         {currentUser?.tipo === "admin" && (
           <>

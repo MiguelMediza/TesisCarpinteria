@@ -370,12 +370,30 @@ const Nav = () =>{
                       className="z-20 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-40 dark:bg-gray-700"
                     >
                       <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
-                        <li>
-                          <a href="#" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Agregar</a>
-                        </li>
-                        <li>
-                          <a href="#" className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white">Listar</a>
-                        </li>
+                      <li>
+                        <Link
+                          to="/tipopatines"
+                          className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
+                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
+                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
+                                    dark:hover:bg-gray-700 dark:hover:text-white 
+                                    md:dark:hover:bg-transparent"
+                        >
+                          Agregar
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          to="/tipopatines/listar"
+                          className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
+                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
+                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
+                                    dark:hover:bg-gray-700 dark:hover:text-white 
+                                    md:dark:hover:bg-transparent"
+                        >
+                          Listar
+                        </Link>
+                      </li>
                       </ul>
                     </div>
                   </li>

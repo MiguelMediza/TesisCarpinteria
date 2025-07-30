@@ -23,6 +23,8 @@ import TipoTablas from "./pages/tipoTablas/TipoTablas";
 import TipoTablasList from "./pages/tipoTablas/TipoTablasList";
 import TipoTacos from "./pages/tipoTacos/TipoTacos";
 import TipoTacosList from "./pages/tipoTacos/TipoTacosList";
+import TipoPatines from "./pages/tipoPatines/TipoPatines";
+import TipoPatinesList from "./pages/tipoPatines/TipoPatinesList";
 import { useContext } from "react";
 import { DarkModeContext } from "./context/darkModeContext";
 import { AuthContext } from "./context/authContext";
@@ -150,6 +152,18 @@ function App() {
            path: "/tipotacos/listar",
            element: <TipoTacosList />,
          },
+         {
+          path: "/tipopatines",
+          element: <TipoPatines />,
+         },
+         {
+          path: "/tipopatines/listar",
+          element: <TipoPatinesList />,
+         },
+         {
+          path: "/tipopatines/:id",
+          element: <TipoPatines />,
+         }
       ],
     },
     {
