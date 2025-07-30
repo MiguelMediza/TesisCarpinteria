@@ -29,15 +29,6 @@ CREATE TABLE encargos (
     FOREIGN KEY (id_proveedor) REFERENCES proveedores(id_proveedor)
 );
 
-CREATE TABLE encargo_detalles (
-    id_encargo_detalle INT AUTO_INCREMENT PRIMARY KEY,
-    id_encargo INT NOT NULL,
-    id_materia_prima INT NOT NULL,
-    cantidad INT NOT NULL,
-    FOREIGN KEY (id_encargo) REFERENCES encargos(id_encargo),
-    FOREIGN KEY (id_materia_prima) REFERENCES materiaprima(id_materia_prima)
-);
-
 CREATE TABLE materiaprima (
     id_materia_prima INT AUTO_INCREMENT PRIMARY KEY,
     categoria ENUM('tabla','palo','clavo','fibra') NOT NULL,
@@ -46,6 +37,15 @@ CREATE TABLE materiaprima (
     stock INT,
     foto VARCHAR(255),
     comentarios VARCHAR(255)
+);
+
+CREATE TABLE encargo_detalles (
+    id_encargo_detalle INT AUTO_INCREMENT PRIMARY KEY,
+    id_encargo INT NOT NULL,
+    id_materia_prima INT NOT NULL,
+    cantidad INT NOT NULL,
+    FOREIGN KEY (id_encargo) REFERENCES encargos(id_encargo),
+    FOREIGN KEY (id_materia_prima) REFERENCES materiaprima(id_materia_prima)
 );
 
 CREATE TABLE tablas (
