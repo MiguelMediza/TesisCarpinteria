@@ -170,12 +170,18 @@ const TipoTablasForm = () => {
       setMessageType("success");
       setTimeout(() => navigate("/tipotablas/listar"), 500);
     } catch (error) {
-      let m = "Error al guardar.";
-      if (error.response) {
-        const p = error.response.data;
-        m = typeof p === "string" ? p : p.message || m;
+      // Muestra el error de la respuesta del servidor
+      let mensaje = "Error al guardar.";
+      if (error.response && error.response.data) {
+        if (typeof error.response.data === "string") {
+          mensaje = error.response.data;
+        } else if (error.response.data.error) {
+          mensaje = error.response.data.error;
+        } else if (error.response.data.message) {
+          mensaje = error.response.data.message;
+        }
       }
-      setErr(m);
+      setErr(mensaje);
       setMessageType("error");
     }
   };

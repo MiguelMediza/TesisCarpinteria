@@ -25,9 +25,16 @@ import TipoTacos from "./pages/tipoTacos/TipoTacos";
 import TipoTacosList from "./pages/tipoTacos/TipoTacosList";
 import TipoPatines from "./pages/tipoPatines/TipoPatines";
 import TipoPatinesList from "./pages/tipoPatines/TipoPatinesList";
+import FuegoYa from "./pages/fuegoYa/FuegoYa";
+import FuegoYaList from "./pages/fuegoYa/FuegoYaList";
+import Pellets from "./pages/pellets/Pellets";
+import PelletsList from "./pages/pellets/PelletsList";
+import Clientes from "./pages/clientes/Clientes";
+import ClientesList from "./pages/clientes/ClientesList";
 import { useContext } from "react";
 import { DarkModeContext } from "./context/darkModeContext";
 import { AuthContext } from "./context/authContext";
+
 
 
 function App() {
@@ -163,6 +170,42 @@ function App() {
          {
           path: "/tipopatines/:id",
           element: <TipoPatines />,
+         },
+         {
+          path: "/fuegoya",
+          element: <FuegoYa/>
+         },
+         {
+          path: "/fuegoya/listar",
+          element: <FuegoYaList/>
+         },
+         {
+          path: "/fuegoya/:id",
+          element: <FuegoYa/>
+         },
+         {
+          path: "/pellets",
+          element: <Pellets/>
+         },
+         {
+          path: "/pellets/listar",
+          element: <PelletsList/>
+         },
+         {
+          path: "/pellets/:id",
+          element: <Pellets/>
+         },
+         {
+          path: "/clientes",
+          element: <Clientes/>
+         },
+         {
+          path: "/clientes/listar",
+          element: <ClientesList/>
+         },
+         {
+          path: "/clientes/:id",
+          element: <Clientes/>
          }
       ],
     },

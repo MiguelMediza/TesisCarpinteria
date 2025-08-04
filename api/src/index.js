@@ -12,6 +12,9 @@ import fibrasRouter from "./routes/fibras.routes.js";
 import tiposTablasRouter from "./routes/tipostablas.routes.js";
 import tiposTacosRouter from "./routes/tipostacos.routes.js";
 import tiposPatinesRouter from "./routes/tipospatines.routes.js";
+import fuegoYaRouter from "./routes/fuegoya.routes.js";
+import pelletsRouter from "./routes/pellets.routes.js";
+import clientesRouter from "./routes/clientes.routes.js";
 // Para resolver __dirname en ESM
 import path from "path";
 import { fileURLToPath } from "url";
@@ -51,6 +54,14 @@ app.use(
   "/images/tipo_patines",
   express.static(path.join(__dirname, "images", "tipo_patines"))
 );
+app.use(
+  "/images/fuego_ya",
+  express.static(path.join(__dirname, "images", "fuego_ya"))
+);
+app.use(
+  "/images/pellets",
+  express.static(path.join(__dirname, "images", "pellets"))
+);
 
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Credentials", true);
@@ -76,6 +87,9 @@ app.use("/api/src/fibras", fibrasRouter);
 app.use("/api/src/tipotablas", tiposTablasRouter);
 app.use("/api/src/tipotacos", tiposTacosRouter);
 app.use("/api/src/tipopatines", tiposPatinesRouter);
+app.use("/api/src/fuegoya", fuegoYaRouter);
+app.use("/api/src/pellets", pelletsRouter);
+app.use("/api/src/clientes", clientesRouter);
 
 app.use(indexRoutes);
 

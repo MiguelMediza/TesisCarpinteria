@@ -38,7 +38,9 @@ const Nav = () =>{
       <div className="max-w-screen-s flex flex-wrap items-center justify-between mx-auto p-4">
         <a href="/" className="flex items-center space-x-3 rtl:space-x-reverse">
           <img src={imanodLogo} className="h-15" alt="Flowbite Logo" />
-          <span className="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">Imanod</span>
+          <span className="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">
+            Imanod
+          </span>
         </a>
         <button
           id="triggerEl"
@@ -49,14 +51,32 @@ const Nav = () =>{
           aria-expanded="false"
         >
           <span className="sr-only">Open main menu</span>
-          <svg className="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 17 14">
-            <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M1 1h15M1 7h15M1 13h15"/>
+          <svg
+            className="w-5 h-5"
+            aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 17 14"
+          >
+            <path
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M1 1h15M1 7h15M1 13h15"
+            />
           </svg>
         </button>
         <div className="hidden w-full md:block md:w-auto" id="navbar-default">
           <ul className="font-medium flex flex-col p-4 md:p-0 mt-4 border border-gray-100 rounded-lg bg-gray-50 md:flex-row md:space-x-8 md:justify-center items-center rtl:space-x-reverse md:mt-0 md:border-0 md:bg-white dark:bg-gray-800 md:dark:bg-gray-900 dark:border-gray-700">
             <li>
-              <a href="/" className="block py-2 px-3 text-white bg-blue-700 rounded-sm md:bg-transparent md:text-blue-700 md:p-0 dark:text-white md:dark:text-blue-500" aria-current="page">Inicio</a>
+              <a
+                href="/"
+                className="block py-2 px-3 text-white bg-blue-700 rounded-sm md:bg-transparent md:text-blue-700 md:p-0 dark:text-white md:dark:text-blue-500"
+                aria-current="page"
+              >
+                Inicio
+              </a>
             </li>
             {/* Doble Dropdown Materia Prima */}
             <li className="relative">
@@ -66,8 +86,19 @@ const Nav = () =>{
                 className="flex items-center justify-between w-full py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent"
               >
                 Materia Prima
-                <svg className="w-2.5 h-2.5 ms-2.5" aria-hidden="true" fill="none" viewBox="0 0 10 6">
-                  <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 4 4 4-4"/>
+                <svg
+                  className="w-2.5 h-2.5 ms-2.5"
+                  aria-hidden="true"
+                  fill="none"
+                  viewBox="0 0 10 6"
+                >
+                  <path
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="m1 1 4 4 4-4"
+                  />
                 </svg>
               </button>
               <div
@@ -85,8 +116,19 @@ const Nav = () =>{
                       className="flex items-center justify-between w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
                     >
                       Tablas
-                      <svg className="w-2.5 h-2.5 ms-2.5" aria-hidden="true" fill="none" viewBox="0 0 10 6">
-                        <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 4 4 4-4"/>
+                      <svg
+                        className="w-2.5 h-2.5 ms-2.5"
+                        aria-hidden="true"
+                        fill="none"
+                        viewBox="0 0 10 6"
+                      >
+                        <path
+                          stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="m1 1 4 4 4-4"
+                        />
                       </svg>
                     </button>
                     <div
@@ -94,30 +136,30 @@ const Nav = () =>{
                       className="z-20 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-40 dark:bg-gray-700"
                     >
                       <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
-                      <li>
-                        <Link
-                          to="/tablas"
-                          className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
+                        <li>
+                          <Link
+                            to="/tablas"
+                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
                                     md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
                                     md:p-0 dark:text-white md:dark:hover:text-blue-500 
                                     dark:hover:bg-gray-700 dark:hover:text-white 
                                     md:dark:hover:bg-transparent"
-                        >
-                          Agregar
-                        </Link>
-                      </li>
-                      <li>
-                        <Link
-                          to="/tablas/listar"
-                          className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
+                          >
+                            Agregar
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            to="/tablas/listar"
+                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
                                     md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
                                     md:p-0 dark:text-white md:dark:hover:text-blue-500 
                                     dark:hover:bg-gray-700 dark:hover:text-white 
                                     md:dark:hover:bg-transparent"
-                        >
-                          Listar
-                        </Link>
-                      </li>
+                          >
+                            Listar
+                          </Link>
+                        </li>
                       </ul>
                     </div>
                   </li>
@@ -131,8 +173,19 @@ const Nav = () =>{
                       className="flex items-center justify-between w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
                     >
                       Palos
-                      <svg className="w-2.5 h-2.5 ms-2.5" aria-hidden="true" fill="none" viewBox="0 0 10 6">
-                        <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 4 4 4-4"/>
+                      <svg
+                        className="w-2.5 h-2.5 ms-2.5"
+                        aria-hidden="true"
+                        fill="none"
+                        viewBox="0 0 10 6"
+                      >
+                        <path
+                          stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="m1 1 4 4 4-4"
+                        />
                       </svg>
                     </button>
                     <div
@@ -140,30 +193,30 @@ const Nav = () =>{
                       className="z-20 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-40 dark:bg-gray-700"
                     >
                       <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
-                      <li>
-                        <Link
-                          to="/palos"
-                          className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
+                        <li>
+                          <Link
+                            to="/palos"
+                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
                                     md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
                                     md:p-0 dark:text-white md:dark:hover:text-blue-500 
                                     dark:hover:bg-gray-700 dark:hover:text-white 
                                     md:dark:hover:bg-transparent"
-                        >
-                          Agregar
-                        </Link>
-                      </li>
-                      <li>
-                        <Link
-                          to="/palos/listar"
-                          className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
+                          >
+                            Agregar
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            to="/palos/listar"
+                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
                                     md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
                                     md:p-0 dark:text-white md:dark:hover:text-blue-500 
                                     dark:hover:bg-gray-700 dark:hover:text-white 
                                     md:dark:hover:bg-transparent"
-                        >
-                          Listar
-                        </Link>
-                      </li>
+                          >
+                            Listar
+                          </Link>
+                        </li>
                       </ul>
                     </div>
                   </li>
@@ -177,8 +230,19 @@ const Nav = () =>{
                       className="flex items-center justify-between w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
                     >
                       Clavos
-                      <svg className="w-2.5 h-2.5 ms-2.5" aria-hidden="true" fill="none" viewBox="0 0 10 6">
-                        <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 4 4 4-4"/>
+                      <svg
+                        className="w-2.5 h-2.5 ms-2.5"
+                        aria-hidden="true"
+                        fill="none"
+                        viewBox="0 0 10 6"
+                      >
+                        <path
+                          stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="m1 1 4 4 4-4"
+                        />
                       </svg>
                     </button>
                     <div
@@ -186,30 +250,30 @@ const Nav = () =>{
                       className="z-20 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-40 dark:bg-gray-700"
                     >
                       <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
-                      <li>
-                        <Link
-                          to="/clavos"
-                          className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
+                        <li>
+                          <Link
+                            to="/clavos"
+                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
                                     md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
                                     md:p-0 dark:text-white md:dark:hover:text-blue-500 
                                     dark:hover:bg-gray-700 dark:hover:text-white 
                                     md:dark:hover:bg-transparent"
-                        >
-                          Agregar
-                        </Link>
-                      </li>
-                      <li>
-                        <Link
-                          to="/clavos/listar"
-                          className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
+                          >
+                            Agregar
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            to="/clavos/listar"
+                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
                                     md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
                                     md:p-0 dark:text-white md:dark:hover:text-blue-500 
                                     dark:hover:bg-gray-700 dark:hover:text-white 
                                     md:dark:hover:bg-transparent"
-                        >
-                          Listar
-                        </Link>
-                      </li>
+                          >
+                            Listar
+                          </Link>
+                        </li>
                       </ul>
                     </div>
                   </li>
@@ -223,8 +287,19 @@ const Nav = () =>{
                       className="flex items-center justify-between w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
                     >
                       Fibras
-                      <svg className="w-2.5 h-2.5 ms-2.5" aria-hidden="true" fill="none" viewBox="0 0 10 6">
-                        <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 4 4 4-4"/>
+                      <svg
+                        className="w-2.5 h-2.5 ms-2.5"
+                        aria-hidden="true"
+                        fill="none"
+                        viewBox="0 0 10 6"
+                      >
+                        <path
+                          stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="m1 1 4 4 4-4"
+                        />
                       </svg>
                     </button>
                     <div
@@ -232,30 +307,30 @@ const Nav = () =>{
                       className="z-20 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-40 dark:bg-gray-700"
                     >
                       <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
-                      <li>
-                        <Link
-                          to="/fibras"
-                          className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
+                        <li>
+                          <Link
+                            to="/fibras"
+                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
                                     md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
                                     md:p-0 dark:text-white md:dark:hover:text-blue-500 
                                     dark:hover:bg-gray-700 dark:hover:text-white 
                                     md:dark:hover:bg-transparent"
-                        >
-                          Agregar
-                        </Link>
-                      </li>
-                      <li>
-                        <Link
-                          to="/fibras/listar"
-                          className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
+                          >
+                            Agregar
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            to="/fibras/listar"
+                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
                                     md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
                                     md:p-0 dark:text-white md:dark:hover:text-blue-500 
                                     dark:hover:bg-gray-700 dark:hover:text-white 
                                     md:dark:hover:bg-transparent"
-                        >
-                          Listar
-                        </Link>
-                      </li>
+                          >
+                            Listar
+                          </Link>
+                        </li>
                       </ul>
                     </div>
                   </li>
@@ -269,8 +344,19 @@ const Nav = () =>{
                       className="flex items-center justify-between w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
                     >
                       Tipos de tablas
-                      <svg className="w-2.5 h-2.5 ms-2.5" aria-hidden="true" fill="none" viewBox="0 0 10 6">
-                        <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 4 4 4-4"/>
+                      <svg
+                        className="w-2.5 h-2.5 ms-2.5"
+                        aria-hidden="true"
+                        fill="none"
+                        viewBox="0 0 10 6"
+                      >
+                        <path
+                          stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="m1 1 4 4 4-4"
+                        />
                       </svg>
                     </button>
                     <div
@@ -278,33 +364,33 @@ const Nav = () =>{
                       className="z-20 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-40 dark:bg-gray-700"
                     >
                       <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
-                      <li>
-                        <Link
-                          to="/tipotablas"
-                          className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
+                        <li>
+                          <Link
+                            to="/tipotablas"
+                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
                                     md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
                                     md:p-0 dark:text-white md:dark:hover:text-blue-500 
                                     dark:hover:bg-gray-700 dark:hover:text-white 
                                     md:dark:hover:bg-transparent"
-                        >
-                          Agregar
-                        </Link>
-                      </li>
-                      <li>
-                        <Link
-                          to="/tipotablas/listar"
-                          className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
+                          >
+                            Agregar
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            to="/tipotablas/listar"
+                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
                                     md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
                                     md:p-0 dark:text-white md:dark:hover:text-blue-500 
                                     dark:hover:bg-gray-700 dark:hover:text-white 
                                     md:dark:hover:bg-transparent"
-                        >
-                          Listar
-                        </Link>
-                      </li>
+                          >
+                            Listar
+                          </Link>
+                        </li>
                       </ul>
                     </div>
-                  </li>                  
+                  </li>
                   {/* Tipos tacos */}
                   <li className="relative">
                     <button
@@ -315,8 +401,19 @@ const Nav = () =>{
                       className="flex items-center justify-between w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
                     >
                       Tipos de tacos
-                      <svg className="w-2.5 h-2.5 ms-2.5" aria-hidden="true" fill="none" viewBox="0 0 10 6">
-                        <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 4 4 4-4"/>
+                      <svg
+                        className="w-2.5 h-2.5 ms-2.5"
+                        aria-hidden="true"
+                        fill="none"
+                        viewBox="0 0 10 6"
+                      >
+                        <path
+                          stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="m1 1 4 4 4-4"
+                        />
                       </svg>
                     </button>
                     <div
@@ -324,30 +421,30 @@ const Nav = () =>{
                       className="z-20 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-40 dark:bg-gray-700"
                     >
                       <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
-                      <li>
-                        <Link
-                          to="/tipotacos"
-                          className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
+                        <li>
+                          <Link
+                            to="/tipotacos"
+                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
                                     md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
                                     md:p-0 dark:text-white md:dark:hover:text-blue-500 
                                     dark:hover:bg-gray-700 dark:hover:text-white 
                                     md:dark:hover:bg-transparent"
-                        >
-                          Agregar
-                        </Link>
-                      </li>
-                      <li>
-                        <Link
-                          to="/tipotacos/listar"
-                          className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
+                          >
+                            Agregar
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            to="/tipotacos/listar"
+                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
                                     md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
                                     md:p-0 dark:text-white md:dark:hover:text-blue-500 
                                     dark:hover:bg-gray-700 dark:hover:text-white 
                                     md:dark:hover:bg-transparent"
-                        >
-                          Listar
-                        </Link>
-                      </li>
+                          >
+                            Listar
+                          </Link>
+                        </li>
                       </ul>
                     </div>
                   </li>
@@ -361,8 +458,19 @@ const Nav = () =>{
                       className="flex items-center justify-between w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
                     >
                       Tipos de patines
-                      <svg className="w-2.5 h-2.5 ms-2.5" aria-hidden="true" fill="none" viewBox="0 0 10 6">
-                        <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 4 4 4-4"/>
+                      <svg
+                        className="w-2.5 h-2.5 ms-2.5"
+                        aria-hidden="true"
+                        fill="none"
+                        viewBox="0 0 10 6"
+                      >
+                        <path
+                          stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="m1 1 4 4 4-4"
+                        />
                       </svg>
                     </button>
                     <div
@@ -370,30 +478,30 @@ const Nav = () =>{
                       className="z-20 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-40 dark:bg-gray-700"
                     >
                       <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
-                      <li>
-                        <Link
-                          to="/tipopatines"
-                          className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
+                        <li>
+                          <Link
+                            to="/tipopatines"
+                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
                                     md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
                                     md:p-0 dark:text-white md:dark:hover:text-blue-500 
                                     dark:hover:bg-gray-700 dark:hover:text-white 
                                     md:dark:hover:bg-transparent"
-                        >
-                          Agregar
-                        </Link>
-                      </li>
-                      <li>
-                        <Link
-                          to="/tipopatines/listar"
-                          className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
+                          >
+                            Agregar
+                          </Link>
+                        </li>
+                        <li>
+                          <Link
+                            to="/tipopatines/listar"
+                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
                                     md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
                                     md:p-0 dark:text-white md:dark:hover:text-blue-500 
                                     dark:hover:bg-gray-700 dark:hover:text-white 
                                     md:dark:hover:bg-transparent"
-                        >
-                          Listar
-                        </Link>
-                      </li>
+                          >
+                            Listar
+                          </Link>
+                        </li>
                       </ul>
                     </div>
                   </li>
@@ -415,28 +523,80 @@ const Nav = () =>{
               </Link>
             </li>
             <li>
-              <a href="#" className="block py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent">Encargos</a>
+              <a
+                href="#"
+                className="block py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent"
+              >
+                Encargos
+              </a>
             </li>
             <li>
-              <a href="#" className="block py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent">Prototipos</a>
+              <a
+                href="#"
+                className="block py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent"
+              >
+                Prototipos
+              </a>
             </li>
             <li>
-              <a href="#" className="block py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent">Pedidos</a>
+              <a
+                href="#"
+                className="block py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent"
+              >
+                Pedidos
+              </a>
             </li>
             <li>
-              <a href="#" className="block py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent">Entregas</a>
+              <a
+                href="#"
+                className="block py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent"
+              >
+                Entregas
+              </a>
             </li>
             <li>
-              <a href="#" className="block py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent">Clientes</a>
+              <Link
+                to="/clientes"
+                className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
+                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
+                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
+                                    dark:hover:bg-gray-700 dark:hover:text-white 
+                                    md:dark:hover:bg-transparent"
+              >
+                Clientes
+              </Link>
             </li>
             <li>
-              <a href="#" className="block py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent">Ventas</a>
+              <a
+                href="#"
+                className="block py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent"
+              >
+                Ventas
+              </a>
             </li>
             <li>
-              <a href="#" className="block py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent">Fuego Ya</a>
+              <Link
+                to="/fuegoya"
+                className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
+                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
+                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
+                                    dark:hover:bg-gray-700 dark:hover:text-white 
+                                    md:dark:hover:bg-transparent"
+              >
+                Fuego Ya
+              </Link>
             </li>
             <li>
-              <a href="#" className="block py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent">Pellets</a>
+              <Link
+                to="/pellets"
+                className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
+                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
+                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
+                                    dark:hover:bg-gray-700 dark:hover:text-white 
+                                    md:dark:hover:bg-transparent"
+              >
+                Pellets
+              </Link>
             </li>
             <li>
               {currentUser && (
@@ -452,7 +612,7 @@ const Nav = () =>{
         </div>
       </div>
     </nav>
-  )
+  );
 }
 
 export default Nav
