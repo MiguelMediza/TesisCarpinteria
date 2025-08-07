@@ -163,6 +163,7 @@ const ClientesForm = () => {
           <button type="submit" className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
             {id ? "Guardar Cambios" : "Crear Cliente"}
           </button>
+          <p className="mt-4 text-sm text-neutral-700 text-center"><Link to="/clientes/listar" className="font-medium underline">Volver al listado de clientes</Link></p>
         </form>
       </div>
     </section>

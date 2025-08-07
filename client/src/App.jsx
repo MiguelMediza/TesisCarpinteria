@@ -31,6 +31,8 @@ import Pellets from "./pages/pellets/Pellets";
 import PelletsList from "./pages/pellets/PelletsList";
 import Clientes from "./pages/clientes/Clientes";
 import ClientesList from "./pages/clientes/ClientesList";
+import Ventas from "./pages/ventas/Ventas";
+import VentasList from "./pages/ventas/VentasList";
 import { useContext } from "react";
 import { DarkModeContext } from "./context/darkModeContext";
 import { AuthContext } from "./context/authContext";
@@ -61,6 +63,17 @@ function App() {
 
     return children;
   };
+
+  const AdminRoute = ({ children }) => {
+  if (!currentUser) {
+    return <Navigate to="/login" />;
+  }
+  if (currentUser.tipo !== "admin") {
+    return <Navigate to="/" />; // Redirige al home si no es admin
+  }
+  return children;
+};
+
 
   const router = createBrowserRouter([
     {
@@ -206,7 +219,31 @@ function App() {
          {
           path: "/clientes/:id",
           element: <Clientes/>
-         }
+         },
+         {
+          path: "/ventas",
+          element: (
+            <AdminRoute>
+              <Ventas/>
+            </AdminRoute>
+          ),
+        },
+        {
+          path: "/ventas/listar",
+          element: (
+            <AdminRoute>
+              <VentasList/>
+            </AdminRoute>
+          ),
+        },
+        {
+          path: "/ventas/:id",
+          element: (
+            <AdminRoute>
+              <Ventas/>
+            </AdminRoute>
+          ),
+        }
       ],
     },
     {
@@ -217,6 +254,7 @@ function App() {
       path: "/register",
       element: <Register />,
     },
+
   ]);
 
   return (

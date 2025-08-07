@@ -224,6 +224,7 @@ CREATE TABLE ventas (
     precio_total FLOAT NOT NULL,
     id_cliente INT,
     foto VARCHAR(255),
+    comentarios VARCHAR(255),
     FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente)
 );
 
