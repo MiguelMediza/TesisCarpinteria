@@ -11,6 +11,16 @@ const VentasCard = ({ venta, onEdit, onDelete }) => {
     comentarios,
   } = venta;
 
+  // Formatear fecha para mostrar
+  const formatDate = (dateString) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  return date.toLocaleDateString("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  });
+  };
   return (
     <div className="border rounded-lg p-4 flex flex-col justify-between bg-white shadow-sm">
       <div>
@@ -27,7 +37,7 @@ const VentasCard = ({ venta, onEdit, onDelete }) => {
         </p>
 
         <p className="text-sm text-gray-600">Fecha:</p>
-        <p className="mb-2 text-gray-800">{fecha_realizada}</p>
+        <p className="mb-2 text-gray-800"> {fecha_realizada ? formatDate(fecha_realizada) : "No especificada"}</p>
 
         <p className="text-sm text-gray-600">Precio Total:</p>
         <p className="mb-2 text-gray-800">{precio_total}</p>

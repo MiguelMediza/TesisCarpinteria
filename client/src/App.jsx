@@ -36,6 +36,8 @@ import VentasList from "./pages/ventas/VentasList";
 import { useContext } from "react";
 import { DarkModeContext } from "./context/darkModeContext";
 import { AuthContext } from "./context/authContext";
+import Encargos from "./pages/encargos/Encargos";
+import EncargosList from "./pages/encargos/EncargosList";
 
 
 
@@ -243,7 +245,31 @@ function App() {
               <Ventas/>
             </AdminRoute>
           ),
-        }
+        },
+        {
+          path: "/encargos",
+          element: (
+            <AdminRoute>
+              <Encargos/>
+            </AdminRoute>
+          ),
+        },
+        {
+          path: "/encargos/:id",
+          element: (
+            <AdminRoute>
+              <Encargos/>
+            </AdminRoute>
+          ),
+        },
+        {
+          path: "/encargos/listar",
+          element: (
+            <AdminRoute>
+              <EncargosList/>
+            </AdminRoute>
+          ),
+        },
       ],
     },
     {

@@ -16,6 +16,7 @@ import fuegoYaRouter from "./routes/fuegoya.routes.js";
 import pelletsRouter from "./routes/pellets.routes.js";
 import clientesRouter from "./routes/clientes.routes.js";
 import ventasRouter from "./routes/ventas.routes.js";
+import encargosRouter from "./routes/encargos.routes.js";
 // Para resolver __dirname en ESM
 import path from "path";
 import { fileURLToPath } from "url";
@@ -96,6 +97,7 @@ app.use("/api/src/fuegoya", fuegoYaRouter);
 app.use("/api/src/pellets", pelletsRouter);
 app.use("/api/src/clientes", clientesRouter);
 app.use("/api/src/ventas", ventasRouter);
+app.use("/api/src/encargos", encargosRouter);
 
 app.use(indexRoutes);
 
