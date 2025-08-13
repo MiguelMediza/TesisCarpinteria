@@ -270,3 +270,24 @@ export const listTipoPatines = async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 };
+
+/* ============================================================
+   🔹 LISTAR PATINES (simple para selects)
+   GET /api/src/tipopatines/select
+============================================================ */
+export const listTipoPatinesSelect = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT
+        id_tipo_patin,
+        COALESCE(titulo, CONCAT('Patín #', id_tipo_patin)) AS titulo,
+        medidas
+      FROM tipo_patines
+      ORDER BY COALESCE(titulo, '') ASC, id_tipo_patin ASC
+    `);
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error("❌ Error en listTipoPatinesSelect:", err);
+    return res.status(500).json({ error: "Internal server error", details: err.message });
+  }
+};

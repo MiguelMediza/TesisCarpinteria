@@ -17,6 +17,8 @@ import pelletsRouter from "./routes/pellets.routes.js";
 import clientesRouter from "./routes/clientes.routes.js";
 import ventasRouter from "./routes/ventas.routes.js";
 import encargosRouter from "./routes/encargos.routes.js";
+import prototiposRouter from "./routes/prototipos.routes.js";
+import materiaprimaRouter from "./routes/materiaprima.routes.js";
 // Para resolver __dirname en ESM
 import path from "path";
 import { fileURLToPath } from "url";
@@ -68,6 +70,10 @@ app.use(
   "/images/ventas",
   express.static(path.join(__dirname, "images", "ventas"))
 );
+app.use(
+  "/images/prototipos",
+  express.static(path.join(__dirname, "images", "prototipos"))
+);
 
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Credentials", true);
@@ -98,6 +104,8 @@ app.use("/api/src/pellets", pelletsRouter);
 app.use("/api/src/clientes", clientesRouter);
 app.use("/api/src/ventas", ventasRouter);
 app.use("/api/src/encargos", encargosRouter);
+app.use("/api/src/prototipos", prototiposRouter)
+app.use("/api/src/materiaprima", materiaprimaRouter);
 
 app.use(indexRoutes);
 

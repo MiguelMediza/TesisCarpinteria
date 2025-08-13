@@ -38,6 +38,8 @@ import { DarkModeContext } from "./context/darkModeContext";
 import { AuthContext } from "./context/authContext";
 import Encargos from "./pages/encargos/Encargos";
 import EncargosList from "./pages/encargos/EncargosList";
+import PrototipoPallet from "./pages/prototipoPallet/PrototipoPallet";
+import PrototipoPalletList from "./pages/prototipoPallet/PrototipoPalletList";
 
 
 
@@ -221,6 +223,18 @@ function App() {
          {
           path: "/clientes/:id",
           element: <Clientes/>
+         },
+         {
+          path: "/prototipos",
+          element: <PrototipoPallet/>
+         },
+         {
+          path: "/prototipos/listar",
+          element: <PrototipoPalletList/>
+         },
+         {
+          path: "/prototipos/:id",
+          element: <PrototipoPallet/>
          },
          {
           path: "/ventas",

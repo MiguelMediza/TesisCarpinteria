@@ -147,10 +147,10 @@ const FuegoYaForm = () => {
             <label htmlFor="tipo" className="block mb-1 text-sm font-medium text-neutral-800">Tipo</label>
             <select name="tipo" id="tipo" value={inputs.tipo} onChange={handleChange} className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400">
               <option value="" disabled>Selecciona un tipo</option>
-              <option value="clasica22">Clasica 22</option>
-              <option value="clasica12">Clasica 12</option>
+              <option value="Clasica 22">Clasica 22</option>
+              <option value="Clasica 12">Clasica 12</option>
               <option value="50mm">50mm Transparente</option>
-              <option value="clasica 12 granel">Clasica de 12 Granel</option>
+              <option value="Clasica 12 granel">Clasica de 12 Granel</option>
             </select>
           </div>
 

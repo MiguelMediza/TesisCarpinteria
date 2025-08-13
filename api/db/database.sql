@@ -1,5 +1,6 @@
 create database tesisdb;
 use tesisdb;
+drop database tesisdb
 show tables;
 CREATE TABLE usuarios(
 	idUser INT PRIMARY KEY AUTO_INCREMENT,
@@ -25,6 +26,7 @@ CREATE TABLE encargos (
     fecha_realizado DATE NOT NULL,
     fecha_prevista_llegada DATE,
     comentarios VARCHAR(255),
+    estado ENUM('realizado', 'recibido') NOT NULL DEFAULT 'realizado',
     id_proveedor INT,
     FOREIGN KEY (id_proveedor) REFERENCES proveedores(id_proveedor)
 );
@@ -33,7 +35,7 @@ CREATE TABLE materiaprima (
     id_materia_prima INT AUTO_INCREMENT PRIMARY KEY,
     categoria ENUM('tabla','palo','clavo','fibra') NOT NULL,
     titulo VARCHAR(100) NOT NULL,
-    precio_unidad FLOAT,
+    precio_unidad DECIMAL(10,2),
     stock INT,
     foto VARCHAR(255),
     comentarios VARCHAR(255)
@@ -89,7 +91,7 @@ CREATE TABLE tipo_tablas (
     ancho_cm FLOAT,
     espesor_mm FLOAT,
     foto VARCHAR(255),
-    precio_unidad FLOAT,
+    precio_unidad DECIMAL(10,2),
     cepillada BOOLEAN,
     stock INT DEFAULT 0,
     FOREIGN KEY (id_materia_prima) REFERENCES tablas(id_materia_prima)
@@ -103,7 +105,7 @@ CREATE TABLE tipo_tacos (
     ancho_cm FLOAT,
     espesor_mm FLOAT,
     stock INT DEFAULT 0,
-    precio_unidad FLOAT,
+    precio_unidad DECIMAL(10,2),
     logo VARCHAR(255),
     foto VARCHAR(255),
     FOREIGN KEY (id_materia_prima) REFERENCES palos(id_materia_prima)
@@ -116,7 +118,7 @@ CREATE TABLE tipo_patines (
     titulo VARCHAR(100),
     medidas VARCHAR(100),
     logo VARCHAR(255),
-    precio_unidad FLOAT,
+    precio_unidad DECIMAL(10,2),
     stock FLOAT,
     comentarios VARCHAR(255),
     FOREIGN KEY (id_tipo_tabla) REFERENCES tipo_tablas(id_tipo_tabla),
@@ -139,13 +141,13 @@ CREATE TABLE prototipo_pallet (
     id_prototipo INT AUTO_INCREMENT PRIMARY KEY,
     titulo VARCHAR(100),
     medidas VARCHAR(100),
-    id_tipo_patin INT NOT NULL,
-    id_tipo_taco INT NOT NULL,
-    precio_unidad FLOAT,
+    id_tipo_patin INT NULL,
+    cantidad_patines INT,
+    precio_unidad DECIMAL(10,2),
     comentarios VARCHAR(255),
+	foto VARCHAR(255),
     id_cliente INT,
     FOREIGN KEY (id_tipo_patin) REFERENCES tipo_patines(id_tipo_patin),
-    FOREIGN KEY (id_tipo_taco) REFERENCES tipo_tacos(id_tipo_taco),
     FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente)
 );
 
@@ -153,6 +155,7 @@ CREATE TABLE prototipo_tipo_tablas (
     id_prototipo INT NOT NULL,
     id_tipo_tabla INT NOT NULL,
     cantidad_lleva INT NOT NULL,
+    aclaraciones VARCHAR(200),
     PRIMARY KEY (id_prototipo, id_tipo_tabla),
     FOREIGN KEY (id_prototipo) REFERENCES prototipo_pallet(id_prototipo),
     FOREIGN KEY (id_tipo_tabla) REFERENCES tipo_tablas(id_tipo_tabla)
@@ -162,6 +165,7 @@ CREATE TABLE prototipo_tipo_tacos (
     id_prototipo INT NOT NULL,
     id_tipo_taco INT NOT NULL,
     cantidad_lleva INT NOT NULL,
+    aclaraciones VARCHAR(200),
     PRIMARY KEY (id_prototipo, id_tipo_taco),
     FOREIGN KEY (id_prototipo) REFERENCES prototipo_pallet(id_prototipo),
     FOREIGN KEY (id_tipo_taco) REFERENCES tipo_tacos(id_tipo_taco)
@@ -171,6 +175,7 @@ CREATE TABLE prototipo_clavos (
     id_prototipo INT NOT NULL,
     id_materia_prima INT NOT NULL,
     cantidad_lleva INT NOT NULL,
+    aclaraciones VARCHAR(200),
     PRIMARY KEY (id_prototipo, id_materia_prima),
     FOREIGN KEY (id_prototipo) REFERENCES prototipo_pallet(id_prototipo),
     FOREIGN KEY (id_materia_prima) REFERENCES clavos(id_materia_prima)
@@ -180,6 +185,7 @@ CREATE TABLE prototipo_fibras (
     id_prototipo INT NOT NULL,
     id_materia_prima  INT NOT NULL, 
     cantidad_lleva INT NOT NULL,
+    aclaraciones VARCHAR(200),
     PRIMARY KEY (id_prototipo, id_materia_prima),
     FOREIGN KEY (id_prototipo) REFERENCES prototipo_pallet(id_prototipo),
     FOREIGN KEY (id_materia_prima) REFERENCES fibras(id_materia_prima)
@@ -192,7 +198,7 @@ CREATE TABLE pedidos (
 					DEFAULT 'pendiente',
     fecha_realizado   DATE,
     fecha_de_entrega  DATE,
-    precio_total FLOAT,
+    precio_total DECIMAL(10,2),
     comentarios VARCHAR(255),
     FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente)
 );
@@ -221,7 +227,7 @@ CREATE TABLE entregas_transporte (
 CREATE TABLE ventas (
     id_venta INT AUTO_INCREMENT PRIMARY KEY,
     fecha_realizada DATE NOT NULL,
-    precio_total FLOAT NOT NULL,
+    precio_total DECIMAL(10,2),
     id_cliente INT,
     foto VARCHAR(255),
     comentarios VARCHAR(255),
@@ -231,7 +237,7 @@ CREATE TABLE ventas (
 CREATE TABLE fuego_ya (
     id_fuego_ya INT AUTO_INCREMENT PRIMARY KEY,
     tipo VARCHAR(100),
-    precio_unidad FLOAT,
+    precio_unidad DECIMAL(10,2),
     stock INT,
     foto VARCHAR(255)
 );
@@ -240,7 +246,98 @@ CREATE TABLE pellets (
     id_pellet INT AUTO_INCREMENT PRIMARY KEY,
     titulo VARCHAR(100),
     bolsa_kilogramos FLOAT,
-    precio_unidad FLOAT,
+    precio_unidad DECIMAL(10,2),
     stock INT,
     foto VARCHAR(255)
 );
+
+
+DROP VIEW IF EXISTS vw_prototipo_bom_detalle;
+CREATE VIEW vw_prototipo_bom_detalle AS
+/* ====== TABLAS ====== */
+SELECT 
+  ptt.id_prototipo,
+  'tabla'                           AS categoria,
+  ptt.id_tipo_tabla                 AS id_item,
+  tt.titulo                         AS titulo,
+  ptt.aclaraciones,
+  ptt.cantidad_lleva                AS cantidad,
+  COALESCE(tt.precio_unidad, 0)     AS precio_unitario,
+  ptt.cantidad_lleva * COALESCE(tt.precio_unidad, 0) AS subtotal
+FROM prototipo_tipo_tablas ptt
+JOIN tipo_tablas tt ON tt.id_tipo_tabla = ptt.id_tipo_tabla
+
+UNION ALL
+/* ====== TACOS ====== */
+SELECT 
+  ptk.id_prototipo,
+  'taco'                            AS categoria,
+  ptk.id_tipo_taco                  AS id_item,
+  tk.titulo                         AS titulo,
+  ptk.aclaraciones,
+  ptk.cantidad_lleva                AS cantidad,
+  COALESCE(tk.precio_unidad, 0)     AS precio_unitario,
+  ptk.cantidad_lleva * COALESCE(tk.precio_unidad, 0) AS subtotal
+FROM prototipo_tipo_tacos ptk
+JOIN tipo_tacos tk ON tk.id_tipo_taco = ptk.id_tipo_taco
+
+UNION ALL
+/* ====== CLAVOS (precio desde materiaprima) ====== */
+SELECT 
+  pcl.id_prototipo,
+  'clavo'                           AS categoria,
+  pcl.id_materia_prima              AS id_item,
+  mp.titulo                         AS titulo,
+  pcl.aclaraciones,
+  pcl.cantidad_lleva                AS cantidad,
+  COALESCE(mp.precio_unidad, 0)     AS precio_unitario,
+  pcl.cantidad_lleva * COALESCE(mp.precio_unidad, 0) AS subtotal
+FROM prototipo_clavos pcl
+JOIN clavos c  ON c.id_materia_prima = pcl.id_materia_prima
+JOIN materiaprima mp ON mp.id_materia_prima = pcl.id_materia_prima
+
+UNION ALL
+/* ====== FIBRAS (precio desde materiaprima) ====== */
+SELECT 
+  pf.id_prototipo,
+  'fibra'                           AS categoria,
+  pf.id_materia_prima               AS id_item,
+  mp.titulo                         AS titulo,
+  pf.aclaraciones,
+  pf.cantidad_lleva                 AS cantidad,
+  COALESCE(mp.precio_unidad, 0)     AS precio_unitario,
+  pf.cantidad_lleva * COALESCE(mp.precio_unidad, 0) AS subtotal
+FROM prototipo_fibras pf
+JOIN fibras f ON f.id_materia_prima = pf.id_materia_prima
+JOIN materiaprima mp ON mp.id_materia_prima = pf.id_materia_prima
+
+UNION ALL
+/* ====== PATÍN (usa cantidad_patines del prototipo) ====== */
+SELECT
+  pp.id_prototipo,
+  'patin'                           AS categoria,
+  pp.id_tipo_patin                  AS id_item,
+  tp.titulo                         AS titulo,
+  NULL                              AS aclaraciones,
+  COALESCE(pp.cantidad_patines, 0)  AS cantidad,
+  COALESCE(tp.precio_unidad, 0)     AS precio_unitario,
+  COALESCE(pp.cantidad_patines, 0) * COALESCE(tp.precio_unidad, 0) AS subtotal
+FROM prototipo_pallet pp
+JOIN tipo_patines tp ON tp.id_tipo_patin = pp.id_tipo_patin
+WHERE pp.id_tipo_patin IS NOT NULL
+  AND COALESCE(pp.cantidad_patines, 0) > 0;
+  
+  
+DROP VIEW IF EXISTS vw_prototipo_costo_total;
+CREATE VIEW vw_prototipo_costo_total AS
+SELECT 
+  pp.id_prototipo,
+  pp.titulo,
+  pp.medidas,
+  pp.id_cliente,
+  COALESCE(SUM(bom.subtotal), 0) AS costo_materiales
+FROM prototipo_pallet pp
+LEFT JOIN vw_prototipo_bom_detalle bom
+  ON bom.id_prototipo = pp.id_prototipo
+GROUP BY
+  pp.id_prototipo, pp.titulo, pp.medidas, pp.id_cliente;
