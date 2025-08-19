@@ -20,7 +20,7 @@ export const createPalo = async (req, res) => {
     } = req.body;
     const foto = req.file?.filename || null;
 
-    // 1) Insertar en materiaprima
+    //Insertar en materiaprima
     const insertMP = `
       INSERT INTO materiaprima
         (categoria, titulo, precio_unidad, stock, foto, comentarios)
@@ -37,7 +37,7 @@ export const createPalo = async (req, res) => {
 
     const id_materia_prima = mpResult.insertId;
 
-    // 2) Insertar en palos
+    //Insertar en palos
     const insertPalo = `
       INSERT INTO palos
         (id_materia_prima, largo_cm, diametro_mm, tipo_madera)
@@ -123,7 +123,7 @@ export const updatePalo = async (req, res) => {
 
     await connection.beginTransaction();
 
-    // 1) Actualizar materiaprima
+    //Actualizar materiaprima
     const updateMP = `
       UPDATE materiaprima SET
         titulo = ?,
@@ -142,7 +142,7 @@ export const updatePalo = async (req, res) => {
       id
     ]);
 
-    // 2) Actualizar palos
+    //Actualizar palos
     const updateP = `
       UPDATE palos SET
         largo_cm = ?,

@@ -114,7 +114,7 @@ export const listTipoTacos = async (req, res) => {
 // Obtener un tipo de taco por ID
 export const getTipoTacoById = async (req, res) => {
   try {
-    const { id } = req.params; // id_tipo_taco
+    const { id } = req.params;
     const [rows] = await pool.query(
       `
       SELECT
@@ -148,14 +148,14 @@ export const getTipoTacoById = async (req, res) => {
 export const updateTipoTaco = async (req, res) => {
   const connection = await pool.getConnection();
   try {
-    const { id } = req.params; // id_tipo_taco
+    const { id } = req.params;
     const { largo_cm: newLargoCm, stock: newStock } = req.body;
     const newLargo = parseFloat(newLargoCm);
     const newStockI = parseInt(newStock, 10);
 
     await connection.beginTransaction();
 
-    // 1) Obtener datos antiguos de tipo_tacos
+    //Obtener datos antiguos de tipo_tacos
     const [[oldRec]] = await connection.query(
       `SELECT id_materia_prima, largo_cm AS oldLargo, stock AS oldStock
          FROM tipo_tacos
@@ -169,7 +169,7 @@ export const updateTipoTaco = async (req, res) => {
     }
     const { id_materia_prima, oldLargo, oldStock } = oldRec;
 
-    // 2) Obtener datos de palo padre (palos + materiaprima)
+    // Obtener datos de palo padre (palos + materiaprima)
     const [[parent]] = await connection.query(
       `SELECT p.largo_cm AS parentLargo, mp.stock AS parentStock
          FROM palos AS p
@@ -185,7 +185,7 @@ export const updateTipoTaco = async (req, res) => {
     }
     const { parentLargo, parentStock } = parent;
 
-    // 3) Calcular piezas por palo considerando 0.5cm de descarte
+    //Calcular piezas por palo considerando 0.5cm de descarte
     const margin = 0.5;
     const piecesOld = Math.floor((parentLargo + margin) / (oldLargo + margin));
     const piecesNew = Math.floor((parentLargo + margin) / (newLargo + margin));
@@ -194,12 +194,12 @@ export const updateTipoTaco = async (req, res) => {
       return res.status(400).json("El largo solicitado supera al del palo padre.");
     }
 
-    // 4) Tablas (palos) usados antes y ahora
+    // (palos) usados antes y ahora
     const usedOld = Math.ceil(oldStock / piecesOld);
     const usedNew = Math.ceil(newStockI / piecesNew);
     const delta = usedNew - usedOld;
 
-    // 5) Actualizar stock en materiaprima (palo)
+    //Actualizar stock en materiaprima (palo)
     await connection.query(
       `UPDATE materiaprima
           SET stock = ?
@@ -207,7 +207,7 @@ export const updateTipoTaco = async (req, res) => {
       [parentStock - delta, id_materia_prima]
     );
 
-    // 6) Actualizar propio registro en tipo_tacos
+    //Actualizar propio registro en tipo_tacos
     await connection.query(
       `UPDATE tipo_tacos SET
          largo_cm = ?,
@@ -227,13 +227,12 @@ export const updateTipoTaco = async (req, res) => {
   }
 };
 
-// Eliminar un tipo de taco y su foto, sin ajustar stock del palo padre
 export const deleteTipoTaco = async (req, res) => {
   const connection = await pool.getConnection();
   try {
-    const { id } = req.params; // id_tipo_taco
+    const { id } = req.params; 
 
-    // 1) Leer nombre de la foto del tipo de taco
+    //Leer nombre de la foto del tipo de taco
     const [rows] = await connection.query(
       "SELECT foto FROM tipo_tacos WHERE id_tipo_taco = ?",
       [id]
@@ -245,7 +244,7 @@ export const deleteTipoTaco = async (req, res) => {
 
     await connection.beginTransaction();
 
-    // 2) Borrar fila
+    //Borrar fila
     const [del] = await connection.query(
       "DELETE FROM tipo_tacos WHERE id_tipo_taco = ?",
       [id]
@@ -257,7 +256,7 @@ export const deleteTipoTaco = async (req, res) => {
 
     await connection.commit();
 
-    // 3) Borrar archivo de imagen del disco
+    //Borrar archivo de imagen del disco
     if (fotoNombre) {
       const filePath = path.join(__dirname, "../images/tipo_tacos", fotoNombre);
       fs.unlink(filePath).catch(() => {

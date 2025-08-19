@@ -79,7 +79,7 @@ const EncargosCard = ({ encargo, onEdit, onDelete, onMarkReceived, marking = fal
         {estado === "realizado" && (
           <button
             onClick={() => onMarkReceived?.(id_encargo)}
-            disabled={marking} // <- prop nueva
+            disabled={marking}
             className={`flex-1 py-2 text-xs rounded text-white transition
               ${marking ? "bg-green-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"}`}
             title="Marcar como recibido"

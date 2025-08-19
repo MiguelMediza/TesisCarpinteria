@@ -4,7 +4,7 @@ import encargosBackground from "../../assets/tablasBackground.jpg";
 import axios from "axios";
 
 const EncargosForm = () => {
-  const { id } = useParams(); // id_encargo si estás editando
+  const { id } = useParams();
   const navigate = useNavigate();
 
   const [inputs, setInputs] = useState({
@@ -20,7 +20,7 @@ const EncargosForm = () => {
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
 
-  // 🔹 Cargar proveedores y materias primas
+  //Cargar proveedores y materias primas
   useEffect(() => {
     axios.get("http://localhost:4000/api/src/proveedores/listar").then(({ data }) => setProveedores(data));
     axios.get("http://localhost:4000/api/src/encargos/primas")
@@ -28,7 +28,7 @@ const EncargosForm = () => {
     .catch(err => console.error("Error cargando materias primas:", err)); 
   }, []);
 
-  // 🔹 Cargar encargo si es edición
+  //Cargar encargo si es edición
   useEffect(() => {
     if (!id) return;
     axios.get(`http://localhost:4000/api/src/encargos/${id}`)
@@ -59,7 +59,7 @@ const EncargosForm = () => {
       if (name === "fecha_realizado" && next.fecha_prevista_llegada) {
         const fReal = new Date(value);
         const fPrev = new Date(next.fecha_prevista_llegada);
-        if (fPrev <= fReal) next.fecha_prevista_llegada = ""; // limpia para forzar elegir una válida
+        if (fPrev <= fReal) next.fecha_prevista_llegada = "";
       }
 
       return next;
@@ -86,11 +86,10 @@ const EncargosForm = () => {
     setDetalles(nuevos);
   };
 
-  // 🔹 Validación
+  // Validación
   const validar = () => {
     if (!inputs.fecha_realizado) return "La fecha de realización es obligatoria.";
     if (!inputs.id_proveedor) return "Debe seleccionar un proveedor.";
-    // Validación de fechas
     if (inputs.fecha_prevista_llegada) {
       const fReal = new Date(inputs.fecha_realizado);
       const fPrev = new Date(inputs.fecha_prevista_llegada);
@@ -163,7 +162,7 @@ const EncargosForm = () => {
             name="fecha_prevista_llegada"
             value={inputs.fecha_prevista_llegada}
             onChange={handleChange}
-            min={inputs.fecha_realizado || undefined}   // 👈 no permite menor que realizada
+            min={inputs.fecha_realizado || undefined}   
             className="w-full p-2 border rounded bg-neutral-100"
           />
 

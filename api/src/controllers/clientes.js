@@ -1,9 +1,9 @@
 import { pool } from "../db.js";
 
-/* ============================================================
-   🔹 CREAR CLIENTE
-   - Si es_empresa = true, se requieren los campos de empresa
-============================================================ */
+
+    //CREAR CLIENTE
+    //Si es_empresa = true, se requieren los campos de empresa
+
 export const createCliente = async (req, res) => {
   try {
     const {
@@ -17,15 +17,12 @@ export const createCliente = async (req, res) => {
       email_empresa
     } = req.body;
 
-    // ✅ Validaciones básicas
     if (!nombre) {
       return res.status(400).json({ error: "El nombre del cliente es obligatorio." });
     }
 
     const esEmpresaBool = es_empresa === "1" || es_empresa === 1 || es_empresa === true;
 
-
-    // ✅ Validar campos de empresa solo si es_empresa es true
     if (esEmpresaBool) {
       if (!nombre_empresa || !direccion_empresa || !email_empresa) {
         return res.status(400).json({ error: "Los datos de la empresa son obligatorios." });
@@ -56,9 +53,6 @@ export const createCliente = async (req, res) => {
   }
 };
 
-/* ============================================================
-   🔹 OBTENER CLIENTE POR ID
-============================================================ */
 export const getClienteById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -76,10 +70,6 @@ export const getClienteById = async (req, res) => {
   }
 };
 
-/* ============================================================
-   🔹 ACTUALIZAR CLIENTE
-   - Validación similar a creación
-============================================================ */
 export const updateCliente = async (req, res) => {
   try {
     const { id } = req.params;
@@ -94,7 +84,7 @@ export const updateCliente = async (req, res) => {
       email_empresa
     } = req.body;
 
-    // ✅ Verificar existencia
+    // Verificar existencia
     const [exists] = await pool.query(`SELECT id_cliente FROM clientes WHERE id_cliente = ?`, [id]);
     if (exists.length === 0) return res.status(404).json("Cliente no encontrado!");
 
@@ -139,9 +129,6 @@ export const updateCliente = async (req, res) => {
   }
 };
 
-/* ============================================================
-   🔹 ELIMINAR CLIENTE
-============================================================ */
 export const deleteCliente = async (req, res) => {
   try {
     const { id } = req.params;
@@ -158,9 +145,6 @@ export const deleteCliente = async (req, res) => {
   }
 };
 
-/* ============================================================
-   🔹 LISTAR TODOS LOS CLIENTES
-============================================================ */
 export const listClientes = async (req, res) => {
   try {
     const [rows] = await pool.query(`SELECT * FROM clientes ORDER BY nombre ASC`);

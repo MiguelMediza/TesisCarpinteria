@@ -6,7 +6,8 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-/* ---------------- Helpers ---------------- */
+// Utilidad para parsear arrays desde JSON o strings
+// Si no se pasa nada, devuelve un array vacío
 const parseArray = (v) => {
   if (!v) return [];
   if (Array.isArray(v)) return v;
@@ -18,18 +19,17 @@ const parseArray = (v) => {
   }
 };
 
-/* ---------------- CREATE ---------------- */
 export const createPrototipo = async (req, res) => {
   const conn = await pool.getConnection();
   try {
     const {
       titulo,
       medidas,
-      id_tipo_patin,      // nullable
-      cantidad_patines,   // int
+      id_tipo_patin,      
+      cantidad_patines,   
       comentarios,
       id_cliente,
-      // arrays de detalle (pueden venir como JSON string)
+      // arrays de detalle 
       tipo_tablas,  // [{ id_tipo_tabla, cantidad_lleva, aclaraciones? }]
       tipo_tacos,   // [{ id_tipo_taco, cantidad_lleva, aclaraciones? }]
       clavos,       // [{ id_materia_prima, cantidad_lleva, aclaraciones? }]
@@ -45,7 +45,6 @@ export const createPrototipo = async (req, res) => {
 
     await conn.beginTransaction();
 
-    // Cabecera
     const [ins] = await conn.query(
       `INSERT INTO prototipo_pallet
         (titulo, medidas, id_tipo_patin, cantidad_patines, comentarios, foto, id_cliente)
@@ -104,16 +103,13 @@ export const createPrototipo = async (req, res) => {
   }
 };
 
-/* ---------------- READ ONE ---------------- */
 export const getPrototipoById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Cabecera
     const [p] = await pool.query(`SELECT * FROM prototipo_pallet WHERE id_prototipo = ?`, [id]);
     if (p.length === 0) return res.status(404).json("Prototipo no encontrado");
 
-    // Costeo dinámico (vista)
     const [costos] = await pool.query(
       `SELECT COALESCE(costo_materiales,0) AS costo_materiales
        FROM vw_prototipo_costo_total WHERE id_prototipo = ?`,
@@ -137,7 +133,6 @@ export const getPrototipoById = async (req, res) => {
   }
 };
 
-/* ---------------- LIST ---------------- */
 export const listPrototipos = async (req, res) => {
   try {
     const [rows] = await pool.query(
@@ -168,11 +163,10 @@ export const listPrototipos = async (req, res) => {
   }
 };
 
-/* ---------------- UPDATE ---------------- */
 export const updatePrototipo = async (req, res) => {
   const conn = await pool.getConnection();
   try {
-    const { id } = req.params; // id_prototipo
+    const { id } = req.params; 
     const {
       titulo,
       medidas,
@@ -186,7 +180,7 @@ export const updatePrototipo = async (req, res) => {
       fibras
     } = req.body;
 
-    // 1) Verificar existencia (para recuperar foto)
+    // Verificar existencia (para recuperar foto)
     const [exists] = await conn.query(
       `SELECT foto FROM prototipo_pallet WHERE id_prototipo = ?`,
       [id]
@@ -203,7 +197,7 @@ export const updatePrototipo = async (req, res) => {
 
     await conn.beginTransaction();
 
-    // 2) Actualizar cabecera
+    //Actualizar cabecera
     await conn.query(
       `UPDATE prototipo_pallet SET
          titulo = ?,
@@ -226,7 +220,7 @@ export const updatePrototipo = async (req, res) => {
       ]
     );
 
-    // 3) Reemplazar detalles
+    // Reemplazar detalles
     await conn.query(`DELETE FROM prototipo_tipo_tablas WHERE id_prototipo = ?`, [id]);
     await conn.query(`DELETE FROM prototipo_tipo_tacos  WHERE id_prototipo = ?`, [id]);
     await conn.query(`DELETE FROM prototipo_clavos      WHERE id_prototipo = ?`, [id]);
@@ -263,7 +257,7 @@ export const updatePrototipo = async (req, res) => {
 
     await conn.commit();
 
-    // 4) Eliminar imagen vieja si subimos una nueva
+    //Eliminar imagen vieja si subimos una nueva
     if (newFoto && oldFoto) {
       const oldPath = path.join(__dirname, "../images/prototipos", oldFoto);
       fs.unlink(oldPath).catch(() => {
@@ -281,7 +275,6 @@ export const updatePrototipo = async (req, res) => {
   }
 };
 
-/* ---------------- DELETE ---------------- */
 export const deletePrototipo = async (req, res) => {
   const conn = await pool.getConnection();
   try {

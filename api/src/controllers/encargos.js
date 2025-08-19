@@ -1,6 +1,6 @@
 import { pool } from "../db.js";
 
-// 🔹 Crear un nuevo encargo con múltiples materias primas
+// Crear un nuevo encargo
 export const createEncargo = async (req, res) => {
   const connection = await pool.getConnection();
   try {
@@ -9,14 +9,14 @@ export const createEncargo = async (req, res) => {
       fecha_prevista_llegada,
       comentarios,
       id_proveedor,
-      materias_primas // array: [{ id_materia_prima, cantidad }]
+      materias_primas 
     } = req.body;
 
     console.log("🔔 createEncargo hit:", req.body);
 
     await connection.beginTransaction();
 
-    // 1) Insertar en encargos
+    //Insertar en encargos
     const [encargoResult] = await connection.query(
       `INSERT INTO encargos (fecha_realizado, fecha_prevista_llegada, comentarios, id_proveedor)
        VALUES (?, ?, ?, ?)`,
@@ -25,7 +25,7 @@ export const createEncargo = async (req, res) => {
     const id_encargo = encargoResult.insertId;
     console.log("✅ Encargo creado:", id_encargo);
 
-    // 2) Insertar detalles
+    //Insertar detalles
     for (const { id_materia_prima, cantidad } of materias_primas) {
       await connection.query(
         `INSERT INTO encargo_detalles (id_encargo, id_materia_prima, cantidad)
@@ -50,7 +50,7 @@ export const createEncargo = async (req, res) => {
   }
 };
 
-// 🔹 Obtener un encargo por ID (con detalles)
+// Obtener un encargo por ID (con detalles)
 export const getEncargoById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -84,7 +84,7 @@ export const getEncargoById = async (req, res) => {
   }
 };
 
-// 🔹 Listar todos los encargos con proveedor y detalles
+//Listar todos los encargos con proveedor y detalles
 export const listEncargos = async (req, res) => {
   try {
     const [encargos] = await pool.query(`
@@ -115,7 +115,7 @@ export const listEncargos = async (req, res) => {
   }
 };
 
-// 🔹 Eliminar un encargo y sus detalles
+//Eliminar un encargo y sus detalles
 export const deleteEncargo = async (req, res) => {
   const connection = await pool.getConnection();
   try {
@@ -145,11 +145,11 @@ export const deleteEncargo = async (req, res) => {
   }
 };
 
-// 🔹 Actualizar un encargo y sus detalles
+//Actualizar un encargo y sus detalles
 export const updateEncargo = async (req, res) => {
   const connection = await pool.getConnection();
   try {
-    const { id } = req.params; // id_encargo
+    const { id } = req.params; 
     const {
       fecha_realizado,
       fecha_prevista_llegada,
@@ -160,7 +160,7 @@ export const updateEncargo = async (req, res) => {
 
     console.log("🔔 updateEncargo hit:", req.body);
 
-    // 1) Verificar existencia
+    //Verificar existencia
     const [exists] = await connection.query(
       `SELECT * FROM encargos WHERE id_encargo = ?`,
       [id]
@@ -171,7 +171,7 @@ export const updateEncargo = async (req, res) => {
 
     await connection.beginTransaction();
 
-    // 2) Actualizar encabezado del encargo
+    //Actualizar encabezado del encargo
     await connection.query(
       `UPDATE encargos SET
         fecha_realizado = ?,
@@ -188,13 +188,13 @@ export const updateEncargo = async (req, res) => {
       ]
     );
 
-    // 3) Eliminar detalles anteriores
+    //Eliminar detalles anteriores
     await connection.query(
       `DELETE FROM encargo_detalles WHERE id_encargo = ?`,
       [id]
     );
 
-    // 4) Insertar nuevos detalles
+    //Insertar nuevos detalles
     for (const { id_materia_prima, cantidad } of materias_primas) {
       await connection.query(
         `INSERT INTO encargo_detalles (id_encargo, id_materia_prima, cantidad)
@@ -231,14 +231,14 @@ export const listarMateriasPrimas = async (req, res) => {
   }
 };
 
-// 🔹 Marcar un encargo como RECIBIDO y actualizar stock
+//Marcar un encargo como RECIBIDO y actualizar stock
 export const markEncargoRecibido = async (req, res) => {
   const connection = await pool.getConnection();
   try {
     const { id } = req.params; // id_encargo
     await connection.beginTransaction();
 
-    // 1) Verificar existencia y estado actual
+    //Verificar existencia y estado actual
     const [rows] = await connection.query(
       `SELECT estado FROM encargos WHERE id_encargo = ?`,
       [id]
@@ -256,7 +256,7 @@ export const markEncargoRecibido = async (req, res) => {
         .json({ message: "El encargo ya está marcado como recibido." });
     }
 
-    // 2) Obtener detalles del encargo (materias primas y cantidades)
+    //Obtener detalles del encargo (materias primas y cantidades)
     const [detalles] = await connection.query(
       `SELECT id_materia_prima, cantidad 
        FROM encargo_detalles 
@@ -264,7 +264,7 @@ export const markEncargoRecibido = async (req, res) => {
       [id]
     );
 
-    // 3) Actualizar stock de cada materia prima
+    //Actualizar stock de cada materia prima
     for (const { id_materia_prima, cantidad } of detalles) {
       await connection.query(
         `UPDATE materiaprima 
@@ -274,7 +274,7 @@ export const markEncargoRecibido = async (req, res) => {
       );
     }
 
-    // 4) Actualizar estado del encargo
+    //Actualizar estado del encargo
     await connection.query(
       `UPDATE encargos SET estado = 'recibido' WHERE id_encargo = ?`,
       [id]

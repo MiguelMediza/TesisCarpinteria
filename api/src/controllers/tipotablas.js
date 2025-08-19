@@ -19,13 +19,13 @@ export const createTipoTabla = async (req, res) => {
       espesor_mm,
       precio_unidad,
       cepillada,
-      stock: cantidadDeseada,  // ahora es lo que el usuario desea
+      stock: cantidadDeseada, 
     } = req.body;
     const foto = req.file?.filename || null;
 
     await connection.beginTransaction();
 
-    // 1) Bloqueamos la tabla padre y leemos su largo y stock actual
+    //Bloqueamos la tabla padre y leemos su largo y stock actual
     const [[parent]] = await connection.query(
       ` SELECT
       t.largo_cm,
@@ -41,7 +41,7 @@ export const createTipoTabla = async (req, res) => {
     if (!parent) throw new Error("Tabla padre no encontrada");
 
     const margen = 0.5;
-    // 2) ¿Cuántas piezas (tipo) cabe extraer de UNA tabla?
+    // ¿Cuántas piezas (tipo) cabe extraer de UNA tabla?
     const piezasPorTabla = Math.floor(
       parent.largo_cm / (parseFloat(largo_cm) + margen)
     );
@@ -49,13 +49,13 @@ export const createTipoTabla = async (req, res) => {
       throw new Error("El largo del tipo excede al de la tabla padre");
     }
 
-    // 3) ¿Cuántas tablas necesitamos para producir la cantidad deseada?
+    //¿Cuántas tablas necesitamos para producir la cantidad deseada?
     const tablasNecesarias = Math.ceil(cantidadDeseada / piezasPorTabla);
     if (parent.stock < tablasNecesarias) {
       throw new Error("No hay stock suficiente de tablas padre");
     }
 
-    // 4) Insertamos el nuevo tipo de tabla con EXACTAMENTE la cantidad que pidió el usuario
+    //Insertamos el nuevo tipo de tabla con EXACTAMENTE la cantidad que pidió el usuario
     const insertSQL = `
       INSERT INTO tipo_tablas
         (id_materia_prima, titulo, largo_cm, ancho_cm, espesor_mm, foto,
@@ -74,7 +74,7 @@ export const createTipoTabla = async (req, res) => {
       parseInt(cantidadDeseada, 10)
     ]);
 
-    // 5) Descontamos de la tabla padre las tablas que consumimos
+    //Descontamos de la tabla padre las tablas que consumimos
     await connection.query(
       `UPDATE materiaprima
           SET stock = stock - ?
@@ -98,7 +98,7 @@ export const createTipoTabla = async (req, res) => {
 // Obtener un tipo de tabla por ID
 export const getTipoTablaById = async (req, res) => {
   try {
-    const { id } = req.params; // id_tipo_tabla
+    const { id } = req.params; 
     const [rows] = await pool.query(
       `
       SELECT
@@ -128,7 +128,7 @@ export const getTipoTablaById = async (req, res) => {
 export const updateTipoTabla = async (req, res) => {
   const connection = await pool.getConnection();
   try {
-    const { id } = req.params; // id_tipo_tabla
+    const { id } = req.params; 
     const {
       titulo,
       largo_cm: newLargoCm,
@@ -145,7 +145,7 @@ export const updateTipoTabla = async (req, res) => {
 
     await connection.beginTransaction();
 
-    // 1) Leer datos antiguos de tipo_tablas
+    //Leer datos antiguos de tipo_tablas
     const [[old]] = await connection.query(
       `SELECT id_materia_prima, largo_cm AS oldLargo, stock AS oldStock, foto
          FROM tipo_tablas
@@ -159,7 +159,7 @@ export const updateTipoTabla = async (req, res) => {
     }
     const { id_materia_prima, oldLargo, oldStock, foto: oldFoto } = old;
 
-    // 2) Leer datos de la tabla padre (materiaprima join tablas)
+    //Leer datos de la tabla padre (materiaprima join tablas)
     const [[parent]] = await connection.query(
       `SELECT t.largo_cm AS parentLargo, mp.stock AS parentStock
          FROM tablas AS t
@@ -175,8 +175,8 @@ export const updateTipoTabla = async (req, res) => {
     }
     const { parentLargo, parentStock } = parent;
 
-    // 3) Calcular cuántas piezas caben considerando 0.5 cm de descarte por corte
-    const margin = 0.5;
+    //Calcular cuántas piezas caben considerando 0.5 cm de descarte por corte
+    const margin = 0.5; // Descarte por corte 
     const piecesPerParentOld = Math.floor(
       (parentLargo + margin) / (oldLargo + margin)
     );
@@ -188,12 +188,12 @@ export const updateTipoTabla = async (req, res) => {
       return res.status(400).json("El largo solicitado supera al de la tabla padre.");
     }
 
-    // 4) Cuántas tablas padre se usaban y se usarían ahora
+    //Cuántas tablas padre se usaban y se usarían ahora
     const parentsUsedOld = Math.ceil(oldStock / piecesPerParentOld);
     const parentsUsedNew = Math.ceil(newStockI / piecesPerParentNew);
     const deltaParents   = parentsUsedNew - parentsUsedOld;
 
-    // 5) Actualizar stock en materiaprima (tabla padre)
+    //Actualizar stock en materiaprima
     await connection.query(
       `UPDATE materiaprima
           SET stock = ?
@@ -201,7 +201,7 @@ export const updateTipoTabla = async (req, res) => {
       [parentStock - deltaParents, id_materia_prima]
     );
 
-    // 6) Actualizar el propio registro en tipo_tablas
+    //Actualizar el registro en tipo_tablas
     await connection.query(
       `
       UPDATE tipo_tablas SET
@@ -230,7 +230,7 @@ export const updateTipoTabla = async (req, res) => {
 
     await connection.commit();
 
-    // 7) Borrar foto antigua si se reemplazó
+    //Borrar foto antigua si se reemplazó
     if (newFoto && oldFoto) {
       const oldPath = path.join(__dirname, "../images/tipo_tablas", oldFoto);
       fs.unlink(oldPath).catch(() => {
@@ -256,7 +256,7 @@ export const deleteTipoTabla = async (req, res) => {
   try {
     const { id } = req.params; // id_tipo_tabla
 
-    // 1) Leer nombre de foto
+    //Leer nombre de foto
     const [rows] = await connection.query(
       "SELECT foto FROM tipo_tablas WHERE id_tipo_tabla = ?",
       [id]
@@ -268,7 +268,6 @@ export const deleteTipoTabla = async (req, res) => {
 
     await connection.beginTransaction();
 
-    // 2) Borrar fila
     const [del] = await connection.query(
       "DELETE FROM tipo_tablas WHERE id_tipo_tabla = ?",
       [id]
@@ -280,7 +279,7 @@ export const deleteTipoTabla = async (req, res) => {
 
     await connection.commit();
 
-    // 3) Borrar archivo
+    //Borrar archivo
     if (fotoNombre) {
       const filePath = path.join(__dirname, "../images/tipo_tablas", fotoNombre);
       fs.unlink(filePath).catch(() => {

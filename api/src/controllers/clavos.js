@@ -1,4 +1,3 @@
-// controllers/clavos.js
 import { pool } from "../db.js";
 import fs from "fs/promises";
 import path from "path";
@@ -7,9 +6,7 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-//
 // Crear un nuevo clavo
-//
 export const createClavo = async (req, res) => {
   try {
     const {
@@ -23,7 +20,7 @@ export const createClavo = async (req, res) => {
     } = req.body;
     const foto = req.file?.filename || null;
 
-    // 1) Inserción en materiaprima
+    //Inserción en materiaprima
     const insertMP = `
       INSERT INTO materiaprima
         (categoria, titulo, precio_unidad, stock, foto, comentarios)
@@ -39,7 +36,7 @@ export const createClavo = async (req, res) => {
     ]);
     const id_materia_prima = mpResult.insertId;
 
-    // 2) Inserción en clavos
+    // Inserción en clavos
     const insertCl = `
       INSERT INTO clavos
         (id_materia_prima, tipo, medidas, material)
@@ -64,9 +61,7 @@ export const createClavo = async (req, res) => {
   }
 };
 
-//
 // Obtener un clavo por ID (id_materia_prima)
-//
 export const getClavoById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -101,13 +96,11 @@ export const getClavoById = async (req, res) => {
   }
 };
 
-//
 // Modificar un clavo existente
-//
 export const updateClavo = async (req, res) => {
   const connection = await pool.getConnection();
   try {
-    const { id } = req.params; // id_materia_prima
+    const { id } = req.params; 
     const {
       titulo,
       precio_unidad,
@@ -119,7 +112,7 @@ export const updateClavo = async (req, res) => {
     } = req.body;
     const newFoto = req.file?.filename || null;
 
-    // 1) Verificar existencia y foto anterior
+    //Verificar existencia y foto anterior
     const [exists] = await connection.query(
       `SELECT foto FROM materiaprima WHERE id_materia_prima = ?`,
       [id]
@@ -131,7 +124,7 @@ export const updateClavo = async (req, res) => {
 
     await connection.beginTransaction();
 
-    // 2) Actualizar materiaprima
+    //Actualizar materiaprima
     const updateMP = `
       UPDATE materiaprima SET
         titulo = ?,
@@ -150,7 +143,7 @@ export const updateClavo = async (req, res) => {
       id
     ]);
 
-    // 3) Actualizar clavos
+    //Actualizar clavos
     const updateCl = `
       UPDATE clavos SET
         tipo = ?,
@@ -167,7 +160,7 @@ export const updateClavo = async (req, res) => {
 
     await connection.commit();
 
-    // 4) Borrar imagen antigua si se reemplazó
+    //Borrar imagen antigua si se reemplazó
     if (newFoto && oldFoto) {
       const oldPath = path.join(__dirname, "../images/clavos", oldFoto);
       fs.unlink(oldPath).catch(() => {
@@ -187,15 +180,13 @@ export const updateClavo = async (req, res) => {
   }
 };
 
-//
 // Eliminar un clavo y su imagen
-//
 export const deleteClavo = async (req, res) => {
   const connection = await pool.getConnection();
   try {
     const { id } = req.params;
 
-    // 1) Leer foto antes de borrar
+    //Leer foto antes de borrar
     const [rows] = await connection.query(
       `SELECT foto FROM materiaprima WHERE id_materia_prima = ?`,
       [id]
@@ -207,7 +198,7 @@ export const deleteClavo = async (req, res) => {
 
     await connection.beginTransaction();
 
-    // 2) Borrar detalle y padre
+    //Borrar detalle y padre
     const [childRes] = await connection.query(
       `DELETE FROM clavos WHERE id_materia_prima = ?`,
       [id]
@@ -223,7 +214,7 @@ export const deleteClavo = async (req, res) => {
 
     await connection.commit();
 
-    // 3) Borrar archivo de imagen si existe
+    //Borrar archivo de imagen si existe
     if (fotoNombre) {
       const filePath = path.join(__dirname, "../images/clavos", fotoNombre);
       fs.unlink(filePath).catch(() => {
@@ -243,9 +234,7 @@ export const deleteClavo = async (req, res) => {
   }
 };
 
-//
 // Listar todos los clavos
-//
 export const listClavos = async (req, res) => {
   try {
     const [rows] = await pool.query(

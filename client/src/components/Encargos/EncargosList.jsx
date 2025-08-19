@@ -9,10 +9,9 @@ const EncargosList = () => {
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [toDelete, setToDelete] = useState(null);
-  const [markingId, setMarkingId] = useState(null); // id que se está marcando como recibido
+  const [markingId, setMarkingId] = useState(null); 
   const navigate = useNavigate();
 
-  // Lo sacamos a una función reutilizable
   const fetchEncargos = useCallback(async () => {
     try {
       const res = await axios.get("http://localhost:4000/api/src/encargos/listar");
@@ -50,7 +49,7 @@ const EncargosList = () => {
 
   const cancelDelete = () => setToDelete(null);
 
-  // 🔹 Marcar como recibido 
+  // Marcar como recibido 
   const markReceived = async (id) => {
     // estado previo para posible rollback
     const prev = encargos;

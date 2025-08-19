@@ -1,4 +1,3 @@
-// controllers/pellets.js
 import { pool } from "../db.js";
 import fs from "fs/promises";
 import path from "path";
@@ -7,9 +6,6 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-/* ============================================================
-   🔹 CREAR PELLET
-============================================================ */
 export const createPellet = async (req, res) => {
   try {
     const { titulo, bolsa_kilogramos, precio_unidad, stock } = req.body;
@@ -38,9 +34,6 @@ export const createPellet = async (req, res) => {
   }
 };
 
-/* ============================================================
-   🔹 OBTENER PELLET POR ID
-============================================================ */
 export const getPelletById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -58,9 +51,6 @@ export const getPelletById = async (req, res) => {
   }
 };
 
-/* ============================================================
-   🔹 ACTUALIZAR PELLET
-============================================================ */
 export const updatePellet = async (req, res) => {
   const connection = await pool.getConnection();
   try {
@@ -110,9 +100,6 @@ export const updatePellet = async (req, res) => {
   }
 };
 
-/* ============================================================
-   🔹 ELIMINAR PELLET
-============================================================ */
 export const deletePellet = async (req, res) => {
   const connection = await pool.getConnection();
   try {
@@ -145,9 +132,6 @@ export const deletePellet = async (req, res) => {
   }
 };
 
-/* ============================================================
-   🔹 LISTAR PELLETS
-============================================================ */
 export const listPellets = async (req, res) => {
   try {
     const [rows] = await pool.query(`SELECT * FROM pellets ORDER BY titulo ASC`);

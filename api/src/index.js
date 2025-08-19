@@ -19,6 +19,7 @@ import ventasRouter from "./routes/ventas.routes.js";
 import encargosRouter from "./routes/encargos.routes.js";
 import prototiposRouter from "./routes/prototipos.routes.js";
 import materiaprimaRouter from "./routes/materiaprima.routes.js";
+import pedidosRouter from "./routes/pedidos.routes.js";
 // Para resolver __dirname en ESM
 import path from "path";
 import { fileURLToPath } from "url";
@@ -106,6 +107,7 @@ app.use("/api/src/ventas", ventasRouter);
 app.use("/api/src/encargos", encargosRouter);
 app.use("/api/src/prototipos", prototiposRouter)
 app.use("/api/src/materiaprima", materiaprimaRouter);
+app.use("/api/src/pedidos", pedidosRouter)
 
 app.use(indexRoutes);
 

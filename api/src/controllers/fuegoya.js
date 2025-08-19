@@ -11,7 +11,6 @@ export const createFuegoYa = async (req, res) => {
             precio_unidad,
             stock
         } = req.body;
-        // si manejas upload de foto con multer, sería req.file.filename
         const foto = req.file?.filename || req.body.foto || null;
 
     console.log("🔔 createFuegoYa hit:", req.body, "file:", req.file);
@@ -65,7 +64,6 @@ export const getFuegoYaById = async (req, res) => {
       return res.status(404).json("Fuego Ya no encontrado!");
     }
 
-    // Devuelve un único objeto con todos los campos
     return res.status(200).json(rows[0]);
   } catch (err) {
     console.error("❌ Error en getFuegoYaById:", err);
@@ -88,7 +86,7 @@ export const updateFuegoYa = async (req, res) => {
       stock
     } = req.body;
 
-    // 1) Verificar que exista
+    //Verificar que exista
     const [exists] = await connection.query(
       'SELECT foto FROM fuego_ya WHERE id_fuego_ya = ?',
       [id]
@@ -100,7 +98,7 @@ export const updateFuegoYa = async (req, res) => {
 
     await connection.beginTransaction();
 
-    // 2) Actualizar fuego Ya
+    //Actualizar fuego Ya
     const updateMP = `
       UPDATE fuego_ya SET
         tipo = ?,
@@ -121,7 +119,7 @@ export const updateFuegoYa = async (req, res) => {
 
     await connection.commit();
 
-    // 4) Borrar imagen antigua si reemplazamos
+    //Borrar imagen antigua si reemplazamos
     if (newFoto && oldFoto) {
       const oldPath = path.join(__dirname, '../images/fuego_ya', oldFoto);
       fs.unlink(oldPath).catch(() => {
@@ -150,7 +148,7 @@ export const deleteFuegoYa = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 1) Leer el nombre de la imagen antes de borrar
+    //Leer el nombre de la imagen antes de borrar
     const [rows] = await connection.query(
       'SELECT foto FROM fuego_ya WHERE id_fuego_ya = ?',
       [id]
@@ -160,7 +158,7 @@ export const deleteFuegoYa = async (req, res) => {
     }
     const fotoNombre = rows[0].foto; // puede ser null o string
 
-    // 2) Transacción para borrar hijo y padre
+    // Transacción para borrar hijo y padre
     await connection.beginTransaction();
 
     const [childResult] = await connection.query(
@@ -174,7 +172,6 @@ export const deleteFuegoYa = async (req, res) => {
 
     await connection.commit();
 
-    // 3) Borrar el fichero de imágenes (ignorando errores)
     if (fotoNombre) {
       const filePath = path.join(__dirname, '../images/fuego_ya', fotoNombre);
       try {

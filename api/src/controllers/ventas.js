@@ -6,9 +6,6 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-/* ============================================================
-   🔹 CREAR VENTA
-============================================================ */
 export const createVenta = async (req, res) => {
   try {
     const { fecha_realizada, precio_total, id_cliente, comentarios } = req.body;
@@ -21,7 +18,7 @@ export const createVenta = async (req, res) => {
       return res.status(400).json({ error: "El precio total es obligatorio y debe ser numérico." });
     }
 
-    // ✅ Verificar cliente si se proporciona
+    //Verificar cliente
     if (id_cliente) {
       const [cliente] = await pool.query(`SELECT id_cliente FROM clientes WHERE id_cliente = ?`, [id_cliente]);
       if (cliente.length === 0) {
@@ -48,9 +45,6 @@ export const createVenta = async (req, res) => {
   }
 };
 
-/* ============================================================
-   🔹 OBTENER VENTA POR ID
-============================================================ */
 export const getVentaById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -71,9 +65,6 @@ export const getVentaById = async (req, res) => {
   }
 };
 
-/* ============================================================
-   🔹 ACTUALIZAR VENTA
-============================================================ */
 export const updateVenta = async (req, res) => {
   const connection = await pool.getConnection();
   try {
@@ -81,14 +72,14 @@ export const updateVenta = async (req, res) => {
     const { fecha_realizada, precio_total, id_cliente, comentarios } = req.body;
     const newFoto = req.file?.filename || null;
 
-    // ✅ Verificar existencia de venta
+    //Verificar existencia de venta
     const [exists] = await connection.query(`SELECT foto FROM ventas WHERE id_venta = ?`, [id]);
     if (exists.length === 0) {
       return res.status(404).json("Venta no encontrada!");
     }
     const oldFoto = exists[0].foto;
 
-    // ✅ Verificar cliente si se pasa
+    //Verificar cliente si se pasa
     if (id_cliente) {
       const [cliente] = await connection.query(`SELECT id_cliente FROM clientes WHERE id_cliente = ?`, [id_cliente]);
       if (cliente.length === 0) {
@@ -119,7 +110,7 @@ export const updateVenta = async (req, res) => {
 
     await connection.commit();
 
-    // ✅ Borrar foto antigua si se reemplazó
+    //Borrar foto antigua si se reemplazó
     if (newFoto && oldFoto) {
       const oldPath = path.join(__dirname, "../images/ventas", oldFoto);
       fs.unlink(oldPath).catch(() => console.warn("⚠️ No se pudo borrar la foto antigua:", oldFoto));
@@ -135,15 +126,12 @@ export const updateVenta = async (req, res) => {
   }
 };
 
-/* ============================================================
-   🔹 ELIMINAR VENTA
-============================================================ */
 export const deleteVenta = async (req, res) => {
   const connection = await pool.getConnection();
   try {
     const { id } = req.params;
 
-    // ✅ Obtener foto antes de borrar
+    // Obtener foto antes de borrar
     const [rows] = await connection.query(`SELECT foto FROM ventas WHERE id_venta = ?`, [id]);
     if (rows.length === 0) return res.status(404).json("Venta no encontrada!");
     const foto = rows[0].foto;
@@ -152,7 +140,7 @@ export const deleteVenta = async (req, res) => {
     await connection.query(`DELETE FROM ventas WHERE id_venta = ?`, [id]);
     await connection.commit();
 
-    // ✅ Borrar foto si existe
+    // Borrar foto si existe
     if (foto) {
       const filePath = path.join(__dirname, "../images/ventas", foto);
       fs.unlink(filePath).catch(() => console.warn("⚠️ No se pudo borrar foto:", foto));
@@ -168,9 +156,6 @@ export const deleteVenta = async (req, res) => {
   }
 };
 
-/* ============================================================
-   🔹 LISTAR TODAS LAS VENTAS
-============================================================ */
 export const listVentas = async (req, res) => {
   try {
     const [rows] = await pool.query(

@@ -52,7 +52,7 @@ const ClavosForm = () => {
 
   const validateInputs = () => {
     if (!inputs.titulo) return "El título es requerido.";
-    if (!inputs.tipo) return "El tipo es requerido.";
+    if (!inputs.tipo?.trim()) return "El tipo es obligatorio.";
     if (!inputs.medidas) return "Las medidas son requeridas.";
     if (!inputs.material) return "El material es requerido.";
     if (currentUser?.tipo !== "encargado") {
@@ -177,19 +177,25 @@ const ClavosForm = () => {
           </div>
           {/* Tipo */}
           <div>
-            <label htmlFor="tipo" className="block mb-1 text-sm font-medium text-neutral-800">
+            <label
+              htmlFor="tipo"
+              className="block mb-1 text-sm font-medium text-neutral-800"
+            >
               Tipo
             </label>
-            <input
-              type="text"
+            <select
               name="tipo"
               id="tipo"
               value={inputs.tipo}
               onChange={handleChange}
-              placeholder="Ej: Galvanizado"
               className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-            />
+            >
+              <option value="">Seleccione un tipo...</option>
+              <option value="Para pistola">Para pistola</option>
+              <option value="Sencillos">Sencillos</option>
+            </select>
           </div>
+
           {/* Medidas */}
           <div>
             <label htmlFor="medidas" className="block mb-1 text-sm font-medium text-neutral-800">

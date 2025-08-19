@@ -6,13 +6,10 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 📌 Configuración de consumo
-const TABLES_PER_PATIN = 1;
+//Configuración de consumo
+const TABLES_PER_PATIN = 1; //Cada patín consume 1 tabla y 3 tacos, pero se coloca la posibilidad de que se pueda cambiar facilmente
 const TACOS_PER_PATIN = 3;
 
-/* ============================================================
-   🔹 CREAR TIPO DE PATÍN (Controlando y guardando stock)
-============================================================ */
 export const createTipoPatin = async (req, res) => {
   const connection = await pool.getConnection();
   try {
@@ -22,14 +19,14 @@ export const createTipoPatin = async (req, res) => {
 
     await connection.beginTransaction();
 
-    // ✅ Verificar stock de tabla
+    //Verificar stock de tabla
     const [[tabla]] = await connection.query(
       `SELECT stock FROM tipo_tablas WHERE id_tipo_tabla = ? FOR UPDATE`,
       [id_tipo_tabla]
     );
     if (!tabla) throw new Error("Tipo de tabla padre no encontrado");
 
-    // ✅ Verificar stock de tacos
+    //Verificar stock de tacos
     const [[taco]] = await connection.query(
       `SELECT stock FROM tipo_tacos WHERE id_tipo_taco = ? FOR UPDATE`,
       [id_tipo_taco]
@@ -39,7 +36,7 @@ export const createTipoPatin = async (req, res) => {
     const tablasNecesarias = cantidad * TABLES_PER_PATIN;
     const tacosNecesarios = cantidad * TACOS_PER_PATIN;
 
-      // ✅ Si se aumenta el stock, verificar disponibilidad
+      // Si se aumenta el stock, verificar disponibilidad
       
         const faltaTabla = tabla.stock < tablasNecesarias;
         const faltaTaco  = taco.stock < tacosNecesarios;
@@ -54,7 +51,7 @@ export const createTipoPatin = async (req, res) => {
       
 
 
-    // ✅ Insertar patín incluyendo su stock
+    // Insertar patín incluyendo su stock
     await connection.query(
       `INSERT INTO tipo_patines 
         (id_tipo_tabla, id_tipo_taco, titulo, medidas, logo, precio_unidad, comentarios, stock)
@@ -71,7 +68,7 @@ export const createTipoPatin = async (req, res) => {
       ]
     );
 
-    // ✅ Descontar stock de tablas y tacos
+    // Descontar stock de tablas y tacos
     await connection.query(`UPDATE tipo_tablas SET stock = stock - ? WHERE id_tipo_tabla = ?`, [
       tablasNecesarias,
       id_tipo_tabla
@@ -92,9 +89,6 @@ export const createTipoPatin = async (req, res) => {
   }
 };
 
-/* ============================================================
-   🔹 OBTENER TIPO DE PATÍN POR ID
-============================================================ */
 export const getTipoPatinById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -115,9 +109,6 @@ export const getTipoPatinById = async (req, res) => {
   }
 };
 
-/* ============================================================
-   🔹 ACTUALIZAR TIPO DE PATÍN (Reajustando stock)
-============================================================ */
 export const updateTipoPatin = async (req, res) => {
   const connection = await pool.getConnection();
   try {
@@ -128,7 +119,7 @@ export const updateTipoPatin = async (req, res) => {
 
     await connection.beginTransaction();
 
-    // ✅ Obtener datos antiguos
+    //Obtener datos antiguos
     const [[old]] = await connection.query(
       `SELECT id_tipo_tabla, id_tipo_taco, stock, logo 
        FROM tipo_patines WHERE id_tipo_patin = ? FOR UPDATE`,
@@ -140,7 +131,7 @@ export const updateTipoPatin = async (req, res) => {
     }
     const oldCantidad = old.stock;
 
-    // ✅ Bloquear y verificar stock de tabla y tacos
+    //Bloquear y verificar stock de tabla y tacos
     const [[tabla]] = await connection.query(`SELECT stock FROM tipo_tablas WHERE id_tipo_tabla = ? FOR UPDATE`, [
       id_tipo_tabla
     ]);
@@ -151,12 +142,12 @@ export const updateTipoPatin = async (req, res) => {
     ]);
     if (!taco) throw new Error("Tipo de taco padre no encontrado");
 
-    // ✅ Calcular diferencia de consumo
+    //Calcular diferencia de consumo
     const delta = newCantidad - oldCantidad;
     const tablasNecesarias = delta * TABLES_PER_PATIN;
     const tacosNecesarios = delta * TACOS_PER_PATIN;
 
-    // ✅ Si se aumenta el stock, verificar disponibilidad
+    //Si se aumenta el stock, verificar disponibilidad
     if (delta > 0) {
       const faltaTabla = tabla.stock < tablasNecesarias;
       const faltaTaco  = taco.stock < tacosNecesarios;
@@ -171,7 +162,7 @@ export const updateTipoPatin = async (req, res) => {
     }
 
 
-    // ✅ Actualizar stock de los padres
+    //Actualizar stock de los padres
     await connection.query(`UPDATE tipo_tablas SET stock = stock - ? WHERE id_tipo_tabla = ?`, [
       tablasNecesarias,
       id_tipo_tabla
@@ -181,7 +172,7 @@ export const updateTipoPatin = async (req, res) => {
       id_tipo_taco
     ]);
 
-    // ✅ Actualizar el registro del patín incluyendo nuevo stock
+    //Actualizar el registro del patín incluyendo nuevo stock
     await connection.query(
       `UPDATE tipo_patines SET 
          id_tipo_tabla = ?, id_tipo_taco = ?, titulo = ?, medidas = ?, 
@@ -202,7 +193,7 @@ export const updateTipoPatin = async (req, res) => {
 
     await connection.commit();
 
-    // ✅ Borrar logo viejo si se reemplazó
+    //Borrar logo viejo si se reemplazó
     if (newLogo && old.logo) {
       const oldPath = path.join(__dirname, "../images/tipo_patines", old.logo);
       fs.unlink(oldPath).catch(() => console.warn("⚠️ No se pudo borrar logo antiguo:", old.logo));
@@ -218,9 +209,6 @@ export const updateTipoPatin = async (req, res) => {
   }
 };
 
-/* ============================================================
-   🔹 ELIMINAR TIPO DE PATÍN
-============================================================ */
 export const deleteTipoPatin = async (req, res) => {
   const connection = await pool.getConnection();
   try {
@@ -252,9 +240,6 @@ export const deleteTipoPatin = async (req, res) => {
   }
 };
 
-/* ============================================================
-   🔹 LISTAR TODOS LOS TIPOS DE PATINES
-============================================================ */
 export const listTipoPatines = async (req, res) => {
   try {
     const [rows] = await pool.query(
@@ -271,10 +256,6 @@ export const listTipoPatines = async (req, res) => {
   }
 };
 
-/* ============================================================
-   🔹 LISTAR PATINES (simple para selects)
-   GET /api/src/tipopatines/select
-============================================================ */
 export const listTipoPatinesSelect = async (req, res) => {
   try {
     const [rows] = await pool.query(`

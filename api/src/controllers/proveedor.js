@@ -72,7 +72,7 @@ export const updateProveedor = async (req, res) => {
     const { rut, nombre, nombre_empresa, telefono, correo_electronico, comentarios } = req.body;
     console.log("🔔 updateProveedor hit:", { id, body: req.body });
 
-    // Opcional: verificar si el proveedor existe
+    //verificar si el proveedor existe
     const [rows] = await pool.query(
       "SELECT * FROM proveedores WHERE id_proveedor = ?",
       [id]
@@ -81,7 +81,7 @@ export const updateProveedor = async (req, res) => {
       return res.status(404).json("Proveedor no encontrado!");
     }
 
-    // Opcional: si cambias el RUT, verificar duplicado
+    //verificar duplicado de RUT
     if (rut && rut !== rows[0].rut) {
       const [dup] = await pool.query(
         "SELECT * FROM proveedores WHERE rut = ? AND id_proveedor <> ?",

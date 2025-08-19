@@ -19,7 +19,7 @@ export const createFibra = async (req, res) => {
     } = req.body;
     const foto = req.file?.filename || null;
 
-    // 1) Inserción en materiaprima
+    //Inserción en materiaprima
     const insertMP = `
       INSERT INTO materiaprima
         (categoria, titulo, precio_unidad, stock, foto, comentarios)
@@ -35,7 +35,7 @@ export const createFibra = async (req, res) => {
     ]);
     const id_materia_prima = mpResult.insertId;
 
-    // 2) Inserción en fibras
+    //Inserción en fibras
     const insertFibra = `
       INSERT INTO fibras
         (id_materia_prima, ancho_cm, largo_cm)
@@ -105,7 +105,7 @@ export const updateFibra = async (req, res) => {
       largo_cm
     } = req.body;
 
-    // 1) Verificar existencia y foto antigua
+    //Verificar existencia y foto antigua
     const [exists] = await connection.query(
       "SELECT foto FROM materiaprima WHERE id_materia_prima = ?",
       [id]
@@ -118,7 +118,7 @@ export const updateFibra = async (req, res) => {
 
     await connection.beginTransaction();
 
-    // 2) Actualizar materiaprima
+    //Actualizar materiaprima
     const updateMP = `
       UPDATE materiaprima SET
         titulo = ?,
@@ -137,7 +137,7 @@ export const updateFibra = async (req, res) => {
       id
     ]);
 
-    // 3) Actualizar fibras
+    //Actualizar fibras
     const updateF = `
       UPDATE fibras SET
         ancho_cm = ?,
@@ -152,7 +152,7 @@ export const updateFibra = async (req, res) => {
 
     await connection.commit();
 
-    // 4) Borrar foto antigua si se reemplazó
+    // Borrar foto antigua si se reemplazó
     if (newFoto && oldFoto) {
       const oldPath = path.join(__dirname, '../images/fibras', oldFoto);
       fs.unlink(oldPath).catch(() => console.warn('No se pudo borrar foto antigua:', oldFoto));
@@ -184,7 +184,6 @@ export const deleteFibra = async (req, res) => {
     const fotoNombre = rows[0].foto;
 
     await connection.beginTransaction();
-    // Borrar detalle
     const [child] = await connection.query(
       "DELETE FROM fibras WHERE id_materia_prima = ?",
       [id]
@@ -193,14 +192,12 @@ export const deleteFibra = async (req, res) => {
       await connection.rollback();
       return res.status(404).json("Fibra no encontrada!");
     }
-    // Borrar materiaprima
     await connection.query(
       "DELETE FROM materiaprima WHERE id_materia_prima = ?",
       [id]
     );
     await connection.commit();
 
-    // Borrar foto del disco
     if (fotoNombre) {
       const filePath = path.join(__dirname, '../images/fibras', fotoNombre);
       fs.unlink(filePath).catch(() => console.warn('No se pudo borrar la foto:', fotoNombre));

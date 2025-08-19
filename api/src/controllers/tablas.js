@@ -17,12 +17,11 @@ export const createTabla = async (req, res) => {
       stock,
       comentarios
     } = req.body;
-    // si manejas upload de foto con multer, sería req.file.filename
     const foto = req.file?.filename || req.body.foto || null;
 
     console.log("🔔 createTabla hit:", req.body, "file:", req.file);
 
-    // 1) Inserción en materiaprima
+    // Inserción en materiaprima
     const insertMP = `
       INSERT INTO materiaprima
         (categoria, titulo, precio_unidad, stock, foto, comentarios)
@@ -40,7 +39,7 @@ export const createTabla = async (req, res) => {
     const id_materia_prima = mpResult.insertId;
     console.log("✅ Materia prima creada:", id_materia_prima);
 
-    // 2) Inserción en tablas
+    //Inserción en tablas
     const cepValue = parseInt(req.body.cepilladas, 10) === 1 ? 1 : 0;
     const insertTablas = `
       INSERT INTO tablas
@@ -74,7 +73,7 @@ export const createTabla = async (req, res) => {
 // Obtener una tabla por ID con todos sus datos
 export const getTablaById = async (req, res) => {
   try {
-    const { id } = req.params; // id_materia_prima
+    const { id } = req.params; 
 
     const [rows] = await pool.query(
       `
@@ -102,8 +101,6 @@ export const getTablaById = async (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json("Tabla no encontrada!");
     }
-
-    // Devuelve un único objeto con todos los campos
     return res.status(200).json(rows[0]);
   } catch (err) {
     console.error("❌ Error en getTablaById:", err);
@@ -120,7 +117,7 @@ export const updateTabla = async (req, res) => {
   const __dirname = path.dirname(__filename);
   const connection = await pool.getConnection();
   try {
-    const { id } = req.params; // este es id_materia_prima
+    const { id } = req.params; 
     const {
       titulo,
       precio_unidad,
@@ -133,7 +130,7 @@ export const updateTabla = async (req, res) => {
       cepilladas
     } = req.body;
 
-    // 1) Verificar que exista
+    //Verificar que exista
     const [exists] = await connection.query(
       'SELECT foto FROM materiaprima WHERE id_materia_prima = ?',
       [id]
@@ -145,7 +142,7 @@ export const updateTabla = async (req, res) => {
 
     await connection.beginTransaction();
 
-    // 2) Actualizar materiaprima
+    //Actualizar materiaprima
     const updateMP = `
       UPDATE materiaprima SET
         titulo = ?,
@@ -155,7 +152,6 @@ export const updateTabla = async (req, res) => {
         foto = COALESCE(?, foto)
       WHERE id_materia_prima = ?
     `;
-    // si viene req.file, usamos req.file.filename, si no null (COALESCE deja el antiguo)
     const newFoto = req.file?.filename || null;
     await connection.query(updateMP, [
       titulo,
@@ -166,7 +162,7 @@ export const updateTabla = async (req, res) => {
       id
     ]);
 
-    // 3) Actualizar tablas
+    //Actualizar tablas
     const updateT = `
       UPDATE tablas SET
         largo_cm = ?,
@@ -188,7 +184,7 @@ export const updateTabla = async (req, res) => {
 
     await connection.commit();
 
-    // 4) Borrar imagen antigua si reemplazamos
+    //Borrar imagen antigua si reemplazamos
     if (newFoto && oldFoto) {
       const oldPath = path.join(__dirname, '../images/tablas', oldFoto);
       fs.unlink(oldPath).catch(() => {
@@ -215,9 +211,9 @@ const __dirname = path.dirname(__filename);
 export const deleteTabla = async (req, res) => {
   const connection = await pool.getConnection();
   try {
-    const { id } = req.params; // id_materia_prima
+    const { id } = req.params; 
 
-    // 1) Leer el nombre de la imagen antes de borrar
+    //Leer el nombre de la imagen antes de borrar
     const [rows] = await connection.query(
       'SELECT foto FROM materiaprima WHERE id_materia_prima = ?',
       [id]
@@ -227,7 +223,6 @@ export const deleteTabla = async (req, res) => {
     }
     const fotoNombre = rows[0].foto; // puede ser null o string
 
-    // 2) Transacción para borrar hijo y padre
     await connection.beginTransaction();
 
     const [childResult] = await connection.query(
@@ -246,7 +241,7 @@ export const deleteTabla = async (req, res) => {
 
     await connection.commit();
 
-    // 3) Borrar el fichero de imágenes (ignorando errores)
+    //Borrar el fichero de imágenes 
     if (fotoNombre) {
       const filePath = path.join(__dirname, '../images/tablas', fotoNombre);
       try {

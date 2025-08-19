@@ -40,6 +40,8 @@ import Encargos from "./pages/encargos/Encargos";
 import EncargosList from "./pages/encargos/EncargosList";
 import PrototipoPallet from "./pages/prototipoPallet/PrototipoPallet";
 import PrototipoPalletList from "./pages/prototipoPallet/PrototipoPalletList";
+import Pedidos from "./pages/pedidos/Pedidos";
+import PedidosList from "./pages/pedidos/PedidosList";
 
 
 
@@ -235,6 +237,18 @@ function App() {
          {
           path: "/prototipos/:id",
           element: <PrototipoPallet/>
+         },
+         {
+          path: "/pedidos",
+          element: <Pedidos/>,
+         },
+         {
+          path: "/pedidos/listar",
+          element: <PedidosList/>,
+         },
+         {
+          path: "/pedidos/:id",
+          element: <Pedidos/>,
          },
          {
           path: "/ventas",

@@ -1,21 +1,14 @@
 import { pool } from "../db.js";
 
-/**
- * GET /api/src/materiaprima/listar
- * Query params:
- *   - categoria: "clavo", "fibra" (también soporta múltiple: "clavo,fibra,tabla")
- *   - q: texto de búsqueda en titulo (opcional)
- *
- * Por defecto filtra por clavo y fibra si no se especifica categoria.
- */
+
 export const listMateriasPrimas = async (req, res) => {
   try {
     const { categoria, q } = req.query;
 
-    // Categorías permitidas en tu schema
+    // Categorías permitidas
     const allowed = new Set(["tabla", "palo", "clavo", "fibra"]);
 
-    // Si no envían categoria, por defecto clavo y fibra
+    // Si no se especifica categoría, listar todas
     let categories = ["clavo", "fibra"];
 
     if (categoria) {
@@ -36,7 +29,7 @@ export const listMateriasPrimas = async (req, res) => {
     whereParts.push(`categoria IN (${categories.map(() => "?").join(",")})`);
     params.push(...categories);
 
-    // Búsqueda por título si hay q
+    // Búsqueda por título si hay query
     if (q && q.trim()) {
       whereParts.push(`titulo LIKE ?`);
       params.push(`%${q.trim()}%`);
