@@ -149,34 +149,51 @@ export const updateTipoTaco = async (req, res) => {
   const connection = await pool.getConnection();
   try {
     const { id } = req.params;
-    const { largo_cm: newLargoCm, stock: newStock } = req.body;
-    const newLargo = parseFloat(newLargoCm);
+
+    const {
+      titulo,
+      largo_cm: newLargoCm,
+      ancho_cm,
+      espesor_mm,
+      precio_unidad,
+      stock: newStock,
+    } = req.body;
+
+  
+    const newFoto   = req.file?.filename || null;
+    const newLargo  = parseFloat(newLargoCm);
+    const newAncho  = ancho_cm != null ? parseFloat(ancho_cm) : null;
+    const newEsp    = espesor_mm != null ? parseFloat(espesor_mm) : null;
     const newStockI = parseInt(newStock, 10);
 
     await connection.beginTransaction();
 
-    //Obtener datos antiguos de tipo_tacos
+    // 1) Leer datos antiguos del tipo_tacos
     const [[oldRec]] = await connection.query(
-      `SELECT id_materia_prima, largo_cm AS oldLargo, stock AS oldStock
-         FROM tipo_tacos
-        WHERE id_tipo_taco = ?
-        FOR UPDATE`,
+      `
+      SELECT id_materia_prima, largo_cm AS oldLargo, stock AS oldStock, foto AS oldFoto
+      FROM tipo_tacos
+      WHERE id_tipo_taco = ?
+      FOR UPDATE
+      `,
       [id]
     );
     if (!oldRec) {
       await connection.rollback();
       return res.status(404).json("Tipo de taco no encontrado!");
     }
-    const { id_materia_prima, oldLargo, oldStock } = oldRec;
+    const { id_materia_prima, oldLargo, oldStock, oldFoto } = oldRec;
 
-    // Obtener datos de palo padre (palos + materiaprima)
+    // 2) Leer datos del palo padre (palos + materiaprima) y bloquear
     const [[parent]] = await connection.query(
-      `SELECT p.largo_cm AS parentLargo, mp.stock AS parentStock
-         FROM palos AS p
-         JOIN materiaprima AS mp
-           ON p.id_materia_prima = mp.id_materia_prima
-        WHERE p.id_materia_prima = ?
-        FOR UPDATE`,
+      `
+      SELECT p.largo_cm AS parentLargo, mp.stock AS parentStock
+      FROM palos AS p
+      JOIN materiaprima AS mp
+        ON p.id_materia_prima = mp.id_materia_prima
+      WHERE p.id_materia_prima = ?
+      FOR UPDATE
+      `,
       [id_materia_prima]
     );
     if (!parent) {
@@ -185,38 +202,66 @@ export const updateTipoTaco = async (req, res) => {
     }
     const { parentLargo, parentStock } = parent;
 
-    //Calcular piezas por palo considerando 0.5cm de descarte
-    const margin = 0.5;
+    // 3) Calcular piezas por palo (con margen/descarte)
+    const margin    = 0.5;
     const piecesOld = Math.floor((parentLargo + margin) / (oldLargo + margin));
     const piecesNew = Math.floor((parentLargo + margin) / (newLargo + margin));
-    if (piecesNew < 1) {
+
+    if (!Number.isFinite(newLargo) || piecesNew < 1) {
       await connection.rollback();
-      return res.status(400).json("El largo solicitado supera al del palo padre.");
+      return res.status(400).json("El largo solicitado supera al del palo padre o es inválido.");
+    }
+    if (!Number.isInteger(newStockI) || newStockI < 0) {
+      await connection.rollback();
+      return res.status(400).json("Stock inválido.");
     }
 
-    // (palos) usados antes y ahora
-    const usedOld = Math.ceil(oldStock / piecesOld);
-    const usedNew = Math.ceil(newStockI / piecesNew);
-    const delta = usedNew - usedOld;
+    // 4) Calcular consumo de palos padre (antes y ahora)
+    const usedOld = Math.ceil(oldStock / Math.max(piecesOld, 1));
+    const usedNew = Math.ceil(newStockI / Math.max(piecesNew, 1));
+    const delta   = usedNew - usedOld;
 
-    //Actualizar stock en materiaprima (palo)
+    // 5) Actualizar stock del palo (materiaprima)
     await connection.query(
-      `UPDATE materiaprima
-          SET stock = ?
-        WHERE id_materia_prima = ?`,
+      `UPDATE materiaprima SET stock = ? WHERE id_materia_prima = ?`,
       [parentStock - delta, id_materia_prima]
     );
 
-    //Actualizar propio registro en tipo_tacos
+    // 6) Actualizar registro tipo_tacos (incluye foto con COALESCE)
     await connection.query(
-      `UPDATE tipo_tacos SET
-         largo_cm = ?,
-         stock    = ?
-       WHERE id_tipo_taco = ?`,
-      [newLargo, newStockI, id]
+      `
+      UPDATE tipo_tacos SET
+        titulo        = ?,
+        largo_cm      = ?,
+        ancho_cm      = COALESCE(?, ancho_cm),
+        espesor_mm    = COALESCE(?, espesor_mm),
+        precio_unidad = COALESCE(?, precio_unidad),
+        foto          = COALESCE(?, foto),
+        stock         = ?
+      WHERE id_tipo_taco = ?
+      `,
+      [
+        titulo,
+        newLargo,
+        newAncho,
+        newEsp,
+        (precio_unidad != null ? parseFloat(precio_unidad) : null),
+        newFoto,
+        newStockI,
+        id
+      ]
     );
 
     await connection.commit();
+
+    // 7) Borrar foto antigua del disco si fue reemplazada
+    if (newFoto && oldFoto) {
+      const oldPath = path.join(__dirname, "../images/tipo_tacos", oldFoto);
+      fs.unlink(oldPath).catch(() => {
+        console.warn("No se pudo borrar la foto antigua de tipo_tacos:", oldFoto);
+      });
+    }
+
     return res.status(200).json("Tipo de taco actualizado exitosamente!");
   } catch (err) {
     await connection.rollback();

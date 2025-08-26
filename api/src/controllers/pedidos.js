@@ -89,8 +89,8 @@ export const createPedido = async (req, res) => {
     const [ins] = await conn.query(
       `
       INSERT INTO pedidos
-        (id_cliente, estado, fecha_realizado, fecha_de_entrega, precio_total, comentarios)
-      VALUES (?, ?, ?, ?, 0, ?)
+        (id_cliente, estado, fecha_realizado, fecha_de_entrega, precio_total, comentarios, eliminado)
+      VALUES (?, ?, ?, ?, 0, ?, FALSE)
       `,
       [
         parseInt(id_cliente, 10),
@@ -179,7 +179,7 @@ export const getPedidoById = async (req, res) => {
         c.es_empresa, c.nombre, c.apellido, c.nombre_empresa
       FROM pedidos p
       LEFT JOIN clientes c ON c.id_cliente = p.id_cliente
-      WHERE p.id_pedido = ?
+      WHERE p.id_pedido = ? AND p.eliminado = FALSE
       `,
       [id]
     );
@@ -236,6 +236,9 @@ export const listPedidos = async (req, res) => {
     const ESTADOS = new Set(["pendiente","en_produccion","listo","entregado","cancelado"]);
     const isValidEstado = (v) => ESTADOS.has(v);
     const isValidDate   = (s) => !s || !Number.isNaN(new Date(s).getTime());
+
+    // 🔹 siempre ocultar eliminados
+    where.push("p.eliminado = FALSE");
 
     if (estado && isValidEstado(estado)) {
       where.push("p.estado = ?");
@@ -455,17 +458,14 @@ export const deletePedido = async (req, res) => {
 
     await conn.beginTransaction();
 
-    await conn.query(
-      `DELETE FROM pedido_prototipo_pallet WHERE id_pedido = ?`,
+    // Marcar como eliminado (solo si no estaba eliminado)
+    const [upd] = await conn.query(
+      `UPDATE pedidos SET eliminado = TRUE WHERE id_pedido = ? AND eliminado = FALSE`,
       [id]
     );
-    const [del] = await conn.query(
-      `DELETE FROM pedidos WHERE id_pedido = ?`,
-      [id]
-    );
-    if (del.affectedRows === 0) {
+    if (upd.affectedRows === 0) {
       await conn.rollback();
-      return res.status(404).json("Pedido no encontrado!");
+      return res.status(404).json("Pedido no encontrado o ya eliminado.");
     }
 
     await conn.commit();
@@ -481,25 +481,67 @@ export const deletePedido = async (req, res) => {
   }
 };
 
-//Cambiar estado de un pedido
+
+// Cambiar estado de un pedido y reflejar en entregas_transporte
 export const changeEstadoPedido = async (req, res) => {
+  const conn = await pool.getConnection();
   try {
     const { id } = req.params;
     const { estado } = req.body;
 
-    if (!isValidEstado(estado)) return res.status(400).json("Estado inválido.");
+    if (!isValidEstado(estado)) {
+      conn.release();
+      return res.status(400).json("Estado inválido.");
+    }
 
-    const [r] = await pool.query(
-      `UPDATE pedidos SET estado = ? WHERE id_pedido = ?`,
+    // Validar existencia y que NO esté eliminado
+    const [ex] = await conn.query(
+      `SELECT 1 FROM pedidos WHERE id_pedido = ? AND eliminado = FALSE`,
+      [id]
+    );
+    if (ex.length === 0) {
+      conn.release();
+      return res.status(404).json("Pedido no encontrado o eliminado.");
+    }
+
+    await conn.beginTransaction();
+
+    // Actualizamos el estado del pedido (solo si no está eliminado)
+    await conn.query(
+      `UPDATE pedidos SET estado = ? WHERE id_pedido = ? AND eliminado = FALSE`,
       [estado, id]
     );
-    if (r.affectedRows === 0) return res.status(404).json("Pedido no encontrado!");
 
+    if (estado === "entregado") {
+      const now = new Date();
+      const fechaHora = now.toISOString().slice(0, 19).replace("T", " ");
+
+      await conn.query(
+        `
+        INSERT INTO entregas_transporte (id_pedido, fecha_entrega)
+        VALUES (?, ?)
+        ON DUPLICATE KEY UPDATE fecha_entrega = VALUES(fecha_entrega)
+        `,
+        [id, fechaHora]
+      );
+    } else {
+      await conn.query(
+        `DELETE FROM entregas_transporte WHERE id_pedido = ?`,
+        [id]
+      );
+    }
+
+    await conn.commit();
     return res.status(200).json("Estado actualizado.");
   } catch (err) {
+    await conn.rollback();
     console.error("❌ Error en changeEstadoPedido:", err);
     return res
       .status(500)
       .json({ error: "Internal server error", details: err.message });
+  } finally {
+    conn.release();
   }
 };
+
+

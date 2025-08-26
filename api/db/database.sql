@@ -1,7 +1,7 @@
 create database tesisdb;
 use tesisdb;
-drop database tesisdb
 show tables;
+
 CREATE TABLE usuarios(
 	idUser INT PRIMARY KEY AUTO_INCREMENT,
 	username VARCHAR(45) NOT NULL,
@@ -13,7 +13,7 @@ CREATE TABLE usuarios(
 
 CREATE TABLE proveedores (
     id_proveedor INT AUTO_INCREMENT PRIMARY KEY,
-    rut CHAR(22) NOT NULL UNIQUE,
+    rut CHAR(12) NOT NULL UNIQUE,
     nombre VARCHAR(100),
     nombre_empresa VARCHAR(100),
     telefono VARCHAR(20),
@@ -106,7 +106,6 @@ CREATE TABLE tipo_tacos (
     espesor_mm FLOAT,
     stock INT DEFAULT 0,
     precio_unidad DECIMAL(10,2),
-    logo VARCHAR(255),
     foto VARCHAR(255),
     FOREIGN KEY (id_materia_prima) REFERENCES palos(id_materia_prima)
 );
@@ -131,6 +130,7 @@ CREATE TABLE clientes (
     apellido VARCHAR(100),
     telefono VARCHAR(20),
     email VARCHAR(100),
+    estado BOOLEAN DEFAULT TRUE,
     es_empresa BOOLEAN DEFAULT FALSE,
     nombre_empresa VARCHAR(100),
     direccion_empresa VARCHAR(255),
@@ -143,10 +143,10 @@ CREATE TABLE prototipo_pallet (
     medidas VARCHAR(100),
     id_tipo_patin INT NULL,
     cantidad_patines INT,
-    precio_unidad DECIMAL(10,2),
     comentarios VARCHAR(255),
 	foto VARCHAR(255),
     id_cliente INT,
+	estado BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (id_tipo_patin) REFERENCES tipo_patines(id_tipo_patin),
     FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente)
 );
@@ -200,6 +200,7 @@ CREATE TABLE pedidos (
     fecha_de_entrega  DATE,
     precio_total DECIMAL(10,2),
     comentarios VARCHAR(255),
+    eliminado BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente)
 );
 
@@ -218,9 +219,7 @@ CREATE TABLE pedido_prototipo_pallet (
 CREATE TABLE entregas_transporte (
     id_entrega INT AUTO_INCREMENT PRIMARY KEY,
     id_pedido INT,
-    fecha_cargado DATE,
-    fecha_entrega DATE,
-    comentarios VARCHAR(255),
+    fecha_entrega DATETIME,
     FOREIGN KEY (id_pedido) REFERENCES pedidos(id_pedido)
 );
 
@@ -250,94 +249,3 @@ CREATE TABLE pellets (
     stock INT,
     foto VARCHAR(255)
 );
-
-
-DROP VIEW IF EXISTS vw_prototipo_bom_detalle;
-CREATE VIEW vw_prototipo_bom_detalle AS
-/* ====== TABLAS ====== */
-SELECT 
-  ptt.id_prototipo,
-  'tabla'                           AS categoria,
-  ptt.id_tipo_tabla                 AS id_item,
-  tt.titulo                         AS titulo,
-  ptt.aclaraciones,
-  ptt.cantidad_lleva                AS cantidad,
-  COALESCE(tt.precio_unidad, 0)     AS precio_unitario,
-  ptt.cantidad_lleva * COALESCE(tt.precio_unidad, 0) AS subtotal
-FROM prototipo_tipo_tablas ptt
-JOIN tipo_tablas tt ON tt.id_tipo_tabla = ptt.id_tipo_tabla
-
-UNION ALL
-/* ====== TACOS ====== */
-SELECT 
-  ptk.id_prototipo,
-  'taco'                            AS categoria,
-  ptk.id_tipo_taco                  AS id_item,
-  tk.titulo                         AS titulo,
-  ptk.aclaraciones,
-  ptk.cantidad_lleva                AS cantidad,
-  COALESCE(tk.precio_unidad, 0)     AS precio_unitario,
-  ptk.cantidad_lleva * COALESCE(tk.precio_unidad, 0) AS subtotal
-FROM prototipo_tipo_tacos ptk
-JOIN tipo_tacos tk ON tk.id_tipo_taco = ptk.id_tipo_taco
-
-UNION ALL
-/* ====== CLAVOS (precio desde materiaprima) ====== */
-SELECT 
-  pcl.id_prototipo,
-  'clavo'                           AS categoria,
-  pcl.id_materia_prima              AS id_item,
-  mp.titulo                         AS titulo,
-  pcl.aclaraciones,
-  pcl.cantidad_lleva                AS cantidad,
-  COALESCE(mp.precio_unidad, 0)     AS precio_unitario,
-  pcl.cantidad_lleva * COALESCE(mp.precio_unidad, 0) AS subtotal
-FROM prototipo_clavos pcl
-JOIN clavos c  ON c.id_materia_prima = pcl.id_materia_prima
-JOIN materiaprima mp ON mp.id_materia_prima = pcl.id_materia_prima
-
-UNION ALL
-/* ====== FIBRAS (precio desde materiaprima) ====== */
-SELECT 
-  pf.id_prototipo,
-  'fibra'                           AS categoria,
-  pf.id_materia_prima               AS id_item,
-  mp.titulo                         AS titulo,
-  pf.aclaraciones,
-  pf.cantidad_lleva                 AS cantidad,
-  COALESCE(mp.precio_unidad, 0)     AS precio_unitario,
-  pf.cantidad_lleva * COALESCE(mp.precio_unidad, 0) AS subtotal
-FROM prototipo_fibras pf
-JOIN fibras f ON f.id_materia_prima = pf.id_materia_prima
-JOIN materiaprima mp ON mp.id_materia_prima = pf.id_materia_prima
-
-UNION ALL
-/* ====== PATÍN (usa cantidad_patines del prototipo) ====== */
-SELECT
-  pp.id_prototipo,
-  'patin'                           AS categoria,
-  pp.id_tipo_patin                  AS id_item,
-  tp.titulo                         AS titulo,
-  NULL                              AS aclaraciones,
-  COALESCE(pp.cantidad_patines, 0)  AS cantidad,
-  COALESCE(tp.precio_unidad, 0)     AS precio_unitario,
-  COALESCE(pp.cantidad_patines, 0) * COALESCE(tp.precio_unidad, 0) AS subtotal
-FROM prototipo_pallet pp
-JOIN tipo_patines tp ON tp.id_tipo_patin = pp.id_tipo_patin
-WHERE pp.id_tipo_patin IS NOT NULL
-  AND COALESCE(pp.cantidad_patines, 0) > 0;
-  
-  
-DROP VIEW IF EXISTS vw_prototipo_costo_total;
-CREATE VIEW vw_prototipo_costo_total AS
-SELECT 
-  pp.id_prototipo,
-  pp.titulo,
-  pp.medidas,
-  pp.id_cliente,
-  COALESCE(SUM(bom.subtotal), 0) AS costo_materiales
-FROM prototipo_pallet pp
-LEFT JOIN vw_prototipo_bom_detalle bom
-  ON bom.id_prototipo = pp.id_prototipo
-GROUP BY
-  pp.id_prototipo, pp.titulo, pp.medidas, pp.id_cliente;

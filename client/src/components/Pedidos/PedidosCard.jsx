@@ -123,7 +123,7 @@ const PedidosCard = ({ pedido, onEdit, onDelete, onEstadoChanged }) => {
             <p className="text-gray-800">{fecha_realizado ? formatDate(fecha_realizado) : "No especificada"}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-600">Fecha de entrega:</p>
+            <p className="text-sm text-gray-600">Fecha de entrega fijada:</p>
             <p className="text-gray-800">{fecha_de_entrega ? formatDate(fecha_de_entrega) : "No especificada"}</p>
           </div>
         </div>

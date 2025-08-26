@@ -159,14 +159,47 @@ export const deleteVenta = async (req, res) => {
 export const listVentas = async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT v.*, c.nombre AS nombre_cliente, c.apellido AS apellido_cliente
-       FROM ventas v
-       LEFT JOIN clientes c ON v.id_cliente = c.id_cliente
-       ORDER BY v.fecha_realizada DESC`
+      `
+      SELECT
+        v.id_venta,
+        v.fecha_realizada,
+        v.precio_total,
+        v.id_cliente,
+        v.comentarios,
+        v.foto,
+        c.es_empresa,
+        c.nombre           AS nombre_cliente,
+        c.apellido         AS apellido_cliente,
+        c.nombre_empresa   AS empresa_cliente,
+        c.estado           AS cliente_activo  
+      FROM ventas v
+      LEFT JOIN clientes c ON c.id_cliente = v.id_cliente
+      ORDER BY v.fecha_realizada DESC, v.id_venta DESC
+      `
     );
-    return res.status(200).json(rows);
+
+    const ventas = rows.map(r => {
+      const display = r?.es_empresa
+        ? (r?.empresa_cliente || `Empresa #${r.id_cliente}`)
+        : [r?.nombre_cliente, r?.apellido_cliente].filter(Boolean).join(" ") || `Cliente #${r.id_cliente}`;
+
+      // si hay id_cliente pero estado=0 => eliminado lógico
+      // si no hay registro de cliente (null) => tratar como eliminado/no disponible
+      const eliminado = r?.id_cliente
+        ? (r?.cliente_activo === 0 || r?.cliente_activo === false)
+        : true;
+
+      return {
+        ...r,
+        cliente_display: display,
+        cliente_eliminado: eliminado,
+      };
+    });
+
+    res.status(200).json(ventas);
   } catch (err) {
-    console.error("❌ Error en listVentas:", err);
-    return res.status(500).json({ error: "Error interno del servidor", details: err.message });
+    console.error("❌ listVentas:", err);
+    res.status(500).json({ error: "Error interno del servidor", details: err.message });
   }
 };
+

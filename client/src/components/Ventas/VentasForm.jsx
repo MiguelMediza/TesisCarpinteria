@@ -23,34 +23,60 @@ const VentasForm = () => {
   const [messageType, setMessageType] = useState("");
 
   // 🔹 Cargar clientes para el select
-  useEffect(() => {
-    axios.get("http://localhost:4000/api/src/clientes/listar")
-      .then(({ data }) => setClientes(data))
-      .catch(() => console.error("❌ Error cargando clientes"));
-  }, []);
+useEffect(() => {
+  if (id) return; // si estoy editando, lo hace el otro useEffect
+  axios.get("http://localhost:4000/api/src/clientes/select")
+    .then(({ data }) => setClientes(data))
+    .catch(() => console.error("❌ Error cargando clientes del select"));
+}, [id]);
 
-  // 🔹 Si hay id, obtener datos de la venta
-  useEffect(() => {
-    if (!id) return;
-    axios.get(`http://localhost:4000/api/src/ventas/${id}`)
-      .then(({ data }) => {
-        // ✅ Convertir fecha a YYYY-MM-DD
-        const fechaFormateada = data.fecha_realizada
+// 🔹 Si hay id, obtener datos de la venta y opciones de clientes
+useEffect(() => {
+  if (!id) return;
+
+  const fetchData = async () => {
+    try {
+      // 1) Traer la venta
+      const { data } = await axios.get(`http://localhost:4000/api/src/ventas/${id}`);
+      
+      // ✅ Formatear fecha
+      const fechaFormateada = data.fecha_realizada
         ? new Date(data.fecha_realizada).toISOString().split("T")[0]
         : "";
-        setInputs({
-          fecha_realizada: fechaFormateada,   // ✅ Ahora el input la acepta
-          precio_total: data.precio_total?.toString() || "",
-          id_cliente: data.id_cliente?.toString() || "",
-          comentarios: data.comentarios || "",
-        });
-        if (data.foto) setPreview(`http://localhost:4000/images/ventas/${data.foto}`);
-      })
-      .catch(() => {
-        setErr("No se pudo cargar la venta.");
-        setMessageType("error");
+
+      setInputs({
+        fecha_realizada: fechaFormateada,
+        precio_total: data.precio_total?.toString() || "",
+        id_cliente: data.id_cliente?.toString() || "",
+        comentarios: data.comentarios || "",
       });
-  }, [id]);
+
+      if (data.foto) {
+        setPreview(`http://localhost:4000/images/ventas/${data.foto}`);
+      }
+
+      // 2) Traer clientes activos + este cliente (aunque esté eliminado)
+      if (data.id_cliente) {
+        const respClientes = await axios.get(
+          `http://localhost:4000/api/src/clientes/select?incluir_id=${data.id_cliente}`
+        );
+        setClientes(respClientes.data);
+      } else {
+        // si la venta no tiene cliente asociado, cargo solo los activos
+        const respClientes = await axios.get("http://localhost:4000/api/src/clientes/select");
+        setClientes(respClientes.data);
+      }
+
+    } catch (err) {
+      console.error("❌ Error cargando venta o clientes", err);
+      setErr("No se pudo cargar la venta.");
+      setMessageType("error");
+    }
+  };
+
+  fetchData();
+}, [id]);
+
 
   // ✅ Validación de campos
   const validateInputs = () => {
@@ -154,11 +180,16 @@ const VentasForm = () => {
           {/* Cliente */}
           <div>
             <label htmlFor="id_cliente" className="block mb-1 text-sm font-medium text-neutral-800">Cliente</label>
-            <select name="id_cliente" value={inputs.id_cliente} onChange={handleChange} className="w-full p-2 border rounded">
+            <select
+              name="id_cliente"
+              value={inputs.id_cliente}
+              onChange={handleChange}
+              className="w-full p-2 border rounded"
+            >
               <option value="">Selecciona un cliente (opcional)</option>
               {clientes.map((c) => (
-                <option key={c.id_cliente} value={c.id_cliente}>
-                  {c.nombre} {c.apellido} {c.es_empresa ? `- ${c.nombre_empresa}` : ""}
+                <option key={c.id_cliente} value={String(c.id_cliente)}>
+                  {c.eliminado ? `[ ELIMINADO ] ${c.display}` : c.display}
                 </option>
               ))}
             </select>

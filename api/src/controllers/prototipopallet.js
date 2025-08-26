@@ -47,8 +47,8 @@ export const createPrototipo = async (req, res) => {
 
     const [ins] = await conn.query(
       `INSERT INTO prototipo_pallet
-        (titulo, medidas, id_tipo_patin, cantidad_patines, comentarios, foto, id_cliente)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        (titulo, medidas, id_tipo_patin, cantidad_patines, comentarios, foto, id_cliente, estado)
+       VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)`,
       [
         titulo || null,
         medidas || null,
@@ -153,6 +153,7 @@ export const listPrototipos = async (req, res) => {
       FROM prototipo_pallet pp
       LEFT JOIN clientes c ON c.id_cliente = pp.id_cliente
       LEFT JOIN vw_prototipo_costo_total v ON v.id_prototipo = pp.id_prototipo
+      WHERE pp.estado = TRUE
       ORDER BY pp.titulo ASC
       `
     );
@@ -281,32 +282,21 @@ export const deletePrototipo = async (req, res) => {
     const { id } = req.params;
 
     const [rows] = await conn.query(
-      `SELECT foto FROM prototipo_pallet WHERE id_prototipo = ?`,
+      `SELECT foto FROM prototipo_pallet WHERE id_prototipo = ? AND estado = TRUE`,
       [id]
     );
-    if (rows.length === 0) return res.status(404).json("Prototipo no encontrado");
-    const fotoNombre = rows[0].foto;
+    if (rows.length === 0) return res.status(404).json("Prototipo no encontrado o ya eliminado");
 
     await conn.beginTransaction();
 
-    await conn.query(`DELETE FROM prototipo_tipo_tablas WHERE id_prototipo = ?`, [id]);
-    await conn.query(`DELETE FROM prototipo_tipo_tacos  WHERE id_prototipo = ?`, [id]);
-    await conn.query(`DELETE FROM prototipo_clavos      WHERE id_prototipo = ?`, [id]);
-    await conn.query(`DELETE FROM prototipo_fibras      WHERE id_prototipo = ?`, [id]);
-    await conn.query(`DELETE FROM prototipo_pallet      WHERE id_prototipo = ?`, [id]);
+    await conn.query(
+      `UPDATE prototipo_pallet SET estado = FALSE WHERE id_prototipo = ?`,
+      [id]
+    );
 
     await conn.commit();
 
-    if (fotoNombre) {
-      const filePath = path.join(__dirname, "../images/prototipos", fotoNombre);
-      try {
-        await fs.unlink(filePath);
-      } catch (fsErr) {
-        console.warn("No se pudo borrar la imagen:", fsErr.message);
-      }
-    }
-
-    return res.status(200).json("Prototipo eliminado exitosamente!");
+    return res.status(200).json("Prototipo marcado como eliminado (estado = FALSE)!");
   } catch (err) {
     await conn.rollback();
     console.error("❌ deletePrototipo:", err);
@@ -315,3 +305,4 @@ export const deletePrototipo = async (req, res) => {
     conn.release();
   }
 };
+

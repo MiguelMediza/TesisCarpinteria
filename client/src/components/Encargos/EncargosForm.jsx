@@ -157,14 +157,17 @@ const EncargosForm = () => {
           </div>
 
           {/* Fecha prevista */}
-          <input
-            type="date"
-            name="fecha_prevista_llegada"
-            value={inputs.fecha_prevista_llegada}
-            onChange={handleChange}
-            min={inputs.fecha_realizado || undefined}   
-            className="w-full p-2 border rounded bg-neutral-100"
-          />
+          <div>
+            <label className="block text-sm font-medium">Fecha prevista de llegada *</label>
+            <input
+              type="date"
+              name="fecha_prevista_llegada"
+              value={inputs.fecha_prevista_llegada}
+              onChange={handleChange}
+              min={inputs.fecha_realizado || undefined}   
+              className="w-full p-2 border rounded bg-neutral-100"
+            />
+          </div>
 
           {/* Proveedor */}
           <div>

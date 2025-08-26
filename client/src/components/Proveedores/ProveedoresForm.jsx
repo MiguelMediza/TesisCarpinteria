@@ -39,7 +39,7 @@ const Proveedores = () => {
 
   const validateInputs = () => {
     if (!inputs.rut) return "El RUT es requerido.";
-    if (inputs.rut.length !== 22) return "Ingresa un RUT válido (Debe tener 22 dígitos).";
+    if (inputs.rut.length !== 12) return "Ingresa un RUT válido (Debe tener 12 dígitos).";
     if (!inputs.nombre) return "El nombre es requerido.";
     if (!inputs.nombre_empresa) return "El nombre de la empresa es requerido.";
     if (!inputs.telefono) return "El teléfono es requerido.";
@@ -51,7 +51,7 @@ const Proveedores = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     if ((name === "rut" || name === "telefono") && !/^\d*$/.test(value)) return;
-    if (name === "rut" && value.length > 22) return;
+    if (name === "rut" && value.length > 12) return;
     if (name === "telefono" && value.length > 9) return;
     setInputs(prev => ({ ...prev, [name]: value }));
   };
@@ -128,7 +128,7 @@ const Proveedores = () => {
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
-              maxLength={22}
+              maxLength={12}
               name="rut"
               id="rut"
               value={inputs.rut}

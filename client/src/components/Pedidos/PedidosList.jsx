@@ -113,13 +113,6 @@ const PedidosList = () => {
 
       {/* Filtros */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-4">
-        <input
-          type="text"
-          placeholder="Buscar (cliente / título prototipo)..."
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          className="md:col-span-3 p-2 border border-gray-300 rounded"
-        />
 
         <select
           value={estado}
@@ -159,12 +152,7 @@ const PedidosList = () => {
         />
 
         <div className="md:col-span-12 flex gap-2">
-          <button
-            onClick={fetchPedidos}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-          >
-            Buscar
-          </button>
+
           <button
             onClick={() => { resetFiltros(); setTimeout(fetchPedidos, 0); }}
             className="px-4 py-2 bg-neutral-200 text-neutral-800 rounded hover:bg-neutral-300 transition"

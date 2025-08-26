@@ -45,9 +45,17 @@ const VentasCard = ({ venta, onEdit, onDelete }) => {
         {nombre_cliente && (
           <>
             <p className="text-sm text-gray-600">Cliente:</p>
-            <p className="mb-2 text-gray-800">
-              {nombre_cliente} {apellido_cliente || ""}
-            </p>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="font-medium text-neutral-900">
+                {venta.cliente_display || "—"}
+              </span>
+
+              {venta.cliente_eliminado && (
+                <span className="text-xs px-2 py-0.5 rounded bg-red-100 text-red-700">
+                  ELIMINADO
+                </span>
+              )}
+            </div>
           </>
         )}
 
