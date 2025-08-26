@@ -57,7 +57,7 @@ const TipoPatinesCard = ({ tipoPatin, onEdit, onDelete }) => {
         {currentUser?.tipo === "admin" && (
           <>
             <p className="text-sm text-gray-600">Precio Unitario:</p>
-            <p className="mb-2 text-gray-800">{precio_unidad}</p>
+            <p className="mb-2 text-gray-800">${precio_unidad}</p>
           </>
         )}
 

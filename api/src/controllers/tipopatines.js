@@ -10,23 +10,43 @@ const __dirname = path.dirname(__filename);
 const TABLES_PER_PATIN = 1; //Cada patín consume 1 tabla y 3 tacos, pero se coloca la posibilidad de que se pueda cambiar facilmente
 const TACOS_PER_PATIN = 3;
 
+// Función para calcular el costo de un patín dado su tabla y taco
+const calcCostoPatin = async (conn, id_tipo_tabla, id_tipo_taco) => {
+  const [[tabla]] = await conn.query(
+    `SELECT precio_unidad FROM tipo_tablas WHERE id_tipo_tabla = ?`,
+    [id_tipo_tabla]
+  );
+  const [[taco]] = await conn.query(
+    `SELECT precio_unidad FROM tipo_tacos WHERE id_tipo_taco = ?`,
+    [id_tipo_taco]
+  );
+
+  const precioTabla = Number(tabla?.precio_unidad || 0);
+  const precioTaco  = Number(taco?.precio_unidad  || 0);
+
+  const costo = precioTabla * TABLES_PER_PATIN + precioTaco * TACOS_PER_PATIN;
+  // Redondeo a 2 decimales como dinero
+  return Number(costo.toFixed(2));
+};
+
+
+
 export const createTipoPatin = async (req, res) => {
   const connection = await pool.getConnection();
   try {
-    const { id_tipo_tabla, id_tipo_taco, titulo, medidas, precio_unidad, comentarios, stock } = req.body;
+    const { id_tipo_tabla, id_tipo_taco, titulo, medidas, comentarios, stock } = req.body;
     const cantidad = parseInt(stock, 10) || 0;
     const logo = req.file?.filename || null;
 
     await connection.beginTransaction();
 
-    //Verificar stock de tabla
+    // Bloqueos por stock
     const [[tabla]] = await connection.query(
       `SELECT stock FROM tipo_tablas WHERE id_tipo_tabla = ? FOR UPDATE`,
       [id_tipo_tabla]
     );
     if (!tabla) throw new Error("Tipo de tabla padre no encontrado");
 
-    //Verificar stock de tacos
     const [[taco]] = await connection.query(
       `SELECT stock FROM tipo_tacos WHERE id_tipo_taco = ? FOR UPDATE`,
       [id_tipo_taco]
@@ -34,24 +54,15 @@ export const createTipoPatin = async (req, res) => {
     if (!taco) throw new Error("Tipo de taco padre no encontrado");
 
     const tablasNecesarias = cantidad * TABLES_PER_PATIN;
-    const tacosNecesarios = cantidad * TACOS_PER_PATIN;
+    const tacosNecesarios  = cantidad * TACOS_PER_PATIN;
 
-      // Si se aumenta el stock, verificar disponibilidad
-      
-        const faltaTabla = tabla.stock < tablasNecesarias;
-        const faltaTaco  = taco.stock < tacosNecesarios;
+    if (tabla.stock < tablasNecesarias) throw new Error("Stock insuficiente de tablas");
+    if (taco.stock  < tacosNecesarios)  throw new Error("Stock insuficiente de tacos");
 
-        if (faltaTabla && faltaTaco) {
-          throw new Error("Stock insuficiente: tanto las tablas como los tacos no tienen stock suficiente");
-        } else if (faltaTabla) {
-          throw new Error("Stock insuficiente de tablas");
-        } else if (faltaTaco) {
-          throw new Error("Stock insuficiente de tacos");
-        }
-      
+    // ⬇️ NUEVO: calcular costo del patín con precios vigentes
+    const costoCalculado = await calcCostoPatin(connection, id_tipo_tabla, id_tipo_taco);
 
-
-    // Insertar patín incluyendo su stock
+    // Insertar patín con costo calculado
     await connection.query(
       `INSERT INTO tipo_patines 
         (id_tipo_tabla, id_tipo_taco, titulo, medidas, logo, precio_unidad, comentarios, stock)
@@ -62,20 +73,18 @@ export const createTipoPatin = async (req, res) => {
         titulo,
         medidas || "",
         logo,
-        parseFloat(precio_unidad) || 0,
+        costoCalculado,   // ⬅️ acá usamos el costo calculado
         comentarios || "",
         cantidad
       ]
     );
 
-    // Descontar stock de tablas y tacos
+    // Descontar stock
     await connection.query(`UPDATE tipo_tablas SET stock = stock - ? WHERE id_tipo_tabla = ?`, [
-      tablasNecesarias,
-      id_tipo_tabla
+      tablasNecesarias, id_tipo_tabla
     ]);
     await connection.query(`UPDATE tipo_tacos SET stock = stock - ? WHERE id_tipo_taco = ?`, [
-      tacosNecesarios,
-      id_tipo_taco
+      tacosNecesarios, id_tipo_taco
     ]);
 
     await connection.commit();
@@ -88,6 +97,7 @@ export const createTipoPatin = async (req, res) => {
     connection.release();
   }
 };
+
 
 export const getTipoPatinById = async (req, res) => {
   try {
@@ -113,13 +123,13 @@ export const updateTipoPatin = async (req, res) => {
   const connection = await pool.getConnection();
   try {
     const { id } = req.params;
-    const { id_tipo_tabla, id_tipo_taco, titulo, medidas, precio_unidad, comentarios, stock } = req.body;
+    const { id_tipo_tabla, id_tipo_taco, titulo, medidas, comentarios, stock } = req.body;
     const newCantidad = parseInt(stock, 10) || 0;
     const newLogo = req.file?.filename || null;
 
     await connection.beginTransaction();
 
-    //Obtener datos antiguos
+    // Datos antiguos para delta y conservar logo si hace falta
     const [[old]] = await connection.query(
       `SELECT id_tipo_tabla, id_tipo_taco, stock, logo 
        FROM tipo_patines WHERE id_tipo_patin = ? FOR UPDATE`,
@@ -131,52 +141,55 @@ export const updateTipoPatin = async (req, res) => {
     }
     const oldCantidad = old.stock;
 
-    //Bloquear y verificar stock de tabla y tacos
-    const [[tabla]] = await connection.query(`SELECT stock FROM tipo_tablas WHERE id_tipo_tabla = ? FOR UPDATE`, [
-      id_tipo_tabla
-    ]);
+    // Bloquear y verificar stock de padres (con los NUEVOS ids)
+    const [[tabla]] = await connection.query(
+      `SELECT stock FROM tipo_tablas WHERE id_tipo_tabla = ? FOR UPDATE`,
+      [id_tipo_tabla]
+    );
     if (!tabla) throw new Error("Tipo de tabla padre no encontrado");
 
-    const [[taco]] = await connection.query(`SELECT stock FROM tipo_tacos WHERE id_tipo_taco = ? FOR UPDATE`, [
-      id_tipo_taco
-    ]);
+    const [[taco]] = await connection.query(
+      `SELECT stock FROM tipo_tacos WHERE id_tipo_taco = ? FOR UPDATE`,
+      [id_tipo_taco]
+    );
     if (!taco) throw new Error("Tipo de taco padre no encontrado");
 
-    //Calcular diferencia de consumo
+    // Calcular delta de stock a producir
     const delta = newCantidad - oldCantidad;
     const tablasNecesarias = delta * TABLES_PER_PATIN;
-    const tacosNecesarios = delta * TACOS_PER_PATIN;
+    const tacosNecesarios  = delta * TACOS_PER_PATIN;
 
-    //Si se aumenta el stock, verificar disponibilidad
     if (delta > 0) {
-      const faltaTabla = tabla.stock < tablasNecesarias;
-      const faltaTaco  = taco.stock < tacosNecesarios;
-
-      if (faltaTabla && faltaTaco) {
-        throw new Error("Stock insuficiente: tanto las tablas como los tacos no tienen stock suficiente");
-      } else if (faltaTabla) {
-        throw new Error("Stock insuficiente de tablas");
-      } else if (faltaTaco) {
-        throw new Error("Stock insuficiente de tacos");
-      }
+      if (tabla.stock < tablasNecesarias) throw new Error("Stock insuficiente de tablas");
+      if (taco.stock  < tacosNecesarios)  throw new Error("Stock insuficiente de tacos");
     }
 
+    // Actualizar stocks de padres (si delta != 0)
+    if (tablasNecesarias !== 0) {
+      await connection.query(`UPDATE tipo_tablas SET stock = stock - ? WHERE id_tipo_tabla = ?`, [
+        tablasNecesarias, id_tipo_tabla
+      ]);
+    }
+    if (tacosNecesarios !== 0) {
+      await connection.query(`UPDATE tipo_tacos SET stock = stock - ? WHERE id_tipo_taco = ?`, [
+        tacosNecesarios, id_tipo_taco
+      ]);
+    }
 
-    //Actualizar stock de los padres
-    await connection.query(`UPDATE tipo_tablas SET stock = stock - ? WHERE id_tipo_tabla = ?`, [
-      tablasNecesarias,
-      id_tipo_tabla
-    ]);
-    await connection.query(`UPDATE tipo_tacos SET stock = stock - ? WHERE id_tipo_taco = ?`, [
-      tacosNecesarios,
-      id_tipo_taco
-    ]);
+    // ⬇️ NUEVO: recalcular costo con precios vigentes (usando los NUEVOS IDs)
+    const costoCalculado = await calcCostoPatin(connection, id_tipo_tabla, id_tipo_taco);
 
-    //Actualizar el registro del patín incluyendo nuevo stock
+    // Actualizar el patín (incluye precio_unidad calculado)
     await connection.query(
       `UPDATE tipo_patines SET 
-         id_tipo_tabla = ?, id_tipo_taco = ?, titulo = ?, medidas = ?, 
-         logo = COALESCE(?, logo), precio_unidad = ?, comentarios = ?, stock = ? 
+         id_tipo_tabla = ?, 
+         id_tipo_taco  = ?, 
+         titulo        = ?, 
+         medidas       = ?, 
+         logo          = COALESCE(?, logo), 
+         precio_unidad = ?,           -- ⬅️ guardamos costo calculado
+         comentarios   = ?, 
+         stock         = ?
        WHERE id_tipo_patin = ?`,
       [
         id_tipo_tabla,
@@ -184,7 +197,7 @@ export const updateTipoPatin = async (req, res) => {
         titulo,
         medidas || "",
         newLogo,
-        parseFloat(precio_unidad) || 0,
+        costoCalculado,     // ⬅️ acá va el costo calculado
         comentarios || "",
         newCantidad,
         id
@@ -193,7 +206,7 @@ export const updateTipoPatin = async (req, res) => {
 
     await connection.commit();
 
-    //Borrar logo viejo si se reemplazó
+    // Borrar logo viejo si se reemplazó
     if (newLogo && old.logo) {
       const oldPath = path.join(__dirname, "../images/tipo_patines", old.logo);
       fs.unlink(oldPath).catch(() => console.warn("⚠️ No se pudo borrar logo antiguo:", old.logo));
@@ -208,6 +221,7 @@ export const updateTipoPatin = async (req, res) => {
     connection.release();
   }
 };
+
 
 export const deleteTipoPatin = async (req, res) => {
   const connection = await pool.getConnection();

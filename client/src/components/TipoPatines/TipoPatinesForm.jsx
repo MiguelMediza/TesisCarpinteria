@@ -4,6 +4,9 @@ import axios from "axios";
 import { AuthContext } from "../../context/authContext";
 import tablasBackground from "../../assets/tablasBackground.jpg";
 
+const TABLES_PER_PATIN = 1; // Debe coincidir con el backend / triggers
+const TACOS_PER_PATIN = 3;  // Debe coincidir con el backend / triggers
+
 const TipoPatinesForm = () => {
   const { currentUser } = useContext(AuthContext);
   const { id } = useParams(); // id_tipo_patin
@@ -15,7 +18,6 @@ const TipoPatinesForm = () => {
     id_tipo_taco: "",
     titulo: "",
     medidas: "",
-    precio_unidad: "",
     stock: "",
     comentarios: ""
   };
@@ -33,9 +35,12 @@ const TipoPatinesForm = () => {
   // Fetch tablas y tacos
   useEffect(() => {
     axios.get("http://localhost:4000/api/src/tipotablas/listar")
-      .then(({ data }) => setTablas(data));
+      .then(({ data }) => setTablas(data))
+      .catch(() => console.error("❌ Error cargando tipo_tablas"));
+
     axios.get("http://localhost:4000/api/src/tipotacos/listar")
-      .then(({ data }) => setTacos(data));
+      .then(({ data }) => setTacos(data))
+      .catch(() => console.error("❌ Error cargando tipo_tacos"));
   }, []);
 
   // Si estamos editando, cargar el patín existente
@@ -48,12 +53,15 @@ const TipoPatinesForm = () => {
           id_tipo_taco: data.id_tipo_taco.toString(),
           titulo: data.titulo || "",
           medidas: data.medidas || "",
-          precio_unidad: data.precio_unidad?.toString() || "",
           stock: data.stock?.toString() || "",
           comentarios: data.comentarios || ""
         });
-        setSelectedTabla(tablas.find(t => t.id_tipo_tabla === data.id_tipo_tabla));
-        setSelectedTaco(tacos.find(t => t.id_tipo_taco === data.id_tipo_taco));
+        // setear seleccionados cuando existan listas
+        const tabla = tablas.find(t => t.id_tipo_tabla === data.id_tipo_tabla);
+        const taco  = tacos.find(t => t.id_tipo_taco  === data.id_tipo_taco);
+        if (tabla) setSelectedTabla(tabla);
+        if (taco)  setSelectedTaco(taco);
+
         if (data.logo) setPreview(`http://localhost:4000/images/tipo_patines/${data.logo}`);
       })
       .catch(() => {
@@ -68,9 +76,7 @@ const TipoPatinesForm = () => {
     if (!inputs.id_tipo_taco) return "Selecciona un taco.";
     if (!inputs.titulo) return "El título es requerido.";
     if (!inputs.medidas) return "La medida es requerida.";
-    if (isNaN(inputs.medidas) || +inputs.medidas <= 0) return "Medida invalida.";
-    if (currentUser.tipo !== "encargado" && (!inputs.precio_unidad || isNaN(inputs.precio_unidad) || +inputs.precio_unidad <= 0))
-      return "Precio inválido.";
+    if (isNaN(inputs.medidas) || +inputs.medidas <= 0) return "Medida inválida.";
     if (!inputs.stock || !Number.isInteger(+inputs.stock) || +inputs.stock < 0)
       return "Stock inválido.";
     return null;
@@ -80,7 +86,7 @@ const TipoPatinesForm = () => {
   const handleChange = e => {
     const { name, value } = e.target;
     // numeric fields
-    if (["medidas","precio_unidad","stock"].includes(name)) {
+    if (["medidas","stock"].includes(name)) {
       if (!/^[0-9]*\.?[0-9]*$/.test(value)) return;
     }
     if (name === "stock" && !/^\d*$/.test(value)) return;
@@ -90,13 +96,13 @@ const TipoPatinesForm = () => {
   const handleParentTabla = e => {
     const tabla = tablas.find(t => t.id_tipo_tabla.toString() === e.target.value);
     setInputs(prev => ({ ...prev, id_tipo_tabla: e.target.value }));
-    setSelectedTabla(tabla);
+    setSelectedTabla(tabla || null);
   };
 
   const handleParentTaco = e => {
     const taco = tacos.find(t => t.id_tipo_taco.toString() === e.target.value);
     setInputs(prev => ({ ...prev, id_tipo_taco: e.target.value }));
-    setSelectedTaco(taco);
+    setSelectedTaco(taco || null);
   };
 
   const handleLogoChange = e => {
@@ -112,10 +118,21 @@ const TipoPatinesForm = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Control de stock disponible
+  // Control de stock disponible (usar mismas constantes)
   const stockMax = selectedTabla && selectedTaco
-    ? Math.min(selectedTabla.stock, Math.floor(selectedTaco.stock / 3))
+    ? Math.min(
+        Math.floor((selectedTabla.stock ?? 0) / TABLES_PER_PATIN),
+        Math.floor((selectedTaco.stock  ?? 0) / TACOS_PER_PATIN)
+      )
     : 0;
+
+  // Preview de precio calculado (solo visual)
+  const precioPreview = (selectedTabla && selectedTaco)
+    ? (
+        (Number(selectedTabla?.precio_unidad || 0) * TABLES_PER_PATIN) +
+        (Number(selectedTaco?.precio_unidad  || 0) * TACOS_PER_PATIN)
+      ).toFixed(2)
+    : null;
 
   // Enviar datos
   const handleSubmit = async e => {
@@ -132,7 +149,7 @@ const TipoPatinesForm = () => {
       fd.append("id_tipo_taco", inputs.id_tipo_taco);
       fd.append("titulo", inputs.titulo);
       fd.append("medidas", inputs.medidas);
-      fd.append("precio_unidad", currentUser.tipo === "encargado" ? "0" : inputs.precio_unidad);
+      // precio_unidad NO se envía: lo calcula el backend
       fd.append("stock", inputs.stock);
       fd.append("comentarios", inputs.comentarios);
       if (logoFile) fd.append("logo", logoFile);
@@ -169,8 +186,10 @@ const TipoPatinesForm = () => {
 
   return (
     <section className="relative flex items-center justify-center min-h-screen bg-neutral-50">
-      <div className="absolute inset-0 bg-cover bg-center filter blur opacity-90"
-        style={{ backgroundImage: `url(${tablasBackground})` }} />
+      <div
+        className="absolute inset-0 bg-cover bg-center filter blur opacity-90"
+        style={{ backgroundImage: `url(${tablasBackground})` }}
+      />
       <div className="relative z-10 w-full sm:max-w-md p-6 bg-white bg-opacity-80 rounded-lg shadow-md">
         <Link to="/tipopatines/listar" className="block mb-6 text-2xl font-semibold text-neutral-800 text-center">
           Imanod Control de Stock
@@ -186,7 +205,11 @@ const TipoPatinesForm = () => {
             <label className="block mb-1 text-sm font-medium">Tabla utilizada</label>
             <select value={inputs.id_tipo_tabla} onChange={handleParentTabla} className="w-full p-2 border rounded">
               <option value="" disabled>Selecciona tabla</option>
-              {tablas.map(t => <option key={t.id_tipo_tabla} value={t.id_tipo_tabla}>{t.titulo}</option>)}
+              {tablas.map(t => (
+                <option key={t.id_tipo_tabla} value={t.id_tipo_tabla}>
+                  {t.titulo}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -195,7 +218,11 @@ const TipoPatinesForm = () => {
             <label className="block mb-1 text-sm font-medium">Taco utilizado</label>
             <select value={inputs.id_tipo_taco} onChange={handleParentTaco} className="w-full p-2 border rounded">
               <option value="" disabled>Selecciona taco</option>
-              {tacos.map(tc => <option key={tc.id_tipo_taco} value={tc.id_tipo_taco}>{tc.titulo}</option>)}
+              {tacos.map(tc => (
+                <option key={tc.id_tipo_taco} value={tc.id_tipo_taco}>
+                  {tc.titulo}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -208,29 +235,79 @@ const TipoPatinesForm = () => {
             </div>
           )}
 
-          {/* Otros campos */}
-          <input name="titulo" value={inputs.titulo} onChange={handleChange} placeholder="Título" className="w-full p-2 border rounded" />
-          <input name="medidas" value={inputs.medidas} onChange={handleChange} placeholder="Medidas" className="w-full p-2 border rounded" />
-          {currentUser.tipo !== "encargado" && (
-            <input name="precio_unidad" value={inputs.precio_unidad} onChange={handleChange} placeholder="Precio" className="w-full p-2 border rounded" />
+          {/* Precio calculado automáticamente (solo visual) */}
+          {currentUser?.tipo === "admin" && (
+          <div className="text-sm text-gray-700">
+            <p>
+              <strong>Precio calculado (auto): </strong>
+              {precioPreview !== null ? `$ ${precioPreview}` : "—"}
+            </p>
+            <p className="text-xs text-gray-500">
+              Se calcula como: precio tabla × {TABLES_PER_PATIN} + precio taco × {TACOS_PER_PATIN}.
+            </p>
+          </div>
           )}
-          <input name="stock" value={inputs.stock} onChange={handleChange} placeholder="Stock" className="w-full p-2 border rounded" />
-          <textarea name="comentarios" value={inputs.comentarios} onChange={handleChange} placeholder="Comentarios" className="w-full p-2 border rounded" />
+
+          {/* Otros campos */}
+          <input
+            name="titulo"
+            value={inputs.titulo}
+            onChange={handleChange}
+            placeholder="Título"
+            className="w-full p-2 border rounded"
+          />
+          <input
+            name="medidas"
+            value={inputs.medidas}
+            onChange={handleChange}
+            placeholder="Medidas"
+            className="w-full p-2 border rounded"
+          />
+          <input
+            name="stock"
+            value={inputs.stock}
+            onChange={handleChange}
+            placeholder="Stock"
+            className="w-full p-2 border rounded"
+          />
+          <textarea
+            name="comentarios"
+            value={inputs.comentarios}
+            onChange={handleChange}
+            placeholder="Comentarios"
+            className="w-full p-2 border rounded"
+          />
 
           {/* Logo */}
           <div>
             <label>Logo</label>
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleLogoChange} className="w-full p-2 border rounded" />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleLogoChange}
+              className="w-full p-2 border rounded"
+            />
             {preview && (
               <div className="relative mt-2">
                 <img src={preview} alt="Preview" className="w-full rounded" />
-                <button type="button" onClick={clearLogo} className="absolute top-1 right-1 bg-gray-800 text-white rounded-full px-2">×</button>
+                <button
+                  type="button"
+                  onClick={clearLogo}
+                  className="absolute top-1 right-1 bg-gray-800 text-white rounded-full px-2"
+                >
+                  ×
+                </button>
               </div>
             )}
           </div>
 
           {/* Mensaje */}
-          {err && <p className={messageType === "error" ? "text-red-500" : "text-green-500"}>{err}</p>}
+          {err && (
+            <p className={messageType === "error" ? "text-red-500" : "text-green-500"}>
+              {err}
+            </p>
+          )}
 
           {/* Botón */}
           <button type="submit" className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
