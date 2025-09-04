@@ -42,6 +42,8 @@ import PrototipoPallet from "./pages/prototipoPallet/PrototipoPallet";
 import PrototipoPalletList from "./pages/prototipoPallet/PrototipoPalletList";
 import Pedidos from "./pages/pedidos/Pedidos";
 import PedidosList from "./pages/pedidos/PedidosList";
+import VentaFuegoYa from "./pages/ventaFuegoYa/VentaFuegoYa";
+import VentaFuegoYaList from "./pages/ventaFuegoYa/VentaFuegoYaList";
 
 
 
@@ -295,6 +297,30 @@ function App() {
           element: (
             <AdminRoute>
               <EncargosList/>
+            </AdminRoute>
+          ),
+        },
+        {
+          path: "/ventafuegoya",
+          element: (
+            <AdminRoute>
+              <VentaFuegoYa/>
+            </AdminRoute>
+          ),
+        },
+        {
+          path: "/ventafuegoya/listar",
+          element: (
+            <AdminRoute>
+              <VentaFuegoYaList/>
+            </AdminRoute>
+          ),
+        },
+        {
+          path: "/ventafuegoya/:id",
+          element: (
+            <AdminRoute>
+              <VentaFuegoYa/>
             </AdminRoute>
           ),
         },
