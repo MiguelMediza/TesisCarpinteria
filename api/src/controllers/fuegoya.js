@@ -49,7 +49,7 @@ export const getFuegoYaById = async (req, res) => {
     const [rows] = await pool.query(
       `
       SELECT
-        id_fuego_ya
+        id_fuego_ya,
         tipo,
         precio_unidad,
         stock,

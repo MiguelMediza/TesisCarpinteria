@@ -109,7 +109,7 @@ CREATE TABLE tipo_tacos (
     foto VARCHAR(255),
     FOREIGN KEY (id_materia_prima) REFERENCES palos(id_materia_prima)
 );
-
+select * from tipo_patines
 CREATE TABLE tipo_patines (
     id_tipo_patin INT AUTO_INCREMENT PRIMARY KEY,
     id_tipo_tabla INT NOT NULL,
@@ -223,6 +223,7 @@ CREATE TABLE entregas_transporte (
     FOREIGN KEY (id_pedido) REFERENCES pedidos(id_pedido)
 );
 
+
 CREATE TABLE ventas (
     id_venta INT AUTO_INCREMENT PRIMARY KEY,
     fecha_realizada DATE NOT NULL,
@@ -239,6 +240,21 @@ CREATE TABLE fuego_ya (
     precio_unidad DECIMAL(10,2),
     stock INT,
     foto VARCHAR(255)
+);
+
+CREATE TABLE venta_fuegoya (
+    id_ventaFuegoya INT AUTO_INCREMENT PRIMARY KEY,
+    fecha_realizada DATE NOT NULL,
+    precio_total DECIMAL(10,2),
+    id_cliente INT,
+    id_fuego_ya INT,
+    cantidadbolsas INT,
+    foto VARCHAR(255),
+    comentarios VARCHAR(255),
+    estadopago ENUM('credito', 'pago'),
+    fechapago DATETIME,
+    FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente),
+    FOREIGN KEY (id_fuego_ya) REFERENCES fuego_ya(id_fuego_ya)
 );
 
 CREATE TABLE pellets (

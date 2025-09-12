@@ -96,7 +96,7 @@ app.use(
 app.use(cookieParser());
 
 // ─── Rutas ────────────────────────────────────────────────────────────────────
-
+app.use("/api/src", indexRoutes);
 app.use("/api/src/usuarios", authRoutes);
 app.use("/api/src/proveedores", proveedoresRouter);
 app.use("/api/src/tablas", tablasRouter);

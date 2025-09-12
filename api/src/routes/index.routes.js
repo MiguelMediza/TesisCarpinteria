@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { pool } from "../db.js";
+import { listStockBajo } from "../controllers/stockBajo.js";
 const router = Router();
 
 router.get('/ping', async (req, res) => {
@@ -7,14 +8,7 @@ router.get('/ping', async (req, res) => {
     res.json(result[0])
 });
 
-router.get('/usuarios', (req, res) => res.send('Obteniendo usuarios'));
-
-router.post('/usuarios', (req, res) => res.send('Agregando usuario'));
-
-router.put('/usuarios', (req, res) => res.send('Actualizando usuarios'));
-
-router.delete('/usuarios', (req, res) => res.send('Eliminando usuario'));
-
+router.get("/stockbajo", listStockBajo);
 
 
 export default router;
