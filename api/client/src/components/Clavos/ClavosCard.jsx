@@ -20,8 +20,10 @@ const ClavosCard = ({ clavo, onEdit, onDelete }) => {
       <div>
         {foto && (
           <img
-            src={`http://localhost:4000/images/clavos/${foto}`}
+            src={`/images/clavos/${encodeURIComponent(foto)}`}
             alt={titulo}
+            loading="lazy"
+            onError={(e) => { e.currentTarget.src = '/images/placeholder.png'; }}
             className="w-full h-32 object-cover mb-4 rounded"
           />
         )}

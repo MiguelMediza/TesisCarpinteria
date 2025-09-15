@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from "../../api";
 import { Link, useNavigate } from "react-router-dom";
 import ClavosCard from "./ClavosCard";
 import DeleteConfirm from "../Modals/DeleteConfirm";
@@ -14,8 +14,8 @@ const ClavosList = () => {
   useEffect(() => {
     const fetchClavos = async () => {
       try {
-        const res = await axios.get("http://localhost:4000/api/src/clavos/listar");
-        setClavos(res.data);
+        const { data } = await api.get("/clavos/listar");
+        setClavos(data);
       } catch (err) {
         console.error(err);
         setError("No se pudieron cargar los clavos.");
@@ -24,21 +24,16 @@ const ClavosList = () => {
     fetchClavos();
   }, []);
 
-  const handleEdit = (id) => {
-    navigate(`/clavos/${id}`);
-  };
+  const handleEdit = (id) => navigate(`/clavos/${id}`);
 
-  // Abrir modal
-  const handleDeleteClick = (clavo) => {
-    setToDelete(clavo);
-  };
+  const handleDeleteClick = (clavo) => setToDelete(clavo);
 
-  // Confirmar
   const confirmDelete = async () => {
     try {
-      await axios.delete(`http://localhost:4000/api/src/clavos/${toDelete.id_materia_prima}`);
-      // quitarlo del array
-      setClavos(prev => prev.filter(c => c.id_materia_prima !== toDelete.id_materia_prima));
+      await api.delete(`/clavos/${toDelete.id_materia_prima}`);
+      setClavos((prev) =>
+        prev.filter((c) => c.id_materia_prima !== toDelete.id_materia_prima)
+      );
     } catch (err) {
       console.error(err);
       setError("Error al eliminar el clavo.");
@@ -47,14 +42,10 @@ const ClavosList = () => {
     }
   };
 
-  // Cancelar
-  const cancelDelete = () => {
-    setToDelete(null);
-  };
+  const cancelDelete = () => setToDelete(null);
 
-  // Filtrado
-  const filteredClavos = clavos.filter(c =>
-    c.titulo.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredClavos = clavos.filter((c) =>
+    (c.titulo || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -76,13 +67,13 @@ const ClavosList = () => {
           type="text"
           placeholder="Buscar clavo por título..."
           value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
+          onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        {filteredClavos.map(c => (
+        {filteredClavos.map((c) => (
           <ClavosCard
             key={c.id_materia_prima}
             clavo={c}
@@ -100,7 +91,9 @@ const ClavosList = () => {
       <DeleteConfirm
         isOpen={!!toDelete}
         title={toDelete?.titulo}
-        imageSrc={toDelete ? `http://localhost:4000/images/clavos/${toDelete.foto}` : null}
+        imageSrc={
+          toDelete?.foto ? `/images/clavos/${encodeURIComponent(toDelete.foto)}` : null
+        }
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
       />
