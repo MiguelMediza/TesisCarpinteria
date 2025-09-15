@@ -29,7 +29,7 @@ import ventafuegoyaRouter from "./routes/ventafuegoya.routes.js";
 // Rutas de archivos
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const clientDist = path.resolve(__dirname, "../../client/dist");
+const clientDist = path.resolve(__dirname, "../client/dist");
 
 // App
 const app = express();
