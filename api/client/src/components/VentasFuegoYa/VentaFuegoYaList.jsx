@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
-import VentaFuegoyaCard from "./VentaFuegoyaCard";  // <- tu card de fuegoya
+import VentaFuegoyaCard from "./VentaFuegoYaCard";  // <- tu card de fuegoya
 import DeleteConfirm from "../Modals/DeleteConfirm";
 
 const PAGO_ESTADOS = ["", "credito", "pago"]; // "" = todos
