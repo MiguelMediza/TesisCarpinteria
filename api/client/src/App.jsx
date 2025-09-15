@@ -9,7 +9,7 @@ import {
 } from "react-router-dom";
 
 import Home from "./pages/home/Home";
-import Proveedores from "./pages/proveedores/proveedores";
+import Proveedores from "./pages/proveedores/Proveedores";
 import ProveedoresList from "./pages/proveedores/ProveedoresList";
 import Tablas from "./pages/tablas/Tablas";
 import TablasList from "./pages/tablas/TablasList";
