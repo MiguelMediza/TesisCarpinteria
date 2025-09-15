@@ -1,6 +1,8 @@
 import { createPool } from "mysql2/promise";
 import { DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT } from "./config.js";
 
+const sslMode = (process.env.DB_SSL || "").toLowerCase();
+
 export const pool = createPool({
   host: DB_HOST,
   user: DB_USER,
@@ -10,6 +12,10 @@ export const pool = createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  // Habilita TLS si lo pedís por env. Útil cuando usás el host público/proxy de Railway.
-  ssl: process.env.DB_SSL === "true" ? {} : undefined,
+  // Si usás el host público, permitimos self-signed:
+  ssl:
+    sslMode === "true" || sslMode === "require" || sslMode === "public" || sslMode === "skip"
+      ? { rejectUnauthorized: false, minVersion: "TLSv1.2" }
+      : undefined,
 });
+
