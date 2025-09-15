@@ -2,6 +2,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 
 import { PORT, CORS_ORIGIN } from "./config.js";
@@ -27,30 +28,45 @@ import materiaprimaRouter from "./routes/materiaprima.routes.js";
 import pedidosRouter from "./routes/pedidos.routes.js";
 import ventafuegoyaRouter from "./routes/ventafuegoya.routes.js";
 
-// Rutas de archivos
+// ─── Paths ────────────────────────────────────────────────────────────────────
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+// ahora que moviste el frontend a api/client:
 const clientDist = path.resolve(__dirname, "../client/dist");
+const indexHtml = path.join(clientDist, "index.html");
 
-// App
+// ─── App ──────────────────────────────────────────────────────────────────────
 const app = express();
+const isProd = process.env.NODE_ENV === "production";
 
-// Middlewares base
+// Handlers globales para ver errores que tumben el proceso
+process.on("unhandledRejection", (err) => {
+  console.error("UNHANDLED_REJECTION:", err);
+});
+process.on("uncaughtException", (err) => {
+  console.error("UNCAUGHT_EXCEPTION:", err);
+});
+
+// ─── Middlewares base ─────────────────────────────────────────────────────────
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Credentials", true);
   next();
 });
 app.use(express.json());
-const allowedOrigins = [CORS_ORIGIN, "http://localhost:5173"].filter(Boolean);
-app.use(
-  cors({
-    origin: allowedOrigins.length ? allowedOrigins : true,
-    credentials: true,
-  })
-);
 app.use(cookieParser());
 
-// Static de imágenes (carpeta api/src/images/*)
+// CORS SOLO en desarrollo (vite en 5173). En prod es mismo dominio → no hace falta.
+if (!isProd) {
+  const allowedOrigins = [CORS_ORIGIN, "http://localhost:5173"].filter(Boolean);
+  app.use(
+    cors({
+      origin: allowedOrigins.length ? allowedOrigins : true,
+      credentials: true,
+    })
+  );
+}
+
+// ─── Static de imágenes (api/src/images/*) ────────────────────────────────────
 app.use("/images/tablas", express.static(path.join(__dirname, "images", "tablas")));
 app.use("/images/palos", express.static(path.join(__dirname, "images", "palos")));
 app.use("/images/clavos", express.static(path.join(__dirname, "images", "clavos")));
@@ -64,7 +80,7 @@ app.use("/images/ventas", express.static(path.join(__dirname, "images", "ventas"
 app.use("/images/prototipos", express.static(path.join(__dirname, "images", "prototipos")));
 app.use("/images/venta_fuegoya", express.static(path.join(__dirname, "images", "venta_fuegoya")));
 
-// Rutas API
+// ─── Rutas API ────────────────────────────────────────────────────────────────
 app.use("/api/src", indexRoutes);
 app.use("/api/src/usuarios", authRoutes);
 app.use("/api/src/proveedores", proveedoresRouter);
@@ -85,8 +101,7 @@ app.use("/api/src/materiaprima", materiaprimaRouter);
 app.use("/api/src/pedidos", pedidosRouter);
 app.use("/api/src/ventafuegoya", ventafuegoyaRouter);
 
-// (Quitar el duplicado) NO vuelvas a llamar app.use(indexRoutes) sin prefijo
-
+// ─── Healthcheck (DB + app) ───────────────────────────────────────────────────
 app.get("/api/health", async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT 1 AS ok");
@@ -104,16 +119,20 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
-// Static del frontend (build de Vite)
-app.use(express.static(clientDist));
+// ─── Servir frontend (solo si existe el build) ────────────────────────────────
+if (fs.existsSync(indexHtml)) {
+  app.use(express.static(clientDist));
+  app.get("*", (req, res) => {
+    res.sendFile(indexHtml);
+  });
+} else {
+  // Fallback temporal si aún no se construyó el front
+  app.get("/", (_, res) => res.send("Frontend no compilado aún"));
+}
 
-// Fallback SPA (después de TODAS las rutas API)
-app.get("*", (req, res) => {
-  res.sendFile(path.join(clientDist, "index.html"));
-});
-
-// Arranque
+// ─── Arranque ─────────────────────────────────────────────────────────────────
 console.log("Sirviendo frontend desde:", clientDist);
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+const HOST = "0.0.0.0"; // importante para Railway
+app.listen(PORT, HOST, () => {
+  console.log(`Server is running on http://${HOST}:${PORT}`);
 });
