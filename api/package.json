@@ -8,6 +8,7 @@
     "start": "node src/index.js",
     "postinstall": "npm --prefix ./client ci --production=false && npm --prefix ./client run build"
   },
+  "engines": { "node": ">=20" },
   "keywords": [],
   "author": "",
   "license": "ISC",
