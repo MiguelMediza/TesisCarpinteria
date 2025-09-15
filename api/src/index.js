@@ -1,5 +1,6 @@
 import express from 'express';
 import { PORT } from './config.js';
+import { CORS_ORIGIN } from './config.js';
 import indexRoutes from "./routes/index.routes.js";
 import authRoutes from "./routes/usuarios.routes.js";
 import cookieParser from "cookie-parser";
@@ -87,12 +88,10 @@ app.use((req, res, next) => {
   next();
 });
 app.use(express.json());
-app.use(
-  cors({
-    origin: "http://localhost:5173",
-    credentials: true
-  })
-);
+app.use(cors({
+  origin: [CORS_ORIGIN, 'http://localhost:5173'],
+  credentials: true
+}));
 app.use(cookieParser());
 
 // ─── Rutas ────────────────────────────────────────────────────────────────────
