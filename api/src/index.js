@@ -101,20 +101,30 @@ app.use("/api/src/materiaprima", materiaprimaRouter);
 app.use("/api/src/pedidos", pedidosRouter);
 app.use("/api/src/ventafuegoya", ventafuegoyaRouter);
 
-// ─── Healthcheck (DB + app) ───────────────────────────────────────────────────
 app.get("/api/health", async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT 1 AS ok");
+    const [info] = await pool.query("SELECT DATABASE() AS db, VERSION() AS ver");
     res.json({
       ok: true,
       db: rows[0]?.ok ?? 0,
+      info: info[0],
       env: process.env.NODE_ENV || "development",
       time: new Date().toISOString(),
     });
   } catch (e) {
+    console.error("HEALTH_DB_ERROR:", e);
     res.status(500).json({
       ok: false,
-      error: e.code || e.message,
+      code: e.code,
+      errno: e.errno,
+      sqlState: e.sqlState,
+      fatal: e.fatal,
+      message: e.message,
+      host: process.env.DB_HOST,
+      port: process.env.DB_PORT,
+      name: process.env.DB_NAME,
+      ssl: process.env.DB_SSL,
     });
   }
 });
