@@ -31,7 +31,6 @@ import ventafuegoyaRouter from "./routes/ventafuegoya.routes.js";
 // ─── Paths ────────────────────────────────────────────────────────────────────
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// ahora que moviste el frontend a api/client:
 const clientDist = path.resolve(__dirname, "../client/dist");
 const indexHtml = path.join(clientDist, "index.html");
 
@@ -80,6 +79,15 @@ app.use("/images/ventas", express.static(path.join(__dirname, "images", "ventas"
 app.use("/images/prototipos", express.static(path.join(__dirname, "images", "prototipos")));
 app.use("/images/venta_fuegoya", express.static(path.join(__dirname, "images", "venta_fuegoya")));
 
+// ─── Static del frontend build ────────────────────────────────────────────────
+// Sirve todo el contenido de dist
+app.use(express.static(clientDist));
+// Sirve explícitamente /assets con cache agresivo
+app.use(
+  "/assets",
+  express.static(path.join(clientDist, "assets"), { maxAge: "1y", immutable: true })
+);
+
 // ─── Rutas API ────────────────────────────────────────────────────────────────
 app.use("/api/src", indexRoutes);
 app.use("/api/src/usuarios", authRoutes);
@@ -101,6 +109,7 @@ app.use("/api/src/materiaprima", materiaprimaRouter);
 app.use("/api/src/pedidos", pedidosRouter);
 app.use("/api/src/ventafuegoya", ventafuegoyaRouter);
 
+// Healthcheck
 app.get("/api/health", async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT 1 AS ok");
@@ -129,9 +138,20 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
-// ✅ Express 5 friendly
-app.get(/^\/(?!api\/).*/, (req, res) => {
-  res.sendFile(path.resolve(clientDist, "index.html"));
+// ─── Fallback SPA (Express 5 friendly, NO archivos) ───────────────────────────
+// Solo para GET, que no empiecen con /api/ y que NO tengan extensión (.js, .css, .png, etc.)
+app.use((req, res, next) => {
+  const isGet = req.method === "GET";
+  const isApi = req.path.startsWith("/api/");
+  const hasExt = path.extname(req.path) !== "";
+
+  if (isGet && !isApi && !hasExt) {
+    if (fs.existsSync(indexHtml)) {
+      return res.sendFile(indexHtml);
+    }
+    return res.status(503).send("Frontend no compilado aún.");
+  }
+  next();
 });
 
 // ─── Arranque ─────────────────────────────────────────────────────────────────

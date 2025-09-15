@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
-import axios from "axios";
+import { api } from "../../api"; 
 import tablasBackground from "../../assets/tablasBackground.jpg";
 const Register = () => {
   const [inputs, setInputs] = useState({
@@ -35,12 +35,14 @@ const Register = () => {
     return;
     }
     try {
-      await axios.post("http://localhost:4000/api/src/usuarios/register", inputs);
+      await api.post("/usuarios/register", inputs);
       setError("Registrado exitosamente, ahora puedes iniciar sesión.");
       setMessageType("success");
-      setInputs({ username: "", email: "", password: "", tipo: "", name: "" }); 
+      setInputs({ username: "", email: "", password: "", tipo: "", name: "" });
+      setTimeout(() => navigate("/login"), 2000); 
   }catch (err) {
-    setError(err.response.data);
+    const msg = err?.response?.data?.message || err?.response?.data || "Error al registrarse.";
+    setError(msg);
     setMessageType("error");
     console.log(err);
   }
