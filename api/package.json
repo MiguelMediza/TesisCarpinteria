@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "postinstall": "npm --prefix ../client ci && npm --prefix ../client run build"
   },
   "keywords": [],
   "author": "",

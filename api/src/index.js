@@ -29,6 +29,9 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const clientDist = path.resolve(__dirname, "../../client/dist");
+app.use(express.static(clientDist));        // sirve archivos estáticos
+
 const app = express();
 
 // ─── Middlewares ───────────────────────────────────────────────────────────────
@@ -115,7 +118,13 @@ app.use("/api/src/materiaprima", materiaprimaRouter);
 app.use("/api/src/pedidos", pedidosRouter);
 app.use("/api/src/ventafuegoya", ventafuegoyaRouter);
 
+
 app.use(indexRoutes);
+
+// Fallback SPA (después de TODAS las rutas /api/…)
+app.get("*", (req, res) => {
+  res.sendFile(path.join(clientDist, "index.html"));
+});
 
 // ─── Arranque del servidor ────────────────────────────────────────────────────
 
