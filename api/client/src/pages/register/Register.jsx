@@ -86,7 +86,7 @@ const Register = () => {
               type="text"
               name="username"
               id="username"
-              placeholder="Username"
+              placeholder="Usuario"
               value={inputs.username}
               onChange={handleChange}
               className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
@@ -143,7 +143,7 @@ const Register = () => {
               type="text"
               name="name"
               id="name"
-              placeholder="Name"
+              placeholder="Nombre"
               value={inputs.name}
               onChange={handleChange}
               className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"

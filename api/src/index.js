@@ -54,6 +54,14 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(cookieParser());
 
+app.enable('trust proxy');
+app.use((req, res, next) => {
+  if (req.headers['x-forwarded-proto'] !== 'https') {
+    return res.redirect(301, `https://${req.headers.host}${req.url}`);
+  }
+  next();
+});
+
 // CORS SOLO en desarrollo (vite en 5173). En prod es mismo dominio → no hace falta.
 if (!isProd) {
   const allowedOrigins = [CORS_ORIGIN, "http://localhost:5173"].filter(Boolean);
@@ -147,6 +155,7 @@ app.use((req, res, next) => {
 
   if (isGet && !isApi && !hasExt) {
     if (fs.existsSync(indexHtml)) {
+      res.setHeader('Cache-Control', 'no-cache');
       return res.sendFile(indexHtml);
     }
     return res.status(503).send("Frontend no compilado aún.");
