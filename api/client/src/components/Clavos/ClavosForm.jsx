@@ -141,8 +141,150 @@ const ClavosForm = () => {
           {id ? "Editar Clavo" : "Nuevo Clavo"}
         </h1>
         <form className="space-y-4 md:space-y-6" onSubmit={handleSubmit} encType="multipart/form-data">
-          {/* ...inputs... (sin cambios visuales) */}
-          {err && (
+          {/* Título */}
+          <div>
+            <label htmlFor="titulo" className="block mb-1 text-sm font-medium text-neutral-800">
+              Título
+            </label>
+            <input
+              type="text"
+              name="titulo"
+              id="titulo"
+              value={inputs.titulo}
+              onChange={handleChange}
+              placeholder="Título del clavo"
+              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+            />
+          </div>
+          {/* Tipo */}
+          <div>
+            <label
+              htmlFor="tipo"
+              className="block mb-1 text-sm font-medium text-neutral-800"
+            >
+              Tipo
+            </label>
+            <select
+              name="tipo"
+              id="tipo"
+              value={inputs.tipo}
+              onChange={handleChange}
+              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+            >
+              <option value="">Seleccione un tipo...</option>
+              <option value="Para pistola">Para pistola</option>
+              <option value="Sencillos">Sencillos</option>
+            </select>
+          </div>
+
+          {/* Medidas */}
+          <div>
+            <label htmlFor="medidas" className="block mb-1 text-sm font-medium text-neutral-800">
+              Medidas
+            </label>
+            <input
+              type="text"
+              name="medidas"
+              id="medidas"
+              value={inputs.medidas}
+              onChange={handleChange}
+              placeholder="Ej: 5×100 mm"
+              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+            />
+          </div>
+          {/* Material */}
+          <div>
+            <label htmlFor="material" className="block mb-1 text-sm font-medium text-neutral-800">
+              Material
+            </label>
+            <input
+              type="text"
+              name="material"
+              id="material"
+              value={inputs.material}
+              onChange={handleChange}
+              placeholder="Ej: Acero"
+              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+            />
+          </div>
+          {/* Precio unitario */}
+          {currentUser?.tipo !== "encargado" && (
+            <div>
+              <label htmlFor="precio_unidad" className="block mb-1 text-sm font-medium text-neutral-800">
+                Precio Unitario
+              </label>
+              <input
+                type="text"
+                inputMode="decimal"
+                name="precio_unidad"
+                id="precio_unidad"
+                value={inputs.precio_unidad}
+                onChange={handleChange}
+                placeholder="Ej: 0.10"
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+              />
+            </div>
+          )}
+          {/* Stock */}
+          <div>
+            <label htmlFor="stock" className="block mb-1 text-sm font-medium text-neutral-800">
+              Stock
+            </label>
+            <input
+              type="text"
+              inputMode="numeric"
+              name="stock"
+              id="stock"
+              value={inputs.stock}
+              onChange={handleChange}
+              placeholder="Ej: 1000"
+              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+            />
+          </div>
+          {/* Foto */}
+          <div>
+            <label htmlFor="foto" className="block mb-1 text-sm font-medium text-neutral-800">
+              Foto
+            </label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              name="foto"
+              id="foto"
+              onChange={handleFotoChange}
+              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+            />
+            {preview && (
+              <div className="relative mt-2">
+                <img src={preview} alt="Preview" className="w-full h-auto rounded" />
+                <button
+                  type="button"
+                  onClick={clearImage}
+                  className="absolute top-1 right-1 bg-gray-800 bg-opacity-50 text-white rounded-full p-1 hover:bg-opacity-75"
+                >
+                  &times;
+                </button>
+              </div>
+            )}
+          </div>
+          {/* Comentarios */}
+          <div>
+            <label htmlFor="comentarios" className="block mb-1 text-sm font-medium text-neutral-800">
+              Comentarios
+            </label>
+            <textarea
+              name="comentarios"
+              id="comentarios"
+              value={inputs.comentarios}
+              onChange={handleChange}
+              placeholder="Comentarios adicionales"
+              rows={3}
+              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+            />
+          </div>
+          {/* Mensaje */}
+            {err && (
             <span className={messageType === "error" ? "text-red-500" : "text-green-500"}>
               {err}
             </span>
