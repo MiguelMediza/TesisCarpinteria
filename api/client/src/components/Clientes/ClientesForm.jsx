@@ -1,6 +1,6 @@
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import axios from "axios";
+import { api } from "../../api";
 import clientesBackground from "../../assets/tablasBackground.jpg";
 
 const ClientesForm = () => {
@@ -12,7 +12,7 @@ const ClientesForm = () => {
     apellido: "",
     telefono: "",
     email: "",
-    es_empresa: "0", // "0" = No es empresa, "1" = Es empresa
+    es_empresa: "0",           
     nombre_empresa: "",
     direccion_empresa: "",
     email_empresa: ""
@@ -24,17 +24,17 @@ const ClientesForm = () => {
 
   useEffect(() => {
     if (!id) return;
-    axios.get(`http://localhost:4000/api/src/clientes/${id}`)
+    api.get(`/clientes/${id}`)
       .then(({ data }) => {
         setInputs({
-          nombre: data.nombre || "",
-          apellido: data.apellido || "",
-          telefono: data.telefono || "",
-          email: data.email || "",
-          es_empresa: data.es_empresa ? "1" : "0",
-          nombre_empresa: data.nombre_empresa || "",
-          direccion_empresa: data.direccion_empresa || "",
-          email_empresa: data.email_empresa || ""
+          nombre: data?.nombre || "",
+          apellido: data?.apellido || "",
+          telefono: data?.telefono || "",
+          email: data?.email || "",
+          es_empresa: data?.es_empresa ? "1" : "0",
+          nombre_empresa: data?.nombre_empresa || "",
+          direccion_empresa: data?.direccion_empresa || "",
+          email_empresa: data?.email_empresa || ""
         });
       })
       .catch(() => {
@@ -56,33 +56,39 @@ const ClientesForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setInputs(prev => ({ ...prev, [name]: value }));
+    setInputs((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     const validationError = validateInputs();
     if (validationError) {
       setErr(validationError);
       setMessageType("error");
       return;
     }
+
+    const payload = {
+      ...inputs,
+      es_empresa: inputs.es_empresa === "1" ? 1 : 0,
+    };
+
     try {
       if (id) {
-        await axios.put(`http://localhost:4000/api/src/clientes/${id}`, inputs);
+        await api.put(`/clientes/${id}`, payload);
         setErr("Cliente actualizado correctamente.");
       } else {
-        await axios.post(`http://localhost:4000/api/src/clientes/agregar`, inputs);
+        await api.post(`/clientes/agregar`, payload);
         setErr("Cliente creado exitosamente.");
       }
       setMessageType("success");
       setTimeout(() => navigate("/clientes/listar"), 600);
     } catch (error) {
-      let msg = "Error al guardar el cliente.";
-      if (error.response) {
-        const payload = error.response.data;
-        msg = typeof payload === "string" ? payload : payload.message || msg;
-      }
+      const msg =
+        error?.response?.data?.message ||
+        error?.response?.data ||
+        "Error al guardar el cliente.";
       setErr(msg);
       setMessageType("error");
     }
@@ -103,67 +109,68 @@ const ClientesForm = () => {
         </h1>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
-          {/* Nombre */}
           <div>
-            <label htmlFor="nombre" className="block mb-1 text-sm font-medium text-neutral-800">Nombre</label>
+            <label className="block mb-1 text-sm font-medium text-neutral-800">Nombre</label>
             <input type="text" name="nombre" value={inputs.nombre} onChange={handleChange} className="w-full p-2 border rounded" />
           </div>
 
-          {/* Apellido */}
           <div>
-            <label htmlFor="apellido" className="block mb-1 text-sm font-medium text-neutral-800">Apellido</label>
+            <label className="block mb-1 text-sm font-medium text-neutral-800">Apellido</label>
             <input type="text" name="apellido" value={inputs.apellido} onChange={handleChange} className="w-full p-2 border rounded" />
           </div>
 
-          {/* Teléfono */}
           <div>
-            <label htmlFor="telefono" className="block mb-1 text-sm font-medium text-neutral-800">Teléfono</label>
+            <label className="block mb-1 text-sm font-medium text-neutral-800">Teléfono</label>
             <input type="text" name="telefono" value={inputs.telefono} onChange={handleChange} className="w-full p-2 border rounded" />
           </div>
 
-          {/* Email */}
           <div>
-            <label htmlFor="email" className="block mb-1 text-sm font-medium text-neutral-800">Email</label>
+            <label className="block mb-1 text-sm font-medium text-neutral-800">Email</label>
             <input type="email" name="email" value={inputs.email} onChange={handleChange} className="w-full p-2 border rounded" />
           </div>
 
-          {/* Es empresa */}
           <div>
-            <label htmlFor="es_empresa" className="block mb-1 text-sm font-medium text-neutral-800">¿Es empresa?</label>
+            <label className="block mb-1 text-sm font-medium text-neutral-800">¿Es empresa?</label>
             <select name="es_empresa" value={inputs.es_empresa} onChange={handleChange} className="w-full p-2 border rounded">
               <option value="0">No</option>
               <option value="1">Sí</option>
             </select>
           </div>
 
-          {/* Campos adicionales SOLO si es empresa */}
           {inputs.es_empresa === "1" && (
             <>
               <div>
-                <label htmlFor="nombre_empresa" className="block mb-1 text-sm font-medium text-neutral-800">Nombre de Empresa</label>
+                <label className="block mb-1 text-sm font-medium text-neutral-800">Nombre de Empresa</label>
                 <input type="text" name="nombre_empresa" value={inputs.nombre_empresa} onChange={handleChange} className="w-full p-2 border rounded" />
               </div>
 
               <div>
-                <label htmlFor="direccion_empresa" className="block mb-1 text-sm font-medium text-neutral-800">Dirección de Empresa</label>
+                <label className="block mb-1 text-sm font-medium text-neutral-800">Dirección de Empresa</label>
                 <input type="text" name="direccion_empresa" value={inputs.direccion_empresa} onChange={handleChange} className="w-full p-2 border rounded" />
               </div>
 
               <div>
-                <label htmlFor="email_empresa" className="block mb-1 text-sm font-medium text-neutral-800">Email Empresa</label>
+                <label className="block mb-1 text-sm font-medium text-neutral-800">Email Empresa</label>
                 <input type="email" name="email_empresa" value={inputs.email_empresa} onChange={handleChange} className="w-full p-2 border rounded" />
               </div>
             </>
           )}
 
-          {/* Mensaje de error o éxito */}
-          {err && <span className={messageType === "error" ? "text-red-500" : "text-green-500"}>{err}</span>}
+          {err && (
+            <span className={messageType === "error" ? "text-red-500" : "text-green-500"}>
+              {err}
+            </span>
+          )}
 
-          {/* Botón */}
           <button type="submit" className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
             {id ? "Guardar Cambios" : "Crear Cliente"}
           </button>
-          <p className="mt-4 text-sm text-neutral-700 text-center"><Link to="/clientes/listar" className="font-medium underline">Volver al listado de clientes</Link></p>
+
+          <p className="mt-4 text-sm text-neutral-700 text-center">
+            <Link to="/clientes/listar" className="font-medium underline">
+              Volver al listado de clientes
+            </Link>
+          </p>
         </form>
       </div>
     </section>

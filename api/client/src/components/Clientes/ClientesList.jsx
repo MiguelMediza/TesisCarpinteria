@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import ClientesCard from "./ClientesCard";
 import DeleteConfirm from "../Modals/DeleteConfirm";
+import { api } from "../../api"; 
 
 const ClientesList = () => {
   const [clientes, setClientes] = useState([]);
@@ -11,35 +11,37 @@ const ClientesList = () => {
   const [toDelete, setToDelete] = useState(null);
   const navigate = useNavigate();
 
-  // 🔹 Obtener clientes al montar el componente
   useEffect(() => {
+    let isMounted = true; 
     const fetchClientes = async () => {
       try {
-        const res = await axios.get("http://localhost:4000/api/src/clientes/listar");
-        setClientes(res.data);
+        const { data } = await api.get("/clientes/listar"); 
+        if (isMounted) setClientes(data);
       } catch (err) {
         console.error("❌ Error al cargar clientes:", err);
-        setError("No se pudieron cargar los clientes.");
+        if (isMounted) setError("No se pudieron cargar los clientes.");
       }
     };
     fetchClientes();
+    return () => { isMounted = false; };
   }, []);
 
-  // 🔹 Editar cliente
   const handleEdit = (id) => {
     navigate(`/clientes/${id}`);
   };
 
-  // 🔹 Abrir modal de confirmación para eliminar
+  // Abrir modal
   const handleDeleteClick = (cliente) => {
     setToDelete(cliente);
   };
 
-  // 🔹 Confirmar eliminación
+  // Confirmar eliminar
   const confirmDelete = async () => {
     try {
-      await axios.delete(`http://localhost:4000/api/src/clientes/${toDelete.id_cliente}`);
-      setClientes(prev => prev.filter(c => c.id_cliente !== toDelete.id_cliente));
+      await api.delete(`/clientes/${toDelete.id_cliente}`); 
+      setClientes((prev) =>
+        prev.filter((c) => c.id_cliente !== toDelete.id_cliente)
+      );
     } catch (err) {
       console.error("❌ Error al eliminar cliente:", err);
       setError("Error al eliminar el cliente.");
@@ -48,13 +50,10 @@ const ClientesList = () => {
     }
   };
 
-  // 🔹 Cancelar eliminación
-  const cancelDelete = () => {
-    setToDelete(null);
-  };
 
-  // 🔹 Filtrar clientes por nombre, apellido o empresa
-  const filteredClientes = clientes.filter(c =>
+  const cancelDelete = () => setToDelete(null);
+
+  const filteredClientes = clientes.filter((c) =>
     `${c.nombre} ${c.apellido} ${c.nombre_empresa || ""}`
       .toLowerCase()
       .includes(searchTerm.toLowerCase())
@@ -74,20 +73,18 @@ const ClientesList = () => {
 
       {error && <p className="mb-4 text-red-500">{error}</p>}
 
-      {/* 🔹 Buscador */}
       <div className="mb-4">
         <input
           type="text"
           placeholder="Buscar cliente por nombre o empresa..."
           value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
+          onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 
-      {/* 🔹 Lista de clientes */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        {filteredClientes.map(cliente => (
+        {filteredClientes.map((cliente) => (
           <ClientesCard
             key={cliente.id_cliente}
             cliente={cliente}
@@ -95,7 +92,6 @@ const ClientesList = () => {
             onDelete={() => handleDeleteClick(cliente)}
           />
         ))}
-
         {filteredClientes.length === 0 && (
           <p className="col-span-full text-center text-gray-500">
             No se encontraron clientes.
@@ -103,11 +99,14 @@ const ClientesList = () => {
         )}
       </div>
 
-      {/* 🔹 Modal de confirmación */}
       <DeleteConfirm
         isOpen={!!toDelete}
-        title={toDelete?.es_empresa ? toDelete?.nombre_empresa : `${toDelete?.nombre} ${toDelete?.apellido}`}
-        imageSrc={null} // Clientes no tienen foto
+        title={
+          toDelete?.es_empresa
+            ? toDelete?.nombre_empresa
+            : `${toDelete?.nombre || ""} ${toDelete?.apellido || ""}`.trim()
+        }
+        imageSrc={null}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
       />
