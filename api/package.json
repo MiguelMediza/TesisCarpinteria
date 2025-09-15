@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "postinstall": "npm --prefix ./client ci --production=false && npm --prefix ./client run build"
+    "postinstall": "npm --prefix ./client ci --production=false && echo Skipping-Vite-build"
   },
   "engines": { "node": ">=20" },
   "keywords": [],
