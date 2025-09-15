@@ -129,16 +129,10 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
-// ─── Servir frontend (solo si existe el build) ────────────────────────────────
-if (fs.existsSync(indexHtml)) {
-  app.use(express.static(clientDist));
-  app.get("*", (req, res) => {
-    res.sendFile(indexHtml);
-  });
-} else {
-  // Fallback temporal si aún no se construyó el front
-  app.get("/", (_, res) => res.send("Frontend no compilado aún"));
-}
+// ✅ Express 5 friendly
+app.get(/^\/(?!api\/).*/, (req, res) => {
+  res.sendFile(path.resolve(clientDist, "index.html"));
+});
 
 // ─── Arranque ─────────────────────────────────────────────────────────────────
 console.log("Sirviendo frontend desde:", clientDist);
