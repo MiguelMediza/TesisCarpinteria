@@ -5,6 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import { PORT, CORS_ORIGIN } from "./config.js";
+import { pool } from "./db.js";
 
 import indexRoutes from "./routes/index.routes.js";
 import authRoutes from "./routes/usuarios.routes.js";
@@ -85,6 +86,23 @@ app.use("/api/src/pedidos", pedidosRouter);
 app.use("/api/src/ventafuegoya", ventafuegoyaRouter);
 
 // (Quitar el duplicado) NO vuelvas a llamar app.use(indexRoutes) sin prefijo
+
+app.get("/api/health", async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT 1 AS ok");
+    res.json({
+      ok: true,
+      db: rows[0]?.ok ?? 0,
+      env: process.env.NODE_ENV || "development",
+      time: new Date().toISOString(),
+    });
+  } catch (e) {
+    res.status(500).json({
+      ok: false,
+      error: e.code || e.message,
+    });
+  }
+});
 
 // Static del frontend (build de Vite)
 app.use(express.static(clientDist));
