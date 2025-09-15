@@ -1,8 +1,10 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { api } from "../../api"; 
 import tablasBackground from "../../assets/tablasBackground.jpg";
 const Register = () => {
+  const navigate = useNavigate();
+
   const [inputs, setInputs] = useState({
     username: "",
     email: "",
@@ -39,7 +41,7 @@ const Register = () => {
       setError("Registrado exitosamente, ahora puedes iniciar sesión.");
       setMessageType("success");
       setInputs({ username: "", email: "", password: "", tipo: "", name: "" });
-      setTimeout(() => navigate("/login"), 2000); 
+      setTimeout(() => navigate("/login"), 3000); 
   }catch (err) {
     const msg = err?.response?.data?.message || err?.response?.data || "Error al registrarse.";
     setError(msg);
@@ -78,7 +80,7 @@ const Register = () => {
               htmlFor="username"
               className="block mb-1 text-sm font-medium text-neutral-800"
             >
-              Username
+              Usuario
             </label>
             <input
               type="text"
@@ -116,7 +118,7 @@ const Register = () => {
               htmlFor="password"
               className="block mb-1 text-sm font-medium text-neutral-800"
             >
-              Password
+              Contraseña
             </label>
             <input
               type="password"
@@ -135,7 +137,7 @@ const Register = () => {
               htmlFor="name"
               className="block mb-1 text-sm font-medium text-neutral-800"
             >
-              Name
+              Nombre
             </label>
             <input
               type="text"
@@ -189,13 +191,13 @@ const Register = () => {
             type="submit"
             className="w-full py-2.5 text-white bg-neutral-700 hover:bg-neutral-800 rounded transition"
           >
-            Register
+            Registrarse
           </button>
 
           <p className="mt-4 text-sm text-neutral-700 text-center">
             ¿Ya tienes cuenta?{' '}
             <Link to="/login" className="font-medium underline">
-              Login here
+              Inicia sesión aquí
             </Link>
           </p>
         </form>

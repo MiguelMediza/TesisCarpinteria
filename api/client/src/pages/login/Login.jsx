@@ -1,8 +1,7 @@
 import { useContext } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/authContext";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import tablasBackground from "../../assets/tablasBackground.jpg";
 const Login = () => {
     const [inputs, setInputs] = useState({
@@ -32,7 +31,6 @@ const Login = () => {
   return (
  
     <section className="relative flex items-center justify-center min-h-screen bg-neutral-50">
-      {/* Fondo de madera difuminado */}
       <div
         className="absolute inset-0 bg-cover bg-center filter blur opacity-90"
         style={{ backgroundImage: `url(${tablasBackground})` }}
@@ -57,7 +55,7 @@ const Login = () => {
               htmlFor="username"
               className="block mb-1 text-sm font-medium text-neutral-800"
             >
-              Username
+              Usuario
             </label>
             <input
               type="text"
@@ -76,7 +74,7 @@ const Login = () => {
               htmlFor="password"
               className="block mb-1 text-sm font-medium text-neutral-800"
             >
-              Password
+              Contraseña
             </label>
             <input
               type="password"
