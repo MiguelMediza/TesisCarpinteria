@@ -34,8 +34,8 @@ const Nav = () =>{
   }, []);
 
   return (
-    <nav className="bg-white border-gray-200 dark:bg-gray-900">
-      <div className="max-w-screen-s flex flex-wrap items-center justify-between mx-auto p-4">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur border-b">
+      <div className="max-w-screen-xl w-full mx-auto flex flex-wrap items-center justify-between p-4 h-16">
         <a href="/" className="flex items-center space-x-3 rtl:space-x-reverse">
           <img src={imanodLogo} className="h-15" alt="Flowbite Logo" />
           <span className="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">

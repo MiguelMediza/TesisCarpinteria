@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "../../api";
 import StockBajo from "../../components/StockBajo/StockBajo";
-import Nav from "../../components/Nav";
 
 const Home = () => {
   const [items, setItems] = useState([]);
@@ -35,7 +34,6 @@ const Home = () => {
 
   return (
     <>
-      <Nav />
       <section className="p-4 bg-gray-50 min-h-screen">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold">Resumen</h1>

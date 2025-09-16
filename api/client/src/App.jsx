@@ -8,6 +8,7 @@ import {
   Navigate,
 } from "react-router-dom";
 
+import Nav from "./components/Nav";
 import Home from "./pages/home/Home";
 import Proveedores from "./pages/proveedores/Proveedores";
 import ProveedoresList from "./pages/proveedores/ProveedoresList";
@@ -55,11 +56,10 @@ function App() {
   const Layout = () => {
     return (
       <div className={`theme-${darkMode ? "dark" : "light"}`}>
-        <div style={{ display: "flex" }}>
-          <div style={{ flex: 6 }}>
-            <Outlet /> {/* Esto renderiza las rutas hijas */}
-          </div>
-        </div>
+        <Nav /> {/* navbar fija */}
+        <main className="pt-16 min-h-screen">
+          <Outlet />
+        </main>
       </div>
     );
   };
