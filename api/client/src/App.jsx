@@ -56,7 +56,7 @@ function App() {
   const Layout = () => {
     return (
       <div className={`theme-${darkMode ? "dark" : "light"}`}>
-        <Nav /> {/* navbar fija */}
+        <Nav /> 
         <main className="pt-16 min-h-screen">
           <Outlet />
         </main>
