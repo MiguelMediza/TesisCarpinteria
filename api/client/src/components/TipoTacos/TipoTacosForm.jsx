@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useContext } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
 import tablasBackground from "../../assets/tablasBackground.jpg";
 
@@ -31,7 +31,7 @@ const TipoTacosForm = () => {
 
   // Load palos for parent-select
   useEffect(() => {
-    axios.get("http://localhost:4000/api/src/palos/listar")
+    api.get("/palos/listar")
       .then(({ data }) => setPalos(data))
       .catch(() => {});
   }, []);
@@ -39,7 +39,7 @@ const TipoTacosForm = () => {
   // Load existing tipo_taco on edit (once palos are loaded)
   useEffect(() => {
     if (!id || palos.length === 0) return;
-    axios.get(`http://localhost:4000/api/src/tipotacos/${id}`)
+    api.get(`/tipotacos/${id}`)
       .then(({ data }) => {
         setInputs({
           id_materia_prima: data.id_materia_prima.toString(),
@@ -55,13 +55,13 @@ const TipoTacosForm = () => {
         if (parent) {
           setSelectedPalo(parent);
           setPaloPreview(parent.foto
-            ? `http://localhost:4000/images/palos/${parent.foto}`
+            ? `/images/palos/${encodeURIComponent(parent.foto)}`
             : null
           );
         }
         // own photo preview
         if (data.foto) {
-          setPreview(`http://localhost:4000/images/tipo_tacos/${data.foto}`);
+          setPreview(`/images/tipo_tacos/${encodeURIComponent(data.foto)}`);
         }
       })
       .catch(() => {
@@ -91,7 +91,7 @@ const TipoTacosForm = () => {
     const parent = palos.find(p => p.id_materia_prima.toString() === pid);
     setSelectedPalo(parent);
     setPaloPreview(parent?.foto
-      ? `http://localhost:4000/images/palos/${parent.foto}`
+      ? `/images/palos/${encodeURIComponent(parent.foto)}`
       : null
     );
   };
@@ -150,15 +150,15 @@ const TipoTacosForm = () => {
       if (fotoFile) fd.append("foto", fotoFile);
 
       if (id) {
-        await axios.put(
-          `http://localhost:4000/api/src/tipotacos/${id}`,
+        await api.put(
+          `/tipotacos/${id}`,
           fd,
           { headers: { "Content-Type":"multipart/form-data" } }
         );
         setErr("Tipo de taco actualizado.");
       } else {
-        await axios.post(
-          "http://localhost:4000/api/src/tipotacos/agregar",
+        await api.post(
+          "/tipotacos/agregar",
           fd,
           { headers: { "Content-Type":"multipart/form-data" } }
         );

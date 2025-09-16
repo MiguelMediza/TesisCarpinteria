@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from "../../api";
 import { Link, useNavigate } from "react-router-dom";
 import TipoTacoCard from "./TipoTacosCard";
 import DeleteConfirm from "../Modals/DeleteConfirm";
@@ -14,7 +14,7 @@ const TipoTacosList = () => {
   useEffect(() => {
     const fetchTipos = async () => {
       try {
-        const res = await axios.get("http://localhost:4000/api/src/tipotacos/listar");
+        const res = await api.get("/tipotacos/listar");
         setTipos(res.data);
       } catch (err) {
         console.error(err);
@@ -34,7 +34,7 @@ const TipoTacosList = () => {
 
   const confirmDelete = async () => {
     try {
-      await axios.delete(`http://localhost:4000/api/src/tipotacos/${toDelete.id_tipo_taco}`);
+      await api.delete(`/tipotacos/${toDelete.id_tipo_taco}`);
       setTipos(prev => prev.filter(t => t.id_tipo_taco !== toDelete.id_tipo_taco));
     } catch (err) {
       console.error(err);
@@ -95,7 +95,7 @@ const TipoTacosList = () => {
       <DeleteConfirm
         isOpen={!!toDelete}
         title={toDelete?.titulo}
-        imageSrc={toDelete ? `http://localhost:4000/images/tipo_tacos/${toDelete.foto}` : null}
+        imageSrc={toDelete ? `/images/tipo_tacos/${encodeURIComponent(toDelete.foto)}` : null}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
       />

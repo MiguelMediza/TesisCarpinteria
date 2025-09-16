@@ -26,7 +26,7 @@ const VentasCard = ({ venta, onEdit, onDelete }) => {
       <div>
         {foto && (
           <img
-            src={`http://localhost:4000/images/ventas/${foto}`}
+            src={`/images/ventas/${foto}`}
             alt={`Venta ${id_venta}`}
             className="w-full h-32 object-cover mb-4 rounded"
           />

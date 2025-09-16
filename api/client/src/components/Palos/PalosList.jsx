@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from "../../api";
 import { Link, useNavigate } from "react-router-dom";
 import PaloCard from "./PaloCard";
 import DeleteConfirm from "../Modals/DeleteConfirm";
@@ -14,7 +14,7 @@ const PalosList = () => {
   useEffect(() => {
     const fetchPalos = async () => {
       try {
-        const res = await axios.get("http://localhost:4000/api/src/palos/listar");
+        const res = await api.get("/palos/listar");
         setPalos(res.data);
       } catch (err) {
         console.error(err);
@@ -36,7 +36,7 @@ const PalosList = () => {
   // Confirmar borrado
   const confirmDelete = async () => {
     try {
-      await axios.delete(`http://localhost:4000/api/src/palos/${toDelete.id_materia_prima}`);
+      await api.delete(`/palos/${toDelete.id_materia_prima}`);
       setPalos(prev => prev.filter(p => p.id_materia_prima !== toDelete.id_materia_prima));
     } catch (err) {
       console.error(err);
@@ -101,7 +101,7 @@ const PalosList = () => {
       <DeleteConfirm
         isOpen={!!toDelete}
         title={toDelete?.titulo}
-        imageSrc={toDelete ? `http://localhost:4000/images/palos/${toDelete.foto}` : null}
+        imageSrc={toDelete ? `/images/palos/${encodeURIComponent(toDelete.foto)}` : null}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
       />

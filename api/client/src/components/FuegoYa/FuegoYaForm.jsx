@@ -1,6 +1,6 @@
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef, useContext } from "react";
-import axios from "axios";
+import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
 import tablasBackground from "../../assets/tablasBackground.jpg";
 
@@ -24,14 +24,14 @@ const FuegoYaForm = () => {
 
   useEffect(() => {
     if (!id) return;
-    axios.get(`http://localhost:4000/api/src/fuegoya/${id}`)
+    api.get(`/fuegoya/${id}`)
       .then(({ data }) => {
         setInputs({
           tipo: data.tipo || "",
           precio_unidad: data.precio_unidad?.toString() || "",
           stock: data.stock?.toString() || "",
         });
-        if (data.foto) { setPreview(`http://localhost:4000/images/fuego_ya/${data.foto}`);}
+        if (data.foto) { setPreview(`/images/fuego_ya/${encodeURIComponent(data.foto)}`);}
       })
       .catch(() => {
         setErr("No se pudo cargar el Fuego Ya.");
@@ -96,15 +96,15 @@ const FuegoYaForm = () => {
       if (fotoFile) formData.append('foto', fotoFile);
 
       if (id) {
-        await axios.put(
-          `http://localhost:4000/api/src/fuegoya/${id}`,
+        await api.put(
+          `/fuegoya/${id}`,
           formData,
           { headers: { 'Content-Type': 'multipart/form-data' } }
         );
         setErr("Fuego Ya actualizado correctamente.");
       } else {
-        await axios.post(
-          "http://localhost:4000/api/src/fuegoya/agregar",
+        await api.post(
+          "/fuegoya/agregar",
           formData,
           { headers: { 'Content-Type': 'multipart/form-data' } }
         );

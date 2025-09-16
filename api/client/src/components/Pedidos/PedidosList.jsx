@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import axios from "axios";
+import { api } from "../../api";
 import { Link, useNavigate } from "react-router-dom";
 import PedidosCard from "./PedidosCard";           // <- el card que ya tienes/creaste
 import DeleteConfirm from "../Modals/DeleteConfirm";
@@ -27,7 +27,7 @@ const PedidosList = () => {
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await axios.get("http://localhost:4000/api/src/clientes/listar");
+        const { data } = await api.get("/clientes/listar");
         setClientes(data || []);
       } catch (e) {
         console.error(e);
@@ -44,8 +44,8 @@ const PedidosList = () => {
       if (desde) params.append("desde", desde);
       if (hasta) params.append("hasta", hasta);
 
-      const url = `http://localhost:4000/api/src/pedidos/listar${params.toString() ? `?${params.toString()}` : ""}`;
-      const res = await axios.get(url);
+      const url = `/pedidos/listar${params.toString() ? `?${params.toString()}` : ""}`;
+      const res = await api.get(url);
       setPedidos(res.data || []);
       setError("");
     } catch (err) {
@@ -67,7 +67,7 @@ const PedidosList = () => {
 
   const confirmDelete = async () => {
     try {
-      await axios.delete(`http://localhost:4000/api/src/pedidos/${toDelete.id_pedido}`);
+      await api.delete(`/pedidos/${toDelete.id_pedido}`);
       setPedidos(prev => prev.filter(p => p.id_pedido !== toDelete.id_pedido));
     } catch (err) {
       console.error(err);
@@ -82,7 +82,7 @@ const PedidosList = () => {
     try {
       // Optimista
       setPedidos(curr => curr.map(p => p.id_pedido === id_pedido ? { ...p, estado: newStatus } : p));
-      await axios.put(`http://localhost:4000/api/src/pedidos/${id_pedido}/estado`, { estado: newStatus });
+      await api.put(`/pedidos/${id_pedido}/estado`, { estado: newStatus });
     } catch (e) {
       console.error(e);
       setError("No se pudo cambiar el estado del pedido.");

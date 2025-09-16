@@ -20,7 +20,7 @@ const PaloCard = ({ palo, onEdit, onDelete }) => {
       <div>
         {foto && (
           <img
-            src={`http://localhost:4000/images/palos/${foto}`}
+            src={`/images/palos/${encodeURIComponent(foto)}`}
             alt={titulo}
             className="w-full h-32 object-cover mb-4 rounded"
           />

@@ -1,6 +1,6 @@
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef, useContext } from "react";
-import axios from "axios";
+import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
 import tablasBackground from "../../assets/tablasBackground.jpg";
 
@@ -28,8 +28,8 @@ const PalosForm = () => {
 
   useEffect(() => {
     if (!id) return;
-    axios
-      .get(`http://localhost:4000/api/src/palos/${id}`)
+    api
+      .get(`/palos/${id}`)
       .then(({ data }) => {
         setInputs({
           titulo: data.titulo || "",
@@ -41,7 +41,7 @@ const PalosForm = () => {
           comentarios: data.comentarios_mp || "",
         });
         if (data.foto) {
-          setPreview(`http://localhost:4000/images/palos/${data.foto}`);
+          setPreview(`/images/palos/${encodeURIComponent(data.foto)}`);
         }
       })
       .catch(() => {
@@ -119,15 +119,15 @@ const PalosForm = () => {
       if (fotoFile) formData.append("foto", fotoFile);
 
       if (id) {
-        await axios.put(
-          `http://localhost:4000/api/src/palos/${id}`,
+        await api.put(
+          `/palos/${id}`,
           formData,
           { headers: { "Content-Type": "multipart/form-data" } }
         );
         setErr("Palo actualizado correctamente.");
       } else {
-        await axios.post(
-          "http://localhost:4000/api/src/palos/agregar",
+        await api.post(
+          "/palos/agregar",
           formData,
           { headers: { "Content-Type": "multipart/form-data" } }
         );

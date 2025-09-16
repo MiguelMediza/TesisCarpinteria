@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from "../../api";
 import { Link, useNavigate } from "react-router-dom";
 import VentasCard from "./VentasCard";
 import DeleteConfirm from "../Modals/DeleteConfirm";
@@ -15,7 +15,7 @@ const VentasList = () => {
   useEffect(() => {
     const fetchVentas = async () => {
       try {
-        const res = await axios.get("http://localhost:4000/api/src/ventas/listar");
+        const res = await api.get("/ventas/listar");
         setVentas(res.data);
       } catch (err) {
         console.error("❌ Error cargando ventas:", err);
@@ -38,7 +38,7 @@ const VentasList = () => {
   // 🔹 Confirmar borrado
   const confirmDelete = async () => {
     try {
-      await axios.delete(`http://localhost:4000/api/src/ventas/${toDelete.id_venta}`);
+      await api.delete(`/ventas/${toDelete.id_venta}`);
       setVentas((prev) => prev.filter((v) => v.id_venta !== toDelete.id_venta));
     } catch (err) {
       console.error("❌ Error eliminando venta:", err);
@@ -109,7 +109,7 @@ const VentasList = () => {
       <DeleteConfirm
         isOpen={!!toDelete}
         title={`Venta #${toDelete?.id_venta}`}
-        imageSrc={toDelete?.foto ? `http://localhost:4000/images/ventas/${toDelete.foto}` : null}
+        imageSrc={toDelete?.foto ? `/images/ventas/${encodeURIComponent(toDelete.foto)}` : null}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
       />

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from "../../api";
 import { Link, useNavigate } from "react-router-dom";
 import ProveedorCard from "./ProveedorCard";
 import DeleteConfirm from "../Modals/DeleteConfirm";
@@ -14,7 +14,7 @@ const ProveedoresList = () => {
   useEffect(() => {
     const fetchProveedores = async () => {
       try {
-        const res = await axios.get("http://localhost:4000/api/src/proveedores/listar");
+        const res = await api.get("/proveedores/listar");
         setProveedores(res.data);
       } catch (err) {
         console.error(err);
@@ -36,7 +36,7 @@ const ProveedoresList = () => {
   // Confirmar borrado
   const confirmDelete = async () => {
     try {
-      await axios.delete(`http://localhost:4000/api/src/proveedores/${toDelete.id_proveedor}`);
+      await api.delete(`/proveedores/${toDelete.id_proveedor}`);
       setProveedores(prev =>
         prev.filter(p => p.id_proveedor !== toDelete.id_proveedor)
       );

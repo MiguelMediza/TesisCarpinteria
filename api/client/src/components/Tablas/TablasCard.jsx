@@ -21,7 +21,7 @@ const TablaCard = ({ tabla, onEdit, onDelete }) => {
       <div>
         {foto && (
           <img
-            src={`http://localhost:4000/images/tablas/${foto}`}
+            src={`/images/tablas/${encodeURIComponent(foto)}`}
             alt={titulo}
             className="w-full h-32 object-cover mb-4 rounded"
           />

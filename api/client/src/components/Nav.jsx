@@ -1,47 +1,148 @@
-import React from 'react'
-import { useContext, useEffect } from "react";
+import React, { useContext, useEffect, useRef } from "react";
 import { AuthContext } from "../context/authContext";
-import { Collapse, Dropdown } from 'flowbite';
-import imanodLogo from '../assets/logoImanod.png';
-import { Link } from 'react-router-dom';
-const Nav = () =>{
-    const { currentUser, logout } = useContext(AuthContext);
+import { Collapse, Dropdown } from "flowbite";
+import imanodLogo from "../assets/logoImanod.png";
+import { Link, useLocation } from "react-router-dom";
+
+const Nav = () => {
+  const { currentUser, logout } = useContext(AuthContext);
+
+  const navRootRef = useRef(null);
+  const dropdownsRef = useRef({});
+  const collapseRef = useRef(null);
+
+  const closeAllMenus = () => {
+    const map = dropdownsRef.current || {};
+    for (const inst of Object.values(map)) {
+      if (inst && typeof inst.hide === "function") {
+        try { inst.hide(); } catch {}
+      }
+    }
+    const c = collapseRef.current;
+    if (c && typeof c.hide === "function") {
+      try { c.hide(); } catch {}
+    }
+  };
 
   useEffect(() => {
-    // Collapse para menú hamburguesa
-    const $targetEl = document.getElementById('navbar-default');
-    const $triggerEl = document.getElementById('triggerEl');
-    if ($targetEl && $triggerEl) {
-      new Collapse($targetEl, $triggerEl);
-    }
+    const handleDocClick = (e) => {
+      const root = navRootRef.current;
+      if (!root) return;
+      if (!root.contains(e.target)) closeAllMenus();
+    };
+    const handleDocTouch = (e) => {
+      const root = navRootRef.current;
+      if (!root) return;
+      if (!root.contains(e.target)) closeAllMenus();
+    };
+    const handleEsc = (e) => {
+      if (e.key === "Escape") closeAllMenus();
+    };
 
-    // Dropdown Materia Prima
-    const $materiaPrimaTrigger = document.getElementById('dropdownMateriaPrimaButton');
-    const $materiaPrimaMenu = document.getElementById('dropdownMateriaPrimaMenu');
-    if ($materiaPrimaTrigger && $materiaPrimaMenu) {
-      new Dropdown($materiaPrimaMenu, $materiaPrimaTrigger);
-    }
-
-    // Sub-dropdowns para cada materia prima
-    const materias = ['tablas', 'palos', 'clavos', 'fibras', 'tipostablas', 'tipostacos', 'tipospatines'];
-    materias.forEach((mat) => {
-      const trigger = document.getElementById(`dropdown-${mat}-button`);
-      const menu = document.getElementById(`dropdown-${mat}-menu`);
-      if (trigger && menu) {
-        new Dropdown(menu, trigger, { placement: "right-start" });
-      }
-    });
+    document.addEventListener("click", handleDocClick);
+    document.addEventListener("touchstart", handleDocTouch, { passive: true });
+    document.addEventListener("keydown", handleEsc);
+    return () => {
+      document.removeEventListener("click", handleDocClick);
+      document.removeEventListener("touchstart", handleDocTouch);
+      document.removeEventListener("keydown", handleEsc);
+    };
   }, []);
 
+  const handleNavigate = () => {
+    // cierra todo “oficialmente”
+    closeAllMenus();
+    // fallback: forzar hidden en el collapse por si Flowbite no aplicó hide()
+    const el = document.getElementById("navbar-default");
+    if (el && !el.classList.contains("hidden")) el.classList.add("hidden");
+    // aria del trigger
+    const trig = document.getElementById("triggerEl");
+    if (trig) trig.setAttribute("aria-expanded", "false");
+  };
+
+  useEffect(() => {
+    // Collapse (hamburguesa)
+    const $targetEl = document.getElementById("navbar-default");
+    const $triggerEl = document.getElementById("triggerEl");
+    if ($targetEl && $triggerEl && !collapseRef.current) {
+      const c = new Collapse($targetEl, $triggerEl);
+      if (c && typeof c.hide === "function") {
+        collapseRef.current = c;
+      }
+    }
+
+    // Registrar dropdowns sin duplicar
+    const registerDD = (menuId, triggerId, opts = {}) => {
+      if (dropdownsRef.current[menuId]) return;
+      const trigger = document.getElementById(triggerId);
+      const menu = document.getElementById(menuId);
+      if (trigger && menu) {
+        const dd = new Dropdown(menu, trigger, opts);
+        if (dd && typeof dd.hide === "function") {
+          dropdownsRef.current[menuId] = dd;
+        }
+      }
+    };
+
+    // Dropdown principal Materia Prima
+    registerDD("dropdownMateriaPrimaMenu", "dropdownMateriaPrimaButton");
+
+    // Sub-dropdowns
+    [
+      "tablas",
+      "palos",
+      "clavos",
+      "fibras",
+      "tipostablas",
+      "tipostacos",
+      "tipospatines",
+    ].forEach((key) =>
+      registerDD(`dropdown-${key}-menu`, `dropdown-${key}-button`, {
+        placement: "right-start",
+      })
+    );
+
+    // Limpieza
+    return () => {
+      closeAllMenus();
+      dropdownsRef.current = {};
+      collapseRef.current = null;
+    };
+  }, []);
+
+  // Cerrar todo al cambiar de ruta
+  const location = useLocation();
+  useEffect(() => {
+    closeAllMenus();
+  }, [location.pathname]);
+
+  // Cerrar sólo cuando se hace click en enlaces, NO en toggles
+  const handleNavClick = (e) => {
+    // Si el click viene de un botón que abre/cierra dropdown, no cerrar
+    if (e.target.closest("[data-dropdown-toggle]")) return;
+
+    // Si es un Link/anchor de navegación, cerrar (con fallback)
+    const link = e.target.closest("a[href], a[role='menuitem']");
+    if (link) handleNavigate();
+  };
+
   return (
-    <nav className="bg-white border-gray-200 dark:bg-gray-900">
+    <nav
+      ref={navRootRef}
+      className="bg-white border-gray-200 dark:bg-gray-900 fixed top-0 left-0 right-0 z-50"
+    >
       <div className="max-w-screen-s flex flex-wrap items-center justify-between mx-auto p-4">
-        <a href="/" className="flex items-center space-x-3 rtl:space-x-reverse">
-          <img src={imanodLogo} className="h-15" alt="Flowbite Logo" />
+        <Link
+          to="/"
+          onClick={handleNavigate}
+          className="flex items-center space-x-3 rtl:space-x-reverse"
+        >
+          <img src={imanodLogo} className="h-15" alt="Imanod Logo" />
           <span className="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">
             Imanod
           </span>
-        </a>
+        </Link>
+
         <button
           id="triggerEl"
           data-collapse-toggle="navbar-default"
@@ -51,583 +152,125 @@ const Nav = () =>{
           aria-expanded="false"
         >
           <span className="sr-only">Open main menu</span>
-          <svg
-            className="w-5 h-5"
-            aria-hidden="true"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 17 14"
-          >
-            <path
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M1 1h15M1 7h15M1 13h15"
-            />
+          <svg className="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 17 14">
+            <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M1 1h15M1 7h15M1 13h15"/>
           </svg>
         </button>
+
         <div className="hidden w-full md:block md:w-auto" id="navbar-default">
-          <ul className="font-medium flex flex-col p-4 md:p-0 mt-4 border border-gray-100 rounded-lg bg-gray-50 md:flex-row md:space-x-8 md:justify-center items-center rtl:space-x-reverse md:mt-0 md:border-0 md:bg-white dark:bg-gray-800 md:dark:bg-gray-900 dark:border-gray-700">
+          <ul
+            onClick={handleNavClick}
+            className="font-medium flex flex-col p-4 md:p-0 mt-4 border border-gray-100 rounded-lg bg-gray-50 
+                       md:flex-row md:space-x-8 md:justify-center items-center rtl:space-x-reverse md:mt-0 md:border-0 
+                       md:bg-white dark:bg-gray-800 md:dark:bg-gray-900 dark:border-gray-700"
+          >
             <li>
-              <a
-                href="/"
+              <Link
+                to="/"
+                onClick={handleNavigate}
                 className="block py-2 px-3 text-white bg-blue-700 rounded-sm md:bg-transparent md:text-blue-700 md:p-0 dark:text-white md:dark:text-blue-500"
                 aria-current="page"
               >
                 Inicio
-              </a>
+              </Link>
             </li>
-            {/* Doble Dropdown Materia Prima */}
+
+            {/* Materia Prima (dropdown doble) */}
             <li className="relative">
               <button
                 id="dropdownMateriaPrimaButton"
                 data-dropdown-toggle="dropdownMateriaPrimaMenu"
+                type="button"
                 className="flex items-center justify-between w-full py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent"
               >
                 Materia Prima
-                <svg
-                  className="w-2.5 h-2.5 ms-2.5"
-                  aria-hidden="true"
-                  fill="none"
-                  viewBox="0 0 10 6"
-                >
-                  <path
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="m1 1 4 4 4-4"
-                  />
+                <svg className="w-2.5 h-2.5 ms-2.5" aria-hidden="true" fill="none" viewBox="0 0 10 6">
+                  <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 4 4 4-4"/>
                 </svg>
               </button>
+
               <div
                 id="dropdownMateriaPrimaMenu"
                 className="z-10 hidden font-normal bg-white divide-y divide-gray-100 rounded-lg shadow w-44 dark:bg-gray-700 dark:divide-gray-600"
               >
                 <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
-                  {/* tablas */}
-                  <li className="relative">
-                    <button
-                      id="dropdown-tablas-button"
-                      data-dropdown-toggle="dropdown-tablas-menu"
-                      data-dropdown-placement="right-start"
-                      type="button"
-                      className="flex items-center justify-between w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
-                    >
-                      Tablas
-                      <svg
-                        className="w-2.5 h-2.5 ms-2.5"
-                        aria-hidden="true"
-                        fill="none"
-                        viewBox="0 0 10 6"
+                  {[
+                    { key: "tablas", add: "/tablas", list: "/tablas/listar", label: "Tablas" },
+                    { key: "palos", add: "/palos", list: "/palos/listar", label: "Palos" },
+                    { key: "clavos", add: "/clavos", list: "/clavos/listar", label: "Clavos" },
+                    { key: "fibras", add: "/fibras", list: "/fibras/listar", label: "Fibras" },
+                    { key: "tipostablas", add: "/tipotablas", list: "/tipotablas/listar", label: "Tipos de tablas" },
+                    { key: "tipostacos", add: "/tipotacos", list: "/tipotacos/listar", label: "Tipos de tacos" },
+                    { key: "tipospatines", add: "/tipopatines", list: "/tipopatines/listar", label: "Tipos de patines" },
+                  ].map((m) => (
+                    <li className="relative" key={m.key}>
+                      <button
+                        id={`dropdown-${m.key}-button`}
+                        data-dropdown-toggle={`dropdown-${m.key}-menu`}
+                        data-dropdown-placement="right-start"
+                        type="button"
+                        className="flex items-center justify-between w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
                       >
-                        <path
-                          stroke="currentColor"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="m1 1 4 4 4-4"
-                        />
-                      </svg>
-                    </button>
-                    <div
-                      id="dropdown-tablas-menu"
-                      className="z-20 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-40 dark:bg-gray-700"
-                    >
-                      <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
-                        <li>
-                          <Link
-                            to="/tablas"
-                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
-                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
-                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
-                                    dark:hover:bg-gray-700 dark:hover:text-white 
-                                    md:dark:hover:bg-transparent"
-                          >
-                            Agregar
-                          </Link>
-                        </li>
-                        <li>
-                          <Link
-                            to="/tablas/listar"
-                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
-                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
-                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
-                                    dark:hover:bg-gray-700 dark:hover:text-white 
-                                    md:dark:hover:bg-transparent"
-                          >
-                            Listar
-                          </Link>
-                        </li>
-                      </ul>
-                    </div>
-                  </li>
-                  {/* Palos */}
-                  <li className="relative">
-                    <button
-                      id="dropdown-palos-button"
-                      data-dropdown-toggle="dropdown-palos-menu"
-                      data-dropdown-placement="right-start"
-                      type="button"
-                      className="flex items-center justify-between w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
-                    >
-                      Palos
-                      <svg
-                        className="w-2.5 h-2.5 ms-2.5"
-                        aria-hidden="true"
-                        fill="none"
-                        viewBox="0 0 10 6"
+                        {m.label}
+                        <svg className="w-2.5 h-2.5 ms-2.5" aria-hidden="true" fill="none" viewBox="0 0 10 6">
+                          <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 4 4 4-4"/>
+                        </svg>
+                      </button>
+
+                      <div
+                        id={`dropdown-${m.key}-menu`}
+                        className="z-20 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-40 dark:bg-gray-700"
                       >
-                        <path
-                          stroke="currentColor"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="m1 1 4 4 4-4"
-                        />
-                      </svg>
-                    </button>
-                    <div
-                      id="dropdown-palos-menu"
-                      className="z-20 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-40 dark:bg-gray-700"
-                    >
-                      <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
-                        <li>
-                          <Link
-                            to="/palos"
-                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
-                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
-                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
-                                    dark:hover:bg-gray-700 dark:hover:text-white 
-                                    md:dark:hover:bg-transparent"
-                          >
-                            Agregar
-                          </Link>
-                        </li>
-                        <li>
-                          <Link
-                            to="/palos/listar"
-                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
-                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
-                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
-                                    dark:hover:bg-gray-700 dark:hover:text-white 
-                                    md:dark:hover:bg-transparent"
-                          >
-                            Listar
-                          </Link>
-                        </li>
-                      </ul>
-                    </div>
-                  </li>
-                  {/* Clavos */}
-                  <li className="relative">
-                    <button
-                      id="dropdown-clavos-button"
-                      data-dropdown-toggle="dropdown-clavos-menu"
-                      data-dropdown-placement="right-start"
-                      type="button"
-                      className="flex items-center justify-between w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
-                    >
-                      Clavos
-                      <svg
-                        className="w-2.5 h-2.5 ms-2.5"
-                        aria-hidden="true"
-                        fill="none"
-                        viewBox="0 0 10 6"
-                      >
-                        <path
-                          stroke="currentColor"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="m1 1 4 4 4-4"
-                        />
-                      </svg>
-                    </button>
-                    <div
-                      id="dropdown-clavos-menu"
-                      className="z-20 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-40 dark:bg-gray-700"
-                    >
-                      <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
-                        <li>
-                          <Link
-                            to="/clavos"
-                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
-                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
-                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
-                                    dark:hover:bg-gray-700 dark:hover:text-white 
-                                    md:dark:hover:bg-transparent"
-                          >
-                            Agregar
-                          </Link>
-                        </li>
-                        <li>
-                          <Link
-                            to="/clavos/listar"
-                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
-                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
-                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
-                                    dark:hover:bg-gray-700 dark:hover:text-white 
-                                    md:dark:hover:bg-transparent"
-                          >
-                            Listar
-                          </Link>
-                        </li>
-                      </ul>
-                    </div>
-                  </li>
-                  {/* Fibras */}
-                  <li className="relative">
-                    <button
-                      id="dropdown-fibras-button"
-                      data-dropdown-toggle="dropdown-fibras-menu"
-                      data-dropdown-placement="right-start"
-                      type="button"
-                      className="flex items-center justify-between w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
-                    >
-                      Fibras
-                      <svg
-                        className="w-2.5 h-2.5 ms-2.5"
-                        aria-hidden="true"
-                        fill="none"
-                        viewBox="0 0 10 6"
-                      >
-                        <path
-                          stroke="currentColor"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="m1 1 4 4 4-4"
-                        />
-                      </svg>
-                    </button>
-                    <div
-                      id="dropdown-fibras-menu"
-                      className="z-20 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-40 dark:bg-gray-700"
-                    >
-                      <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
-                        <li>
-                          <Link
-                            to="/fibras"
-                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
-                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
-                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
-                                    dark:hover:bg-gray-700 dark:hover:text-white 
-                                    md:dark:hover:bg-transparent"
-                          >
-                            Agregar
-                          </Link>
-                        </li>
-                        <li>
-                          <Link
-                            to="/fibras/listar"
-                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
-                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
-                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
-                                    dark:hover:bg-gray-700 dark:hover:text-white 
-                                    md:dark:hover:bg-transparent"
-                          >
-                            Listar
-                          </Link>
-                        </li>
-                      </ul>
-                    </div>
-                  </li>
-                  {/* Tipos tablas */}
-                  <li className="relative">
-                    <button
-                      id="dropdown-tipostablas-button"
-                      data-dropdown-toggle="dropdown-tipostablas-menu"
-                      data-dropdown-placement="right-start"
-                      type="button"
-                      className="flex items-center justify-between w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
-                    >
-                      Tipos de tablas
-                      <svg
-                        className="w-2.5 h-2.5 ms-2.5"
-                        aria-hidden="true"
-                        fill="none"
-                        viewBox="0 0 10 6"
-                      >
-                        <path
-                          stroke="currentColor"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="m1 1 4 4 4-4"
-                        />
-                      </svg>
-                    </button>
-                    <div
-                      id="dropdown-tipostablas-menu"
-                      className="z-20 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-40 dark:bg-gray-700"
-                    >
-                      <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
-                        <li>
-                          <Link
-                            to="/tipotablas"
-                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
-                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
-                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
-                                    dark:hover:bg-gray-700 dark:hover:text-white 
-                                    md:dark:hover:bg-transparent"
-                          >
-                            Agregar
-                          </Link>
-                        </li>
-                        <li>
-                          <Link
-                            to="/tipotablas/listar"
-                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
-                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
-                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
-                                    dark:hover:bg-gray-700 dark:hover:text-white 
-                                    md:dark:hover:bg-transparent"
-                          >
-                            Listar
-                          </Link>
-                        </li>
-                      </ul>
-                    </div>
-                  </li>
-                  {/* Tipos tacos */}
-                  <li className="relative">
-                    <button
-                      id="dropdown-tipostacos-button"
-                      data-dropdown-toggle="dropdown-tipostacos-menu"
-                      data-dropdown-placement="right-start"
-                      type="button"
-                      className="flex items-center justify-between w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
-                    >
-                      Tipos de tacos
-                      <svg
-                        className="w-2.5 h-2.5 ms-2.5"
-                        aria-hidden="true"
-                        fill="none"
-                        viewBox="0 0 10 6"
-                      >
-                        <path
-                          stroke="currentColor"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="m1 1 4 4 4-4"
-                        />
-                      </svg>
-                    </button>
-                    <div
-                      id="dropdown-tipostacos-menu"
-                      className="z-20 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-40 dark:bg-gray-700"
-                    >
-                      <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
-                        <li>
-                          <Link
-                            to="/tipotacos"
-                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
-                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
-                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
-                                    dark:hover:bg-gray-700 dark:hover:text-white 
-                                    md:dark:hover:bg-transparent"
-                          >
-                            Agregar
-                          </Link>
-                        </li>
-                        <li>
-                          <Link
-                            to="/tipotacos/listar"
-                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
-                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
-                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
-                                    dark:hover:bg-gray-700 dark:hover:text-white 
-                                    md:dark:hover:bg-transparent"
-                          >
-                            Listar
-                          </Link>
-                        </li>
-                      </ul>
-                    </div>
-                  </li>
-                  {/* Tipos de patines */}
-                  <li className="relative">
-                    <button
-                      id="dropdown-tipospatines-button"
-                      data-dropdown-toggle="dropdown-tipospatines-menu"
-                      data-dropdown-placement="right-start"
-                      type="button"
-                      className="flex items-center justify-between w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
-                    >
-                      Tipos de patines
-                      <svg
-                        className="w-2.5 h-2.5 ms-2.5"
-                        aria-hidden="true"
-                        fill="none"
-                        viewBox="0 0 10 6"
-                      >
-                        <path
-                          stroke="currentColor"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="m1 1 4 4 4-4"
-                        />
-                      </svg>
-                    </button>
-                    <div
-                      id="dropdown-tipospatines-menu"
-                      className="z-20 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-40 dark:bg-gray-700"
-                    >
-                      <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
-                        <li>
-                          <Link
-                            to="/tipopatines"
-                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
-                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
-                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
-                                    dark:hover:bg-gray-700 dark:hover:text-white 
-                                    md:dark:hover:bg-transparent"
-                          >
-                            Agregar
-                          </Link>
-                        </li>
-                        <li>
-                          <Link
-                            to="/tipopatines/listar"
-                            className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
-                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
-                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
-                                    dark:hover:bg-gray-700 dark:hover:text-white 
-                                    md:dark:hover:bg-transparent"
-                          >
-                            Listar
-                          </Link>
-                        </li>
-                      </ul>
-                    </div>
-                  </li>
+                        <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
+                          <li>
+                            <Link
+                              to={m.add}
+                              onClick={handleNavigate}
+                              className="block py-2 px-1 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                            >
+                              Agregar
+                            </Link>
+                          </li>
+                          <li>
+                            <Link
+                              to={m.list}
+                              onClick={handleNavigate}
+                              className="block py-2 px-1 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                            >
+                              Listar
+                            </Link>
+                          </li>
+                        </ul>
+                      </div>
+                    </li>
+                  ))}
                 </ul>
               </div>
             </li>
 
             {/* Otros menús */}
-            <li>
-              <Link
-                to="/proveedores"
-                className="block py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 
-                          md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
-                          md:p-0 dark:text-white md:dark:hover:text-blue-500 
-                          dark:hover:bg-gray-700 dark:hover:text-white 
-                          md:dark:hover:bg-transparent"
-              >
-                Proveedores
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/encargos"
-                className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
-                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
-                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
-                                    dark:hover:bg-gray-700 dark:hover:text-white 
-                                    md:dark:hover:bg-transparent"
-              >
-                Encargos
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/prototipos"
-                className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
-                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
-                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
-                                    dark:hover:bg-gray-700 dark:hover:text-white 
-                                    md:dark:hover:bg-transparent"
-              >
-                Prototipos
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/pedidos"
-                className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
-                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
-                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
-                                    dark:hover:bg-gray-700 dark:hover:text-white 
-                                    md:dark:hover:bg-transparent"
-              >
-                Pedidos
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/clientes"
-                className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
-                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
-                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
-                                    dark:hover:bg-gray-700 dark:hover:text-white 
-                                    md:dark:hover:bg-transparent"
-              >
-                Clientes
-              </Link>
-            </li>
+            <li><Link to="/proveedores" onClick={handleNavigate} className="block py-2 px-3 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500">Proveedores</Link></li>
+            <li><Link to="/encargos" onClick={handleNavigate} className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500">Encargos</Link></li>
+            <li><Link to="/prototipos" onClick={handleNavigate} className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500">Prototipos</Link></li>
+            <li><Link to="/pedidos" onClick={handleNavigate} className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500">Pedidos</Link></li>
+            <li><Link to="/clientes" onClick={handleNavigate} className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500">Clientes</Link></li>
+
             {currentUser?.tipo !== "encargado" && (
-            <li>
-              <Link
-                to="/ventas"
-                className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
-                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
-                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
-                                    dark:hover:bg-gray-700 dark:hover:text-white 
-                                    md:dark:hover:bg-transparent"
-              >
-                Ventas
-              </Link>
-            </li>
+              <li><Link to="/ventas" onClick={handleNavigate} className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500">Ventas</Link></li>
             )}
 
-            <li>
-              <Link
-                to="/fuegoya"
-                className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
-                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
-                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
-                                    dark:hover:bg-gray-700 dark:hover:text-white 
-                                    md:dark:hover:bg-transparent"
-              >
-                Fuego Ya
-              </Link>
-            </li>
+            <li><Link to="/fuegoya" onClick={handleNavigate} className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500">Fuego Ya</Link></li>
+            <li><Link to="/ventafuegoya" onClick={handleNavigate} className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500">Venta FuegoYa</Link></li>
+            <li><Link to="/pellets" onClick={handleNavigate} className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500">Pellets</Link></li>
 
-            <li>
-              <Link
-                to="/ventafuegoya"
-                className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
-                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
-                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
-                                    dark:hover:bg-gray-700 dark:hover:text-white 
-                                    md:dark:hover:bg-transparent"
-              >
-                Venta FuegoYa
-              </Link>
-            </li>
-
-            <li>
-              <Link
-                to="/pellets"
-                className="block py-2 px-1 text-gray-900 rounded-sm hover:bg-gray-100 
-                                    md:hover:bg-transparent md:border-0 md:hover:text-blue-700 
-                                    md:p-0 dark:text-white md:dark:hover:text-blue-500 
-                                    dark:hover:bg-gray-700 dark:hover:text-white 
-                                    md:dark:hover:bg-transparent"
-              >
-                Pellets
-              </Link>
-            </li>
             <li>
               {currentUser && (
                 <button
-                  onClick={logout}
-                  className="py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded transition font-semibold shadow-sm focus:outline-none focus:ring-2 md:top-1/2 md:ml-10 focus:ring-red-400 focus:ring-opacity-50"
+                  onClick={() => {
+                    handleNavigate();
+                    logout();
+                  }}
+                  className="py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded transition font-semibold shadow-sm focus:outline-none focus:ring-2 md:ml-10 focus:ring-red-400 focus:ring-opacity-50"
                 >
                   Cerrar sesión
                 </button>
@@ -638,6 +281,6 @@ const Nav = () =>{
       </div>
     </nav>
   );
-}
+};
 
-export default Nav
+export default Nav;

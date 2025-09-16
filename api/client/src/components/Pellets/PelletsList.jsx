@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import  { api } from "../../api";
 import { Link, useNavigate } from "react-router-dom";
 import PelletsCard from "./PelletsCard";
 import DeleteConfirm from "../Modals/DeleteConfirm";
@@ -8,14 +8,13 @@ const PelletsList = () => {
   const [pellets, setPellets] = useState([]);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [toDelete, setToDelete] = useState(null); // pellet seleccionado para borrar
+  const [toDelete, setToDelete] = useState(null); 
   const navigate = useNavigate();
 
-  // 🔹 Cargar pellets al iniciar
   useEffect(() => {
     const fetchPellets = async () => {
       try {
-        const res = await axios.get("http://localhost:4000/api/src/pellets/listar");
+        const res = await api.get("/pellets/listar");
         setPellets(res.data);
       } catch (err) {
         console.error(err);
@@ -25,20 +24,17 @@ const PelletsList = () => {
     fetchPellets();
   }, []);
 
-  // 🔹 Editar pellet
   const handleEdit = (id) => {
     navigate(`/pellets/${id}`);
   };
 
-  // 🔹 Abrir modal de confirmación
   const handleDeleteClick = (pellet) => {
     setToDelete(pellet);
   };
 
-  // 🔹 Confirmar eliminación
   const confirmDelete = async () => {
     try {
-      await axios.delete(`http://localhost:4000/api/src/pellets/${toDelete.id_pellet}`);
+      await api.delete(`/pellets/${toDelete.id_pellet}`);
       setPellets(prev => prev.filter(p => p.id_pellet !== toDelete.id_pellet));
     } catch (err) {
       console.error(err);
@@ -48,12 +44,10 @@ const PelletsList = () => {
     }
   };
 
-  // 🔹 Cancelar eliminación
   const cancelDelete = () => {
     setToDelete(null);
   };
 
-  // 🔹 Filtro de búsqueda
   const filteredPellets = pellets.filter(p =>
     p.titulo.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -104,7 +98,7 @@ const PelletsList = () => {
       <DeleteConfirm
         isOpen={!!toDelete}
         title={toDelete?.titulo}
-        imageSrc={toDelete ? `http://localhost:4000/images/pellets/${toDelete.foto}` : null}
+        imageSrc={toDelete ? `/images/pellets/${encodeURIComponent(toDelete.foto)}` : null}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
       />

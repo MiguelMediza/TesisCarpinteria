@@ -1,12 +1,12 @@
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef, useContext } from "react";
-import axios from "axios";
+import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
-import pelletsBackground from "../../assets/tablasBackground.jpg"; // puedes usar otra imagen
+import pelletsBackground from "../../assets/tablasBackground.jpg"; 
 
 const PelletsForm = () => {
   const { currentUser } = useContext(AuthContext);
-  const { id } = useParams(); // id_pellet
+  const { id } = useParams(); 
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
@@ -23,10 +23,9 @@ const PelletsForm = () => {
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
 
-  // 🔹 Cargar pellet existente si es edición
   useEffect(() => {
     if (!id) return;
-    axios.get(`http://localhost:4000/api/src/pellets/${id}`)
+    api.get(`/pellets/${id}`)
       .then(({ data }) => {
         setInputs({
           titulo: data.titulo || "",
@@ -35,7 +34,7 @@ const PelletsForm = () => {
           stock: data.stock?.toString() || ""
         });
         if (data.foto) {
-          setPreview(`http://localhost:4000/images/pellets/${data.foto}`);
+          setPreview(`/images/pellets/${encodeURIComponent(data.foto)}`);
         }
       })
       .catch(() => {
@@ -44,7 +43,6 @@ const PelletsForm = () => {
       });
   }, [id]);
 
-  // 🔹 Validación de campos
   const validateInputs = () => {
     if (!inputs.titulo) return "El título es requerido.";
     if (!inputs.bolsa_kilogramos || isNaN(inputs.bolsa_kilogramos) || Number(inputs.bolsa_kilogramos) <= 0)
@@ -58,7 +56,6 @@ const PelletsForm = () => {
     return null;
   };
 
-  // 🔹 Manejo de cambios en inputs
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (["bolsa_kilogramos", "precio_unidad"].includes(name)) {
@@ -68,7 +65,6 @@ const PelletsForm = () => {
     setInputs(prev => ({ ...prev, [name]: value }));
   };
 
-  // 🔹 Manejo de cambios en imagen
   const handleFotoChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -82,7 +78,6 @@ const PelletsForm = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // 🔹 Envío de datos al backend
   const handleSubmit = async (e) => {
     e.preventDefault();
     const validationError = validateInputs();
@@ -105,12 +100,12 @@ const PelletsForm = () => {
       if (logoFile) formData.append("foto", logoFile);
 
       if (id) {
-        await axios.put(`http://localhost:4000/api/src/pellets/${id}`, formData, {
+        await api.put(`/pellets/${id}`, formData, {
           headers: { "Content-Type": "multipart/form-data" }
         });
         setErr("Pellet actualizado correctamente.");
       } else {
-        await axios.post(`http://localhost:4000/api/src/pellets/agregar`, formData, {
+        await api.post(`/pellets/agregar`, formData, {
           headers: { "Content-Type": "multipart/form-data" }
         });
         setErr("Pellet creado exitosamente.");
@@ -122,7 +117,6 @@ const PelletsForm = () => {
       setTimeout(() => navigate("/pellets/listar"), 700);
 
     } catch (error) {
-      // ✅ Capturar mensaje real del backend
       let msg = "Error al guardar el pellet.";
       if (error.response && error.response.data) {
         if (typeof error.response.data === "string") msg = error.response.data;

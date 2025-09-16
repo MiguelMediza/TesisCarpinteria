@@ -57,7 +57,7 @@ function App() {
     return (
       <div className={`theme-${darkMode ? "dark" : "light"}`}>
         <Nav /> 
-        <main className="pt-16 min-h-screen">
+        <main className="pt-25 min-h-screen">
           <Outlet />
         </main>
       </div>

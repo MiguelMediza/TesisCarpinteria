@@ -20,7 +20,7 @@ const TipoTablaCard = ({ tipoTabla, onEdit, onDelete }) => {
       <div>
         {foto && (
           <img
-            src={`http://localhost:4000/images/tipo_tablas/${foto}`}
+            src={`/images/tipo_tablas/${encodeURIComponent(foto)}`}
             alt={titulo}
             className="w-full h-32 object-cover mb-4 rounded"
           />

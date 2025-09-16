@@ -1,6 +1,6 @@
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
-import axios from "axios";
+import { api } from "../../api";
 import ventasBackground from "../../assets/tablasBackground.jpg";
 
 const VentasForm = () => {
@@ -25,7 +25,7 @@ const VentasForm = () => {
   // 🔹 Cargar clientes para el select
 useEffect(() => {
   if (id) return; // si estoy editando, lo hace el otro useEffect
-  axios.get("http://localhost:4000/api/src/clientes/select")
+  api.get("/clientes/select")
     .then(({ data }) => setClientes(data))
     .catch(() => console.error("❌ Error cargando clientes del select"));
 }, [id]);
@@ -37,7 +37,7 @@ useEffect(() => {
   const fetchData = async () => {
     try {
       // 1) Traer la venta
-      const { data } = await axios.get(`http://localhost:4000/api/src/ventas/${id}`);
+      const { data } = await api.get(`/ventas/${id}`);
       
       // ✅ Formatear fecha
       const fechaFormateada = data.fecha_realizada
@@ -52,18 +52,18 @@ useEffect(() => {
       });
 
       if (data.foto) {
-        setPreview(`http://localhost:4000/images/ventas/${data.foto}`);
+        setPreview(`/images/ventas/${encodeURIComponent(data.foto)}`);
       }
 
       // 2) Traer clientes activos + este cliente (aunque esté eliminado)
       if (data.id_cliente) {
-        const respClientes = await axios.get(
-          `http://localhost:4000/api/src/clientes/select?incluir_id=${data.id_cliente}`
+        const respClientes = await api.get(
+          `/clientes/select?incluir_id=${data.id_cliente}`
         );
         setClientes(respClientes.data);
       } else {
         // si la venta no tiene cliente asociado, cargo solo los activos
-        const respClientes = await axios.get("http://localhost:4000/api/src/clientes/select");
+        const respClientes = await api.get("/clientes/select");
         setClientes(respClientes.data);
       }
 
@@ -123,12 +123,12 @@ useEffect(() => {
       if (fotoFile) formData.append("foto", fotoFile);
 
       if (id) {
-        await axios.put(`http://localhost:4000/api/src/ventas/${id}`, formData, {
+        await api.put(`/ventas/${id}`, formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
         setErr("Venta actualizada correctamente.");
       } else {
-        await axios.post("http://localhost:4000/api/src/ventas/agregar", formData, {
+        await api.post("/ventas/agregar", formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
         setErr("Venta creada exitosamente.");

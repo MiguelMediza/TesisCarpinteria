@@ -1,5 +1,5 @@
 import React, { useContext, useMemo, useState } from "react";
-import axios from "axios";
+import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
 
 const ESTADOS = ["pendiente", "en_produccion", "listo", "entregado", "cancelado"];
@@ -50,16 +50,6 @@ const formatMoney = (n) => {
   return num.toLocaleString("es-UY", { style: "currency", currency: "UYU", maximumFractionDigits: 2 });
 };
 
-/**
- * Props:
- *  - pedido: {
- *      id_pedido, estado, fecha_realizado, fecha_de_entrega, precio_total,
- *      comentarios, cliente_display, items?: [{ id_prototipo, prototipo_titulo, medidas, cantidad_pallets }]
- *    }
- *  - onEdit(id_pedido)
- *  - onDelete(id_pedido)
- *  - onEstadoChanged?(id_pedido, nuevoEstado)  // (opcional) callback luego de update OK
- */
 const PedidosCard = ({ pedido, onEdit, onDelete, onEstadoChanged }) => {
   const { currentUser } = useContext(AuthContext);
   const {
@@ -87,7 +77,7 @@ const PedidosCard = ({ pedido, onEdit, onDelete, onEstadoChanged }) => {
     setChanging(true);
 
     try {
-      await axios.put(`http://localhost:4000/api/src/pedidos/${id_pedido}/estado`, { estado: nuevo });
+      await api.put(`/pedidos/${id_pedido}/estado`, { estado: nuevo });
       if (onEstadoChanged) onEstadoChanged(id_pedido, nuevo);
     } catch (err) {
       console.error("Error actualizando estado:", err);

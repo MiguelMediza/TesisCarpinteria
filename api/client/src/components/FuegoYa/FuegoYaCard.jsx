@@ -15,7 +15,7 @@ const FuegoYaCard = ({ fuegoya, onEdit, onDelete }) => {
       <div>
         {foto && (
           <img
-            src={`http://localhost:4000/images/fuego_ya/${foto}`}
+            src={`/images/fuego_ya/${encodeURIComponent(foto)}`}
             alt={tipo}
             className="w-full h-32 object-cover mb-4 rounded"
           />

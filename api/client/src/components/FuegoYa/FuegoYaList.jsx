@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from "../../api";
 import { Link, useNavigate } from "react-router-dom";
 import FuegoYaCard from "./FuegoYaCard";
 import DeleteConfirm from "../Modals/DeleteConfirm";
@@ -14,7 +14,7 @@ const FuegoYaList = () => {
   useEffect(() => {
     const fetchFuegoYa = async () => {
       try {
-        const res = await axios.get("http://localhost:4000/api/src/fuegoya/listar");
+        const res = await api.get("/fuegoya/listar");
         setFuegoYa(res.data);
         
       } catch (err) {
@@ -37,7 +37,7 @@ const FuegoYaList = () => {
   // Confirmar borrado
   const confirmDelete = async () => {
     try {
-      await axios.delete(`http://localhost:4000/api/src/fuegoya/${toDelete.id_fuego_ya}`);
+      await api.delete(`/fuegoya/${toDelete.id_fuego_ya}`);
       setFuegoYa(prev =>
         prev.filter(t => t.id_fuego_ya !== toDelete.id_fuego_ya)
       );
@@ -103,7 +103,7 @@ const FuegoYaList = () => {
       <DeleteConfirm
         isOpen={!!toDelete}
         title={toDelete?.tipo}
-        imageSrc={toDelete ? `http://localhost:4000/images/fuegoya/${toDelete.foto}` : null}
+        imageSrc={toDelete ? `/images/fuegoya/${encodeURIComponent(toDelete.foto)}` : null}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
       />

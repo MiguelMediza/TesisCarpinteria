@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
 
 const Badge = ({ children, className = "" }) => (
@@ -17,8 +17,6 @@ const Line = () => <hr className="my-3 border-gray-200" />;
 const PrototipoPalletCard = ({ prototipo, onEdit, onDelete }) => {
   const { currentUser } = useContext(AuthContext);
 
-  // Espera que 'prototipo' venga desde /prototipos/listar con:
-  // { id_prototipo, titulo, medidas, foto, costo_materiales? ... }
   const {
     id_prototipo,
     titulo,
@@ -32,10 +30,8 @@ const PrototipoPalletCard = ({ prototipo, onEdit, onDelete }) => {
     cliente_empresa,
   } = prototipo;
 
-  // Detalle y costo dinámico (desde la view) — lo traemos del endpoint GET /prototipos/:id
   const [bomDetalle, setBomDetalle] = useState([]);
   const [costoMateriales, setCostoMateriales] = useState(
-    // si vino precalculado en el listar, úsalo como valor inicial
     Number.isFinite(+prototipo?.costo_materiales) ? +prototipo.costo_materiales : null
   );
   const [loading, setLoading] = useState(true);
@@ -46,7 +42,7 @@ const PrototipoPalletCard = ({ prototipo, onEdit, onDelete }) => {
     (async () => {
       try {
         setLoading(true);
-        const { data } = await axios.get(`http://localhost:4000/api/src/prototipos/${id_prototipo}`);
+        const { data } = await api.get(`/prototipos/${id_prototipo}`);
         if (!mounted) return;
         setBomDetalle(data.bom_detalle || []);
         setCostoMateriales(
@@ -80,7 +76,7 @@ const PrototipoPalletCard = ({ prototipo, onEdit, onDelete }) => {
         <div className="flex items-start gap-3 mb-3">
           {foto && (
             <img
-              src={`http://localhost:4000/images/prototipos/${foto}`}
+              src={`/images/prototipos/${encodeURIComponent(foto)}`}
               alt={titulo || `Prototipo #${id_prototipo}`}
               className="w-28 h-28 object-cover rounded"
             />

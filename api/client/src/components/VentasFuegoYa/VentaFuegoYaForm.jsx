@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import axios from "axios";
+import { api } from "../../api";
 import bgImg from "../../assets/tablasBackground.jpg";
 
 const PAGO_OPCIONES = ["credito", "pago"]; // el toggle “real” con fecha lo hacés desde la Card
@@ -58,8 +58,8 @@ const VentaFuegoyaForm = () => {
     (async () => {
       try {
         const [cliRes, fyRes] = await Promise.all([
-          axios.get("http://localhost:4000/api/src/clientes/listar"),
-          axios.get("http://localhost:4000/api/src/fuegoya/listar"),
+          api.get("/clientes/listar"),
+          api.get("/fuegoya/listar"),
         ]);
         setClientes(cliRes.data || []);
         setFuegos(fyRes.data || []);
@@ -76,7 +76,7 @@ const VentaFuegoyaForm = () => {
     if (!id) return;
     (async () => {
       try {
-        const { data } = await axios.get(`http://localhost:4000/api/src/ventafuegoya/${id}`);
+        const { data } = await api.get(`/ventafuegoya/${id}`);
         setInputs({
           fecha_realizada: formatDateFromISO(data.fecha_realizada),
           precio_total: data.precio_total != null ? String(data.precio_total) : "",
@@ -198,15 +198,15 @@ const VentaFuegoyaForm = () => {
 
     try {
       if (id) {
-        await axios.put(
-          `http://localhost:4000/api/src/ventafuegoya/${id}`,
+        await api.put(
+          `/ventafuegoya/${id}`,
           fd,
           { headers: { "Content-Type": "multipart/form-data" } }
         );
         setErr("Venta Fuegoya actualizada correctamente.");
       } else {
-        await axios.post(
-          "http://localhost:4000/api/src/ventafuegoya/agregar",
+        await api.post(
+          "/ventafuegoya/agregar",
           fd,
           { headers: { "Content-Type": "multipart/form-data" } }
         );

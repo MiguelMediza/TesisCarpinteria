@@ -19,8 +19,9 @@ const FibrasCard = ({ fibra, onEdit, onDelete }) => {
       <div>
         {foto && (
           <img
-            src={`http://localhost:4000/images/fibras/${foto}`}
+            src={`/images/fibras/${encodeURIComponent(foto)}`}
             alt={titulo}
+            loading="lazy"
             className="w-full h-32 object-cover mb-4 rounded"
           />
         )}

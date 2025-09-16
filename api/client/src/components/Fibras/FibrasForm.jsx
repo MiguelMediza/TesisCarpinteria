@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useContext } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
 import tablasBackground from "../../assets/tablasBackground.jpg";
 
@@ -28,7 +28,7 @@ const FibrasForm = () => {
   // Load existing data on edit
   useEffect(() => {
     if (!id) return;
-    axios.get(`http://localhost:4000/api/src/fibras/${id}`)
+    api.get(`/fibras/${id}`)
       .then(({ data }) => {
         setInputs({
           titulo:       data.titulo     || "",
@@ -39,7 +39,7 @@ const FibrasForm = () => {
           comentarios:  data.comentarios|| "",
         });
         if (data.foto) {
-          setPreview(`http://localhost:4000/images/fibras/${data.foto}`);
+          setPreview(`/images/fibras/${encodeURIComponent(data.foto)}`);
         }
       })
       .catch(() => {
@@ -109,15 +109,15 @@ const FibrasForm = () => {
       if (fotoFile) formData.append("foto", fotoFile);
 
       if (id) {
-        await axios.put(
-          `http://localhost:4000/api/src/fibras/${id}`,
+        await api.put(
+          `/fibras/${id}`,
           formData,
           { headers: { "Content-Type": "multipart/form-data" } }
         );
         setErr("Fibra actualizada correctamente.");
       } else {
-        await axios.post(
-          "http://localhost:4000/api/src/fibras/agregar",
+        await api.post(
+          "/fibras/agregar",
           formData,
           { headers: { "Content-Type": "multipart/form-data" } }
         );

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import axios from "axios";
+import { api } from "../../api";
 import { Link, useNavigate } from "react-router-dom";
 import EncargosCard from "./EncargosCard";
 import DeleteConfirm from "../Modals/DeleteConfirm";
@@ -14,7 +14,7 @@ const EncargosList = () => {
 
   const fetchEncargos = useCallback(async () => {
     try {
-      const res = await axios.get("http://localhost:4000/api/src/encargos/listar");
+      const res = await api.get("/encargos/listar");
       setEncargos(res.data);
       setError("");
     } catch (err) {
@@ -37,7 +37,7 @@ const EncargosList = () => {
 
   const confirmDelete = async () => {
     try {
-      await axios.delete(`http://localhost:4000/api/src/encargos/${toDelete.id_encargo}`);
+      await api.delete(`/encargos/${toDelete.id_encargo}`);
       setEncargos(prev => prev.filter(e => e.id_encargo !== toDelete.id_encargo));
     } catch (err) {
       console.error(err);
@@ -61,7 +61,7 @@ const EncargosList = () => {
     setMarkingId(id);
 
     try {
-      await axios.put(`http://localhost:4000/api/src/encargos/${id}/recibido`);
+      await api.put(`/encargos/${id}/recibido`);
     } catch (e) {
       console.error(e);
       setError("No se pudo marcar como recibido.");

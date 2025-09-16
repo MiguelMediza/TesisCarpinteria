@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import axios from "axios";
+import { api } from "../../api";
 import pedidosBg from "../../assets/tablasBackground.jpg";
 
 const ESTADOS = ["pendiente","en_produccion","listo","entregado","cancelado"];
@@ -41,8 +41,8 @@ const PedidosForm = () => {
     (async () => {
       try {
         const [cliRes, protRes] = await Promise.all([
-          axios.get("http://localhost:4000/api/src/clientes/listar"),
-          axios.get("http://localhost:4000/api/src/prototipos/listar") // debe devolver id_prototipo, titulo, medidas
+          api.get("/clientes/listar"),
+          api.get("/prototipos/listar") 
         ]);
         setClientes(cliRes.data || []);
         setPrototipos(protRes.data || []);
@@ -59,7 +59,7 @@ const PedidosForm = () => {
     if (!id) return;
     (async () => {
       try {
-        const { data } = await axios.get(`http://localhost:4000/api/src/pedidos/${id}`);
+        const { data } = await api.get(`/pedidos/${id}`);
         setInputs({
           id_cliente: data.id_cliente?.toString() || "",
           estado: data.estado || "pendiente",
@@ -93,7 +93,7 @@ const PedidosForm = () => {
       if (name === "fecha_realizado" && next.fecha_de_entrega) {
         const fReal = new Date(value);
         const fEnt  = new Date(next.fecha_de_entrega);
-        if (fEnt <= fReal) next.fecha_de_entrega = ""; // limpia para forzar elegir una válida
+        if (fEnt <= fReal) next.fecha_de_entrega = ""; 
       }
       return next;
     });
@@ -101,10 +101,9 @@ const PedidosForm = () => {
 
   const handleItemChange = (idx, field, value) => {
     setItems(prev => {
-      const next = [...prev];
-      // sanitizar cantidad_pallets (solo enteros > 0)
+      const next = [...prev];  
       if (field === "cantidad_pallets") {
-        const v = value.replace(/[^\d]/g, ""); // solo dígitos
+        const v = value.replace(/[^\d]/g, ""); 
         next[idx][field] = v;
       } else {
         next[idx][field] = value;
@@ -129,12 +128,10 @@ const PedidosForm = () => {
     const fEnt  = new Date(inputs.fecha_de_entrega);
     if (fEnt <= fReal) return "La fecha de entrega debe ser estrictamente posterior a la fecha realizado.";
 
-    // Al menos un ítem válido
     const isValidQty = (v) => /^[1-9]\d*$/.test(String(v).trim());
     const validItems = items.filter(it => it.id_prototipo && isValidQty(it.cantidad_pallets));
     if (validItems.length === 0) return "Debe agregar al menos un prototipo con cantidad > 0.";
 
-    // Verificar filas con selección que tengan cantidad válida
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
       if (it.id_prototipo && !isValidQty(it.cantidad_pallets)) {
@@ -145,7 +142,6 @@ const PedidosForm = () => {
     return null;
   };
 
-  // Submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     const v = validar();
@@ -172,10 +168,10 @@ const PedidosForm = () => {
 
     try {
       if (id) {
-        await axios.put(`http://localhost:4000/api/src/pedidos/${id}`, payload);
+        await api.put(`/pedidos/${id}`, payload);
         setErr("Pedido actualizado correctamente.");
       } else {
-        await axios.post(`http://localhost:4000/api/src/pedidos/agregar`, payload);
+        await api.post(`/pedidos/agregar`, payload);
         setErr("Pedido creado exitosamente.");
       }
       setMessageType("success");

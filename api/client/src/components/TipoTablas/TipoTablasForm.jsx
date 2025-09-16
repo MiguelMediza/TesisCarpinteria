@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useContext } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
 import tablasBackground from "../../assets/tablasBackground.jpg";
 
@@ -33,7 +33,7 @@ const TipoTablasForm = () => {
 
   // Load tablas for parent-select
   useEffect(() => {
-    axios.get("http://localhost:4000/api/src/tablas/listar")
+    api.get("/tablas/listar")
       .then(({ data }) => setTablas(data))
       .catch(() => {/* ignore */});
   }, []);
@@ -43,7 +43,7 @@ const TipoTablasForm = () => {
     if (!id) return;
      // espera a tener ya la lista de tablas para poder buscar en ella:
     if (tablas.length === 0) return;
-    axios.get(`http://localhost:4000/api/src/tipotablas/${id}`)
+    api.get(`/tipotablas/${id}`)
       .then(({ data }) => {
         setInputs({
           id_materia_prima: data.id_materia_prima.toString(),
@@ -64,13 +64,13 @@ const TipoTablasForm = () => {
         // carga su imagen de fondo
         setTablaPreview(
           parent.foto
-            ? `http://localhost:4000/images/tablas/${parent.foto}`
+            ? `/images/tablas/${encodeURIComponent(parent.foto)}`
             : null
         );
       }
         // show own foto
         if (data.foto) {
-          setPreview(`http://localhost:4000/images/tipo_tablas/${data.foto}`);
+          setPreview(`/images/tipo_tablas/${encodeURIComponent(data.foto)}`);
         }
       })
       .catch(() => {
@@ -104,7 +104,7 @@ const TipoTablasForm = () => {
     const parent = tablas.find(t => t.id_materia_prima.toString() === idp);
     setSelectedTabla(parent);
     setTablaPreview(parent?.foto
-      ? `http://localhost:4000/images/tablas/${parent.foto}`
+      ? `/images/tablas/${encodeURIComponent(parent.foto)}`
       : null);
   };
 
@@ -153,15 +153,15 @@ const TipoTablasForm = () => {
       if (fotoFile) fd.append("foto", fotoFile);
 
       if (id) {
-        await axios.put(
-          `http://localhost:4000/api/src/tipotablas/${id}`,
+        await api.put(
+          `/tipotablas/${id}`,
           fd,
           { headers: { "Content-Type":"multipart/form-data" } }
         );
         setErr("Tipo de tabla actualizado.");
       } else {
-        await axios.post(
-          "http://localhost:4000/api/src/tipotablas/agregar",
+        await api.post(
+          "/tipotablas/agregar",
           fd,
           { headers: { "Content-Type":"multipart/form-data" } }
         );

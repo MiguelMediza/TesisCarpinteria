@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from "../../api";
 import { Link, useNavigate } from "react-router-dom";
 import TipoTablasCard from "./TipoTablasCard";
 import DeleteConfirm from "../Modals/DeleteConfirm";
@@ -14,7 +14,7 @@ const TipoTablasList = () => {
   useEffect(() => {
     const fetchTipos = async () => {
       try {
-        const res = await axios.get("http://localhost:4000/api/src/tipotablas/listar");
+        const res = await api.get("/tipotablas/listar");
         setTipos(res.data);
       } catch (err) {
         console.error(err);
@@ -36,7 +36,7 @@ const TipoTablasList = () => {
   // Confirmación de eliminación
   const confirmDelete = async () => {
     try {
-      await axios.delete(`http://localhost:4000/api/src/tipotablas/${toDelete.id_tipo_tabla}`);
+      await api.delete(`/tipotablas/${toDelete.id_tipo_tabla}`);
       setTipos(prev => prev.filter(t => t.id_tipo_tabla !== toDelete.id_tipo_tabla));
     } catch (err) {
       console.error(err);
@@ -98,7 +98,7 @@ const TipoTablasList = () => {
       <DeleteConfirm
         isOpen={!!toDelete}
         title={toDelete?.titulo}
-        imageSrc={toDelete ? `http://localhost:4000/images/tipo_tablas/${toDelete.foto}` : null}
+        imageSrc={toDelete ? `/images/tipo_tablas/${encodeURIComponent(toDelete.foto)}` : null}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
       />

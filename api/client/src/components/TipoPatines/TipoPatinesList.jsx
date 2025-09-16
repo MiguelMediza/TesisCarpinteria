@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import { api } from "../../api";
 import { Link, useNavigate } from "react-router-dom";
 import TipoPatinesCard from "./TipoPatinesCard";
 import DeleteConfirm from "../Modals/DeleteConfirm";
@@ -15,7 +15,7 @@ const TipoPatinesList = () => {
   useEffect(() => {
     const fetchPatines = async () => {
       try {
-        const res = await axios.get("http://localhost:4000/api/src/tipopatines/listar");
+        const res = await api.get("/tipopatines/listar");
         setPatines(res.data);
       } catch (err) {
         console.error(err);
@@ -38,7 +38,7 @@ const TipoPatinesList = () => {
   // Confirmar eliminación
   const confirmDelete = async () => {
     try {
-      await axios.delete(`http://localhost:4000/api/src/tipopatines/${toDelete.id_tipo_patin}`);
+      await api.delete(`/tipopatines/${toDelete.id_tipo_patin}`);
       setPatines(prev => prev.filter(p => p.id_tipo_patin !== toDelete.id_tipo_patin));
     } catch (err) {
       console.error(err);
@@ -104,7 +104,7 @@ const TipoPatinesList = () => {
       <DeleteConfirm
         isOpen={!!toDelete}
         title={toDelete?.titulo}
-        imageSrc={toDelete ? `http://localhost:4000/images/tipo_patines/${toDelete.logo}` : null}
+        imageSrc={toDelete ? `/images/tipo_patines/${encodeURIComponent(toDelete.logo)}` : null}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
       />

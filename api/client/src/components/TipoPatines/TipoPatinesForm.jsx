@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useContext } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
 import tablasBackground from "../../assets/tablasBackground.jpg";
 
@@ -34,11 +34,11 @@ const TipoPatinesForm = () => {
 
   // Fetch tablas y tacos
   useEffect(() => {
-    axios.get("http://localhost:4000/api/src/tipotablas/listar")
+    api.get("/tipotablas/listar")
       .then(({ data }) => setTablas(data))
       .catch(() => console.error("❌ Error cargando tipo_tablas"));
 
-    axios.get("http://localhost:4000/api/src/tipotacos/listar")
+    api.get("/tipotacos/listar")
       .then(({ data }) => setTacos(data))
       .catch(() => console.error("❌ Error cargando tipo_tacos"));
   }, []);
@@ -46,7 +46,7 @@ const TipoPatinesForm = () => {
   // Si estamos editando, cargar el patín existente
   useEffect(() => {
     if (!id) return;
-    axios.get(`http://localhost:4000/api/src/tipopatines/${id}`)
+    api.get(`/tipopatines/${id}`)
       .then(({ data }) => {
         setInputs({
           id_tipo_tabla: data.id_tipo_tabla.toString(),
@@ -62,7 +62,7 @@ const TipoPatinesForm = () => {
         if (tabla) setSelectedTabla(tabla);
         if (taco)  setSelectedTaco(taco);
 
-        if (data.logo) setPreview(`http://localhost:4000/images/tipo_patines/${data.logo}`);
+        if (data.logo) setPreview(`/images/tipo_patines/${encodeURIComponent(data.logo)}`);
       })
       .catch(() => {
         setErr("No se pudo cargar el tipo de patín.");
@@ -155,12 +155,12 @@ const TipoPatinesForm = () => {
       if (logoFile) fd.append("logo", logoFile);
 
       if (id) {
-        await axios.put(`http://localhost:4000/api/src/tipopatines/${id}`, fd, {
+        await api.put(`/tipopatines/${id}`, fd, {
           headers: { "Content-Type": "multipart/form-data" }
         });
         setErr("Tipo de patín actualizado.");
       } else {
-        await axios.post("http://localhost:4000/api/src/tipopatines/agregar", fd, {
+        await api.post("/tipopatines/agregar", fd, {
           headers: { "Content-Type": "multipart/form-data" }
         });
         setErr("Tipo de patín creado.");

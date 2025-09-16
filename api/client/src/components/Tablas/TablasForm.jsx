@@ -1,6 +1,6 @@
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef, useContext } from "react";
-import axios from "axios";
+import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
 import tablasBackground from "../../assets/tablasBackground.jpg";
 
@@ -30,7 +30,7 @@ const TablasForm = () => {
 
   useEffect(() => {
     if (!id) return;
-    axios.get(`http://localhost:4000/api/src/tablas/${id}`)
+    api.get(`/tablas/${id}`)
       .then(({ data }) => {
         setInputs({
           titulo: data.titulo || "",
@@ -43,7 +43,7 @@ const TablasForm = () => {
           stock: data.stock?.toString() || "",
           comentarios: data.comentarios || "",
         });
-        if (data.foto) { setPreview(`http://localhost:4000/images/tablas/${data.foto}`);}
+        if (data.foto) { setPreview(`/images/tablas/${encodeURIComponent(data.foto)}`);}
       })
       .catch(() => {
         setErr("No se pudo cargar la tabla.");
@@ -118,15 +118,15 @@ const TablasForm = () => {
       if (fotoFile) formData.append('foto', fotoFile);
 
       if (id) {
-        await axios.put(
-          `http://localhost:4000/api/src/tablas/${id}`,
+        await api.put(
+          `/tablas/${id}`,
           formData,
           { headers: { 'Content-Type': 'multipart/form-data' } }
         );
         setErr("Tabla actualizada correctamente.");
       } else {
-        await axios.post(
-          "http://localhost:4000/api/src/tablas/agregar",
+        await api.post(
+          "/tablas/agregar",
           formData,
           { headers: { 'Content-Type': 'multipart/form-data' } }
         );

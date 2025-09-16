@@ -21,7 +21,7 @@ const TipoPatinesCard = ({ tipoPatin, onEdit, onDelete }) => {
         {/* Imagen del patín */}
         {logo && (
           <img
-            src={`http://localhost:4000/images/tipo_patines/${logo}`}
+            src={`/images/tipo_patines/${logo}`}
             alt={titulo}
             className="w-full h-32 object-cover mb-4 rounded"
           />

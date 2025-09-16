@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import axios from "axios";
+import { api } from "../../api";
 import { Link, useNavigate } from "react-router-dom";
 import VentaFuegoyaCard from "./VentaFuegoYaCard";  // <- tu card de fuegoya
 import DeleteConfirm from "../Modals/DeleteConfirm";
@@ -29,10 +29,10 @@ const VentaFuegoyaList = () => {
       if (desde) params.append("desde", desde);
       if (hasta) params.append("hasta", hasta);
 
-      const url = `http://localhost:4000/api/src/ventafuegoya/listar${
+      const url = `/ventafuegoya/listar${
         params.toString() ? `?${params.toString()}` : ""
       }`;
-      const { data } = await axios.get(url);
+      const { data } = await api.get(url);
       setVentas(data || []);
       setError("");
     } catch (e) {
@@ -54,8 +54,8 @@ const VentaFuegoyaList = () => {
 
   const confirmDelete = async () => {
     try {
-      await axios.delete(
-        `http://localhost:4000/api/src/ventafuegoya/${toDelete.id_ventaFuegoya}`
+      await api.delete(
+        `/ventafuegoya/${toDelete.id_ventaFuegoya}`
       );
       setVentas((prev) =>
         prev.filter((v) => v.id_ventaFuegoya !== toDelete.id_ventaFuegoya)

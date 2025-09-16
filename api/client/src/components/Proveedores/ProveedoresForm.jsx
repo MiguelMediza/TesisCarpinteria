@@ -1,6 +1,6 @@
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import axios from "axios";
+import { api } from "../../api";
 import tablasBackground from "../../assets/tablasBackground.jpg"; 
 
 const Proveedores = () => {
@@ -29,7 +29,7 @@ const Proveedores = () => {
   // 2. Si hay id, cargamos datos para editar
   useEffect(() => {
     if (!id) return;
-    axios.get(`http://localhost:4000/api/src/proveedores/${id}`)
+    api.get(`/proveedores/${id}`)
       .then(({ data }) => setInputs(data))
       .catch(() => {
         setErr("No se pudo cargar el proveedor.");
@@ -67,16 +67,16 @@ const Proveedores = () => {
     try {
       if (id) {
         // EDITAR
-        await axios.put(
-          `http://localhost:4000/api/src/proveedores/${id}`,
+        await api.put(
+          `/proveedores/${id}`,
           inputs
         );
         setErr("Proveedor actualizado correctamente.");
         setInputs(initialInputs);
       } else {
         // CREAR
-        await axios.post(
-          "http://localhost:4000/api/src/proveedores/agregar",
+        await api.post(
+          "/proveedores/agregar",
           inputs
         );
         setErr("Proveedor creado exitosamente.");

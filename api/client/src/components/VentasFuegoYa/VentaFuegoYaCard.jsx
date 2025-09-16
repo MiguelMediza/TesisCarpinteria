@@ -1,5 +1,5 @@
 import React, { useContext, useMemo, useState } from "react";
-import axios from "axios";
+import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
 
 // colores para badge de pago
@@ -90,8 +90,8 @@ const VentaFuegoYaCard = ({ venta, onEdit, onDelete, onPagoChanged }) => {
     setFechaPagoLocal(nuevo === "pago" ? nowLocal : null);
 
     try {
-      await axios.put(
-        `http://localhost:4000/api/src/ventafuegoya/${id_ventaFuegoya}/estadopago`,
+      await api.put(
+        `/ventafuegoya/${id_ventaFuegoya}/estadopago`,
         { estadopago: nuevo }
       );
       onPagoChanged?.(
@@ -113,7 +113,7 @@ const VentaFuegoYaCard = ({ venta, onEdit, onDelete, onPagoChanged }) => {
     <div className="border rounded-lg bg-white shadow-sm flex flex-col justify-between w-full h-full overflow-hidden">
       {foto && (
         <img
-          src={`http://localhost:4000/images/venta_fuegoya/${foto}`}
+          src={`/images/venta_fuegoya/${encodeURIComponent(foto)}`}
           alt={`Venta ${id_ventaFuegoya}`}
           className="w-full h-40 object-cover"
         />

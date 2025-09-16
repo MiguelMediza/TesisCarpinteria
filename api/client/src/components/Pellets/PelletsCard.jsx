@@ -10,7 +10,7 @@ const PelletsCard = ({ pellet, onEdit, onDelete }) => {
       <div>
         {foto && (
           <img
-            src={`http://localhost:4000/images/pellets/${foto}`}
+            src={`/images/pellets/${foto}`}
             alt={titulo}
             className="w-full h-32 object-cover mb-4 rounded"
           />

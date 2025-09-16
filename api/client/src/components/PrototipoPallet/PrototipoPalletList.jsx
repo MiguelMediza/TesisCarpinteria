@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import axios from "axios";
+import { api } from "../../api";
 import { Link, useNavigate } from "react-router-dom";
 import PrototipoPalletCard from "./PrototipoPalletCard";
 import DeleteConfirm from "../Modals/DeleteConfirm";
@@ -14,7 +14,7 @@ const PrototipoPalletList = () => {
   // Carga de prototipos
   const fetchPrototipos = useCallback(async () => {
     try {
-      const res = await axios.get("http://localhost:4000/api/src/prototipos/listar");
+      const res = await api.get("/prototipos/listar");
       setPrototipos(res.data || []);
       setError("");
     } catch (err) {
@@ -40,7 +40,7 @@ const PrototipoPalletList = () => {
   // Confirmar borrado
   const confirmDelete = async () => {
     try {
-      await axios.delete(`http://localhost:4000/api/src/prototipos/${toDelete.id_prototipo}`);
+      await api.delete(`/prototipos/${toDelete.id_prototipo}`);
       setPrototipos(prev => prev.filter(p => p.id_prototipo !== toDelete.id_prototipo));
     } catch (err) {
       console.error(err);
@@ -104,7 +104,7 @@ const PrototipoPalletList = () => {
       <DeleteConfirm
         isOpen={!!toDelete}
         title={toDelete ? (toDelete.titulo || `Prototipo #${toDelete.id_prototipo}`) : ""}
-        imageSrc={toDelete?.foto ? `http://localhost:4000/images/prototipos/${toDelete.foto}` : null}
+        imageSrc={toDelete?.foto ? `/images/prototipos/${encodeURIComponent(toDelete.foto)}` : null}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
       />

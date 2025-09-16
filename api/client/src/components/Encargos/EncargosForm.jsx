@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import encargosBackground from "../../assets/tablasBackground.jpg";
-import axios from "axios";
+import { api } from "../../api";
 
 const EncargosForm = () => {
   const { id } = useParams();
@@ -22,8 +22,8 @@ const EncargosForm = () => {
 
   //Cargar proveedores y materias primas
   useEffect(() => {
-    axios.get("http://localhost:4000/api/src/proveedores/listar").then(({ data }) => setProveedores(data));
-    axios.get("http://localhost:4000/api/src/encargos/primas")
+    api.get("/proveedores/listar").then(({ data }) => setProveedores(data));
+    api.get("/encargos/primas")
     .then(({ data }) => setMateriasPrimas(data))
     .catch(err => console.error("Error cargando materias primas:", err)); 
   }, []);
@@ -31,7 +31,7 @@ const EncargosForm = () => {
   //Cargar encargo si es edición
   useEffect(() => {
     if (!id) return;
-    axios.get(`http://localhost:4000/api/src/encargos/${id}`)
+    api.get(`/encargos/${id}`)
       .then(({ data }) => {
         setInputs({
           fecha_realizado: formatDate(data.fecha_realizado),
@@ -122,10 +122,10 @@ const EncargosForm = () => {
 
     try {
       if (id) {
-        await axios.put(`http://localhost:4000/api/src/encargos/${id}`, payload);
+        await api.put(`/encargos/${id}`, payload);
         setErr("Encargo actualizado correctamente.");
       } else {
-        await axios.post("http://localhost:4000/api/src/encargos/agregar", payload);
+        await api.post("/encargos/agregar", payload);
         setErr("Encargo creado exitosamente.");
       }
       setMessageType("success");

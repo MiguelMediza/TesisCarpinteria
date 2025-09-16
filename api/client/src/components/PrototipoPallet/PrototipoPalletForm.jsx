@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import axios from "axios";
+import { api } from "../../api";
 import prototipoBg from "../../assets/tablasBackground.jpg";
 
 const PrototipoPalletForm = () => {
@@ -47,11 +47,11 @@ const PrototipoPalletForm = () => {
         const [
           ttabRes, ttacRes, tpatRes, mpRes, cliRes
         ] = await Promise.all([
-          axios.get("http://localhost:4000/api/src/tipotablas/listar"),
-          axios.get("http://localhost:4000/api/src/tipotacos/listar"),
-          axios.get("http://localhost:4000/api/src/tipopatines/select"),
-          axios.get("http://localhost:4000/api/src/materiaprima/listar"),
-          axios.get("http://localhost:4000/api/src/clientes/listar"),
+          api.get("/tipotablas/listar"),
+          api.get("/tipotacos/listar"),
+          api.get("/tipopatines/select"),
+          api.get("/materiaprima/listar"),
+          api.get("/clientes/listar"),
         ]);
 
         setTipoTablas(ttabRes.data || []);
@@ -75,7 +75,7 @@ const PrototipoPalletForm = () => {
     if (!id) return;
     (async () => {
       try {
-        const { data } = await axios.get(`http://localhost:4000/api/src/prototipos/${id}`);
+        const { data } = await api.get(`/prototipos/${id}`);
         // Cabecera
         setInputs({
           titulo: data.titulo || "",
@@ -87,7 +87,7 @@ const PrototipoPalletForm = () => {
         });
 
         // Foto (si existiera)
-        if (data.foto) setPreview(`http://localhost:4000/images/prototipos/${data.foto}`);
+        if (data.foto) setPreview(`/images/prototipos/${encodeURIComponent(data.foto)}`);
 
         // BOM -> repartir
         const bom = data.bom_detalle || [];
@@ -262,12 +262,12 @@ const validar = () => {
       if (fotoFile) formData.append("foto", fotoFile);
 
       if (id) {
-        await axios.put(`http://localhost:4000/api/src/prototipos/${id}`, formData, {
+        await api.put(`/prototipos/${id}`, formData, {
           headers: { "Content-Type": "multipart/form-data" }
         });
         setErr("Prototipo actualizado correctamente.");
       } else {
-        await axios.post(`http://localhost:4000/api/src/prototipos/agregar`, formData, {
+        await api.post(`/prototipos/agregar`, formData, {
           headers: { "Content-Type": "multipart/form-data" }
         });
         setErr("Prototipo creado exitosamente.");
@@ -336,7 +336,7 @@ const validar = () => {
               <option value="">Seleccionar cliente (opcional)</option>
               {clientes.map(c => (
                 <option key={c.id_cliente} value={c.id_cliente}>
-                  {c.es_empresa ? c.nombre_empresa : `${c.nombre} ${c.apellido || ""}`}
+                  { `${c.nombre} ${c.apellido || ""}`}
                 </option>
               ))}
             </select>
@@ -451,28 +451,29 @@ const validar = () => {
                   ))}
                 </select>
                 <input
-                  type="number"
-                  min="1"
-                  value={r.cantidad_lleva}
-                  inputMode="numeric"
-                  pattern="\d*"
-                  onChange={(e) => {
-                    const onlyDigits = e.target.value.replace(/\D/g, ""); 
-                    handleTablas(i, "cantidad_lleva", onlyDigits);
-                  }}
-                  onKeyDown={(e) => {
-                    if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
-                      e.preventDefault();
-                    }
-                  }}
-                  onPaste={(e) => {
+                type="number"
+                min="1"
+                value={r.cantidad_lleva}
+                inputMode="numeric"
+                pattern="\d*"
+                onChange={(e) => {
+                  const onlyDigits = e.target.value.replace(/\D/g, "");
+                  handleTablas(i, "cantidad_lleva", onlyDigits);
+                }}
+                onKeyDown={(e) => {
+                  if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
                     e.preventDefault();
-                    const pasted = (e.clipboardData.getData("text") || "").replace(/\D/g, "");
-                    handleClavos(i, "cantidad_lleva", pasted); 
-                  }}
-                  placeholder="Cantidad"
-                  className="md:col-span-2 p-2 border rounded bg-neutral-100"
-                />
+                  }
+                }}
+                onPaste={(e) => {
+                  e.preventDefault();
+                  const pasted = (e.clipboardData.getData("text") || "").replace(/\D/g, "");
+                  // ⬇️ antes estaba handleClavos
+                  handleTablas(i, "cantidad_lleva", pasted);
+                }}
+                placeholder="Cantidad"
+                className="md:col-span-2 p-2 border rounded bg-neutral-100"
+              />
                 <input
                   type="text"
                   value={r.aclaraciones}
@@ -514,8 +515,9 @@ const validar = () => {
                   inputMode="numeric"
                   pattern="\d*"
                   onChange={(e) => {
-                    const onlyDigits = e.target.value.replace(/\D/g, ""); 
-                    handleFibras(i, "cantidad_lleva", onlyDigits);
+                    const onlyDigits = e.target.value.replace(/\D/g, "");
+                    // ⬇️ antes estaba handleFibras
+                    handleTacos(i, "cantidad_lleva", onlyDigits);
                   }}
                   onKeyDown={(e) => {
                     if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
@@ -525,7 +527,7 @@ const validar = () => {
                   onPaste={(e) => {
                     e.preventDefault();
                     const pasted = (e.clipboardData.getData("text") || "").replace(/\D/g, "");
-                    handleTacos(i, "cantidad_lleva", pasted); 
+                    handleTacos(i, "cantidad_lleva", pasted);
                   }}
                   placeholder="Cantidad"
                   className="md:col-span-2 p-2 border rounded bg-neutral-100"
@@ -631,7 +633,7 @@ const validar = () => {
                   inputMode="numeric"
                   pattern="\d*"
                   onChange={(e) => {
-                    const onlyDigits = e.target.value.replace(/\D/g, ""); 
+                    const onlyDigits = e.target.value.replace(/\D/g, "");
                     handleFibras(i, "cantidad_lleva", onlyDigits);
                   }}
                   onKeyDown={(e) => {
@@ -642,7 +644,8 @@ const validar = () => {
                   onPaste={(e) => {
                     e.preventDefault();
                     const pasted = (e.clipboardData.getData("text") || "").replace(/\D/g, "");
-                    handleClavos(i, "cantidad_lleva", pasted); 
+                    // ⬇️ antes estaba handleClavos
+                    handleFibras(i, "cantidad_lleva", pasted);
                   }}
                   placeholder="Cantidad"
                   className="md:col-span-2 p-2 border rounded bg-neutral-100"
