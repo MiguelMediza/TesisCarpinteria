@@ -1,6 +1,13 @@
-// controllers/tipotablas.js
 import { pool } from "../db.js";
 import { r2Delete } from "../lib/r2.js";
+
+
+const PUBLIC_BASE = process.env.R2_PUBLIC_BASE_URL || "";
+const toPublicUrl = (v) => {
+  if (!v) return null;
+  if (/^https?:\/\//i.test(v)) return v; 
+  return `${PUBLIC_BASE.replace(/\/+$/, "")}/${String(v).replace(/^\/+/, "")}`;
+};
 
 export const createTipoTabla = async (req, res) => {
   const connection = await pool.getConnection();
@@ -16,9 +23,10 @@ export const createTipoTabla = async (req, res) => {
       stock
     } = req.body;
 
-    const foto = req.fileR2?.url || null;
+    const fotoKey = req.fileR2?.key || null;
 
     await connection.beginTransaction();
+
 
     const [[parent]] = await connection.query(
       `SELECT t.largo_cm AS parentLargo, mp.stock AS parentStock
@@ -48,7 +56,7 @@ export const createTipoTabla = async (req, res) => {
         parseFloat(largo_cm),
         parseFloat(ancho_cm),
         parseFloat(espesor_mm),
-        foto,
+        fotoKey, 
         parseFloat(precio_unidad),
         cepillada === "1" ? 1 : 0,
         cantidadDeseada
@@ -61,7 +69,9 @@ export const createTipoTabla = async (req, res) => {
     );
 
     await connection.commit();
-    return res.status(201).json({ message: "Tipo de tabla creado exitosamente!", tablasConsumidas: tablasNecesarias });
+    return res
+      .status(201)
+      .json({ message: "Tipo de tabla creado exitosamente!", tablasConsumidas: tablasNecesarias });
   } catch (err) {
     await connection.rollback();
     return res.status(400).json({ error: err.message });
@@ -81,7 +91,13 @@ export const getTipoTablaById = async (req, res) => {
       [id]
     );
     if (rows.length === 0) return res.status(404).json("Tipo de tabla no encontrado!");
-    return res.status(200).json(rows[0]);
+
+    const row = rows[0];
+    return res.status(200).json({
+      ...row,
+      foto_url: toPublicUrl(row.foto),
+      tabla_padre_foto_url: toPublicUrl(row.tabla_padre_foto),
+    });
   } catch (err) {
     return res.status(500).json({ error: "Internal server error", details: err.message });
   }
@@ -98,10 +114,11 @@ export const updateTipoTabla = async (req, res) => {
       espesor_mm,
       precio_unidad,
       cepillada,
-      stock: newStock
+      stock: newStock,
+      borrar_foto, 
     } = req.body;
 
-    const newFoto = req.fileR2?.url || null;
+    const newFotoKey = req.fileR2?.key || null; 
     const newLargo = parseFloat(newLargoCm);
     const newStockI = parseInt(newStock, 10);
     const cep = cepillada === "1" ? 1 : 0;
@@ -152,34 +169,41 @@ export const updateTipoTabla = async (req, res) => {
       [parent.parentStock - deltaParents, id_materia_prima]
     );
 
-    await connection.query(
-      `UPDATE tipo_tablas SET
-         titulo = ?,
-         largo_cm = ?,
-         ancho_cm = ?,
-         espesor_mm = ?,
-         foto = COALESCE(?, foto),
-         precio_unidad = ?,
-         cepillada = ?,
-         stock = ?
-       WHERE id_tipo_tabla = ?`,
-      [
-        titulo,
-        newLargo,
-        parseFloat(ancho_cm),
-        parseFloat(espesor_mm),
-        newFoto,
-        parseFloat(precio_unidad),
-        cep,
-        newStockI,
-        id
-      ]
-    );
+    const sets = [
+      "titulo = ?",
+      "largo_cm = ?",
+      "ancho_cm = ?",
+      "espesor_mm = ?",
+      "precio_unidad = ?",
+      "cepillada = ?",
+      "stock = ?",
+    ];
+    const vals = [
+      titulo,
+      newLargo,
+      parseFloat(ancho_cm),
+      parseFloat(espesor_mm),
+      parseFloat(precio_unidad),
+      cep,
+      newStockI,
+    ];
 
+    if (borrar_foto === "1" && !newFotoKey) {
+      sets.push("foto = NULL");
+    } else if (newFotoKey) {
+      sets.push("foto = ?");
+      vals.push(newFotoKey);
+    }
+    const sqlUpd = `UPDATE tipo_tablas SET ${sets.join(", ")} WHERE id_tipo_tabla = ?`;
+    vals.push(id);
+
+    await connection.query(sqlUpd, vals);
     await connection.commit();
 
-    if (newFoto && oldFoto) {
-      await r2Delete(oldFoto);
+    if (borrar_foto === "1" && oldFoto) {
+      try { await r2Delete(oldFoto); } catch (e) { console.warn("R2 delete (borrar_foto):", e?.message); }
+    } else if (newFotoKey && oldFoto && newFotoKey !== oldFoto) {
+      try { await r2Delete(oldFoto); } catch (e) { console.warn("R2 delete (reemplazo):", e?.message); }
     }
 
     return res.status(200).json("Tipo de tabla actualizado exitosamente!");
@@ -201,7 +225,7 @@ export const deleteTipoTabla = async (req, res) => {
       [id]
     );
     if (rows.length === 0) return res.status(404).json("Tipo de tabla no encontrado!");
-    const foto = rows[0].foto;
+    const fotoKey = rows[0].foto; 
 
     await connection.beginTransaction();
     const [del] = await connection.query(
@@ -214,8 +238,8 @@ export const deleteTipoTabla = async (req, res) => {
     }
     await connection.commit();
 
-    if (foto) {
-      await r2Delete(foto);
+    if (fotoKey) {
+      try { await r2Delete(fotoKey); } catch (e) { console.warn("R2 delete:", e?.message); }
     }
 
     return res.status(200).json("Tipo de tabla eliminado exitosamente!");
@@ -235,7 +259,9 @@ export const listTipoTablas = async (req, res) => {
        JOIN materiaprima mp ON tt.id_materia_prima = mp.id_materia_prima
        ORDER BY tt.titulo ASC`
     );
-    return res.status(200).json(rows);
+
+    const out = rows.map(r => ({ ...r, foto_url: toPublicUrl(r.foto) }));
+    return res.status(200).json(out);
   } catch (err) {
     return res.status(500).json({ error: "Internal server error", details: err.message });
   }

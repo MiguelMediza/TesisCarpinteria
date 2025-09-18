@@ -102,7 +102,7 @@ export const getClavoById = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Modificar un clavo existente
+// Modificar un clavo existente 
 export const updateClavo = async (req, res) => {
   const connection = await pool.getConnection();
   try {
@@ -115,6 +115,7 @@ export const updateClavo = async (req, res) => {
       tipo,
       medidas,
       material,
+      foto_remove,        // <— viene como "1" si el usuario quitó la foto sin subir una nueva
     } = req.body;
 
     const newFotoKey = req.fileR2?.key || null;
@@ -131,39 +132,57 @@ export const updateClavo = async (req, res) => {
 
     await connection.beginTransaction();
 
-    // Actualizar materiaprima
-    const updateMP = `
-      UPDATE materiaprima SET
-        titulo = ?,
-        precio_unidad = ?,
-        stock = ?,
-        comentarios = ?,
-        foto = COALESCE(?, foto)
-      WHERE id_materia_prima = ?
-    `;
-    await connection.query(updateMP, [
+    // ====== UPDATE materiaprima (SET dinámico, sin coma colgando) ======
+    const setParts = [
+      `titulo = ?`,
+      `precio_unidad = ?`,
+      `stock = ?`,
+      `comentarios = ?`,
+    ];
+    const setVals = [
       titulo,
       precio_unidad != null ? parseFloat(precio_unidad) : null,
       stock != null ? parseInt(stock, 10) : null,
       comentarios || null,
-      newFotoKey, // sólo cambia si hay nueva foto
-      id,
-    ]);
+    ];
 
-    // Actualizar clavos
+    // Lógica de foto:
+    // - Si sube nueva => set foto = ?
+    // - Sino, si pide borrar => set foto = NULL
+    // - Sino, no tocar la foto
+    if (newFotoKey) {
+      setParts.push(`foto = ?`);
+      setVals.push(newFotoKey);
+    } else if (String(foto_remove) === "1") {
+      setParts.push(`foto = NULL`);
+    }
+
+    const updateMP = `
+      UPDATE materiaprima
+         SET ${setParts.join(", ")}
+       WHERE id_materia_prima = ?
+    `;
+    setVals.push(id);
+    await connection.query(updateMP, setVals);
+
+    // ====== UPDATE clavos (detalle) ======
     const updateCl = `
-      UPDATE clavos SET
-        tipo = ?,
-        medidas = ?,
-        material = ?
-      WHERE id_materia_prima = ?
+      UPDATE clavos
+         SET tipo = ?, medidas = ?, material = ?
+       WHERE id_materia_prima = ?
     `;
     await connection.query(updateCl, [tipo, medidas, material, id]);
 
     await connection.commit();
 
-    // Si se subió nueva foto, borrar la anterior en R2
-    if (newFotoKey && oldFotoKey && newFotoKey !== oldFotoKey) {
+    // ====== Borrado en R2 (si corresponde) ======
+    // - Si subió nueva: borrar la anterior
+    // - Si no subió nueva pero pidió borrar: borrar la anterior
+    const mustDeleteOld =
+      (newFotoKey && oldFotoKey && newFotoKey !== oldFotoKey) ||
+      (!newFotoKey && String(foto_remove) === "1" && oldFotoKey);
+
+    if (mustDeleteOld) {
       try {
         await r2Delete(oldFotoKey);
       } catch (e) {
@@ -171,10 +190,17 @@ export const updateClavo = async (req, res) => {
       }
     }
 
+    // Respuesta con la key/URL actual (si subiste nueva, la nueva; si borraste, null)
+    const PUBLIC_BASE = process.env.R2_PUBLIC_BASE_URL || "";
+    const urlFromKey = (key) => (key ? `${PUBLIC_BASE}/${key}` : null);
+
+    const currentKey =
+      newFotoKey ? newFotoKey : String(foto_remove) === "1" ? null : oldFotoKey;
+
     return res.status(200).json({
       message: "Clavo modificado exitosamente!",
-      foto_key: newFotoKey || oldFotoKey || null,
-      foto_url: urlFromKey(newFotoKey || oldFotoKey),
+      foto_key: currentKey,
+      foto_url: urlFromKey(currentKey),
     });
   } catch (err) {
     await connection.rollback();
@@ -186,6 +212,8 @@ export const updateClavo = async (req, res) => {
     connection.release();
   }
 };
+
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Eliminar un clavo y su imagen

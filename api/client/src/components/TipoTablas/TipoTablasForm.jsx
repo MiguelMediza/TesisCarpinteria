@@ -25,24 +25,31 @@ const TipoTablasForm = () => {
   const [tablas, setTablas] = useState([]);
   const [tablaPreview, setTablaPreview] = useState(null);
   const [selectedTabla, setSelectedTabla] = useState(null);
+
   const [fotoFile, setFotoFile] = useState(null);
   const [preview, setPreview] = useState(null);
+
+  // 👉 control para borrar foto existente sin subir una nueva
+  const [hadServerFoto, setHadServerFoto] = useState(false); // había foto al cargar
+  const [borrarFoto, setBorrarFoto] = useState(false);       // mandar borrar_foto="1"
+
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
 
   useEffect(() => {
     api.get("/tablas/listar")
-      .then(({ data }) => setTablas(data))
+      .then(({ data }) => setTablas(data || []))
       .catch(() => {});
   }, []);
 
   useEffect(() => {
     if (!id) return;
     if (tablas.length === 0) return;
+
     api.get(`/tipotablas/${id}`)
       .then(({ data }) => {
         setInputs({
-          id_materia_prima: data.id_materia_prima.toString(),
+          id_materia_prima: data.id_materia_prima?.toString() || "",
           titulo: data.titulo || "",
           largo_cm: data.largo_cm?.toString() || "",
           ancho_cm: data.ancho_cm?.toString() || "",
@@ -51,13 +58,22 @@ const TipoTablasForm = () => {
           cepillada: data.cepillada ? "1" : "0",
           stock: data.stock?.toString() || "",
         });
+
         const parent = tablas.find((t) => t.id_materia_prima === data.id_materia_prima);
         if (parent) {
           setSelectedTabla(parent);
           setTablaPreview(parent.foto_url || parent.foto || null);
         }
-        const childImg = data.foto_url || data.foto || null;
-        if (childImg) setPreview(childImg);
+
+        if (data.foto_url) {
+          setPreview(data.foto_url);
+          setHadServerFoto(true);   // marcar que venía foto del servidor
+          setBorrarFoto(false);     // aún no se pidió borrar
+        } else {
+          setPreview(null);
+          setHadServerFoto(false);
+          setBorrarFoto(false);
+        }
       })
       .catch(() => {
         setErr("No se pudo cargar el tipo de tabla.");
@@ -74,7 +90,7 @@ const TipoTablasForm = () => {
     if (isNaN(inputs.ancho_cm) || +inputs.ancho_cm <= 0) return "Ancho inválido.";
     if (!inputs.espesor_mm) return "El espesor es requerido.";
     if (isNaN(inputs.espesor_mm) || +inputs.espesor_mm <= 0) return "Espesor inválido.";
-    if (currentUser.tipo !== "encargado") {
+    if (currentUser?.tipo !== "encargado") {
       if (!inputs.precio_unidad) return "El precio unitario es requerido.";
       if (isNaN(inputs.precio_unidad) || +inputs.precio_unidad <= 0) return "Precio inválido.";
     }
@@ -84,37 +100,46 @@ const TipoTablasForm = () => {
     return null;
   };
 
-  const handleParentChange = e => {
+  const handleParentChange = (e) => {
     const idp = e.target.value;
-    setInputs(prev => ({ ...prev, id_materia_prima: idp }));
-    const parent = tablas.find(t => t.id_materia_prima.toString() === idp);
-    setSelectedTabla(parent);
+    setInputs((prev) => ({ ...prev, id_materia_prima: idp }));
+    const parent = tablas.find((t) => t.id_materia_prima.toString() === idp);
+    setSelectedTabla(parent || null);
     setTablaPreview(parent?.foto_url || parent?.foto || null);
   };
 
-  const handleChange = e => {
+  const handleChange = (e) => {
     const { name, value } = e.target;
-    if (["largo_cm","ancho_cm","espesor_mm","precio_unidad"].includes(name)) {
+    if (["largo_cm", "ancho_cm", "espesor_mm", "precio_unidad"].includes(name)) {
       if (!/^[0-9]*\.?[0-9]*$/.test(value)) return;
     }
     if (name === "stock" && !/^\d*$/.test(value)) return;
-    setInputs(prev => ({ ...prev, [name]: value }));
+    setInputs((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleFotoChange = e => {
-    const f = e.target.files[0];
+  const handleFotoChange = (e) => {
+    const f = e.target.files?.[0];
     if (!f) return;
     setFotoFile(f);
     setPreview(URL.createObjectURL(f));
+    // si sube una nueva, no hay borrado explícito
+    setBorrarFoto(false);
   };
 
   const clearImage = () => {
     setFotoFile(null);
     setPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+
+    // si estamos editando y la foto que se muestra venía del server, marcamos borrar
+    if (id && hadServerFoto) {
+      setBorrarFoto(true);
+    } else {
+      setBorrarFoto(false);
+    }
   };
 
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const v = validate();
     if (v) {
@@ -129,17 +154,30 @@ const TipoTablasForm = () => {
       fd.append("largo_cm", inputs.largo_cm);
       fd.append("ancho_cm", inputs.ancho_cm);
       fd.append("espesor_mm", inputs.espesor_mm);
-      const precio = currentUser.tipo==="encargado" ? "0" : inputs.precio_unidad;
+
+      const precio = currentUser?.tipo === "encargado" ? "0" : inputs.precio_unidad;
       fd.append("precio_unidad", precio);
+
       fd.append("cepillada", inputs.cepillada);
       fd.append("stock", inputs.stock);
-      if (fotoFile) fd.append("foto", fotoFile);
+
+      // imagen
+      if (fotoFile) {
+        fd.append("foto", fotoFile); // subimos nueva
+      } else if (id && borrarFoto) {
+        // editar: sin nueva imagen y pidió borrar la existente
+        fd.append("borrar_foto", "1");
+      }
 
       if (id) {
-        await api.put(`/tipotablas/${id}`, fd, { headers: { "Content-Type":"multipart/form-data" } });
+        await api.put(`/tipotablas/${id}`, fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
         setErr("Tipo de tabla actualizado.");
       } else {
-        await api.post("/tipotablas/agregar", fd, { headers: { "Content-Type":"multipart/form-data" } });
+        await api.post("/tipotablas/agregar", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
         setErr("Tipo de tabla creado.");
       }
       setMessageType("success");
@@ -161,55 +199,97 @@ const TipoTablasForm = () => {
   };
 
   const MARGIN = 0.5;
-  const piecesPerTabla = selectedTabla && inputs.largo_cm
-    ? Math.floor((selectedTabla.largo_cm + MARGIN) / (parseFloat(inputs.largo_cm) + MARGIN))
-    : 0;
+  const piecesPerTabla =
+    selectedTabla && inputs.largo_cm
+      ? Math.floor(
+          (Number(selectedTabla?.largo_cm || 0) + MARGIN) /
+            (parseFloat(inputs.largo_cm) + MARGIN)
+        )
+      : 0;
   const totalPossible = piecesPerTabla * (selectedTabla?.stock ?? 0);
 
   return (
     <section className="relative flex items-center justify-center min-h-screen bg-neutral-50">
-      <div className="absolute inset-0 bg-cover bg-center filter blur opacity-90" style={{ backgroundImage:`url(${tablasBackground})` }}/>
+      <div
+        className="absolute inset-0 bg-cover bg-center filter blur opacity-90"
+        style={{ backgroundImage: `url(${tablasBackground})` }}
+      />
       <div className="relative z-10 w-full sm:max-w-md p-6 bg-white bg-opacity-80 rounded-lg shadow-md">
-        <Link to="/tipotablas" className="block mb-6 text-2xl font-semibold text-neutral-800 text-center">
+        <Link
+          to="/tipotablas"
+          className="block mb-6 text-2xl font-semibold text-neutral-800 text-center"
+        >
           Imanod Control de Stock
         </Link>
         <h1 className="text-2xl font-bold text-neutral-900 text-center mb-4">
           {id ? "Editar Tipo de Tabla" : "Nuevo Tipo de Tabla"}
         </h1>
-        <form className="space-y-4" onSubmit={handleSubmit} encType="multipart/form-data">
+
+        <form
+          className="space-y-4"
+          onSubmit={handleSubmit}
+          encType="multipart/form-data"
+        >
           <div>
-            <label htmlFor="id_materia_prima" className="block mb-1 text-sm font-medium text-neutral-800">De tabla</label>
+            <label
+              htmlFor="id_materia_prima"
+              className="block mb-1 text-sm font-medium text-neutral-800"
+            >
+              De tabla
+            </label>
             <select
               id="id_materia_prima"
               value={inputs.id_materia_prima}
               onChange={handleParentChange}
               className="w-full p-2 border rounded"
             >
-              <option value="" disabled>Selecciona tabla</option>
+              <option value="" disabled>
+                Selecciona tabla
+              </option>
               {tablas.map((t) => (
-                <option key={t.id_materia_prima} value={t.id_materia_prima}>{t.titulo}</option>
+                <option key={t.id_materia_prima} value={t.id_materia_prima}>
+                  {t.titulo}
+                </option>
               ))}
             </select>
 
             {selectedTabla && (
               <div className="mt-2 flex items-start space-x-4">
                 {tablaPreview && (
-                  <img src={tablaPreview} alt={selectedTabla.titulo} className="w-24 h-16 object-cover rounded border" />
+                  <img
+                    src={tablaPreview}
+                    alt={selectedTabla.titulo}
+                    className="w-24 h-16 object-cover rounded border"
+                  />
                 )}
                 <div className="text-sm text-gray-700">
-                  <p><strong>Stock actual:</strong> {selectedTabla.stock}</p>
-                  {currentUser.tipo !== "encargado" && (
-                    <p><strong>Precio unidad:</strong> {selectedTabla.precio_unidad}</p>
+                  <p>
+                    <strong>Stock actual:</strong> {selectedTabla.stock}
+                  </p>
+                  {currentUser?.tipo !== "encargado" && (
+                    <p>
+                      <strong>Precio unidad:</strong>{" "}
+                      {selectedTabla.precio_unidad}
+                    </p>
                   )}
-                  <p><strong>Piezas por tabla:</strong> {piecesPerTabla}</p>
-                  <p><strong>Total posible:</strong> {totalPossible}</p>
+                  <p>
+                    <strong>Piezas por tabla:</strong> {piecesPerTabla}
+                  </p>
+                  <p>
+                    <strong>Total posible:</strong> {totalPossible}
+                  </p>
                 </div>
               </div>
             )}
           </div>
 
           <div>
-            <label htmlFor="titulo" className="block mb-1 text-sm font-medium text-neutral-800">Título</label>
+            <label
+              htmlFor="titulo"
+              className="block mb-1 text-sm font-medium text-neutral-800"
+            >
+              Título
+            </label>
             <input
               id="titulo"
               name="titulo"
@@ -220,10 +300,17 @@ const TipoTablasForm = () => {
             />
           </div>
 
-          {["largo_cm","ancho_cm","espesor_mm"].map(k => (
+          {["largo_cm", "ancho_cm", "espesor_mm"].map((k) => (
             <div key={k}>
-              <label htmlFor={k} className="block mb-1 text-sm font-medium text-neutral-800">
-                {k.replace("_cm"," (cm)").replace("espesor_mm","Espesor (mm)")}
+              <label
+                htmlFor={k}
+                className="block mb-1 text-sm font-medium text-neutral-800"
+              >
+                {k === "largo_cm"
+                  ? "Largo (cm)"
+                  : k === "ancho_cm"
+                  ? "Ancho (cm)"
+                  : "Espesor (mm)"}
               </label>
               <input
                 id={k}
@@ -236,9 +323,14 @@ const TipoTablasForm = () => {
             </div>
           ))}
 
-          {currentUser.tipo !== "encargado" && (
+          {currentUser?.tipo !== "encargado" && (
             <div>
-              <label htmlFor="precio_unidad" className="block mb-1 text-sm font-medium text-neutral-800">Precio Unitario</label>
+              <label
+                htmlFor="precio_unidad"
+                className="block mb-1 text-sm font-medium text-neutral-800"
+              >
+                Precio Unitario
+              </label>
               <input
                 id="precio_unidad"
                 name="precio_unidad"
@@ -251,7 +343,12 @@ const TipoTablasForm = () => {
           )}
 
           <div>
-            <label htmlFor="cepillada" className="block mb-1 text-sm font-medium text-neutral-800">Cepillada</label>
+            <label
+              htmlFor="cepillada"
+              className="block mb-1 text-sm font-medium text-neutral-800"
+            >
+              Cepillada
+            </label>
             <select
               id="cepillada"
               name="cepillada"
@@ -259,14 +356,21 @@ const TipoTablasForm = () => {
               onChange={handleChange}
               className="w-full p-2 border rounded"
             >
-              <option value="" disabled>Selecciona una opción</option>
+              <option value="" disabled>
+                Selecciona una opción
+              </option>
               <option value="1">Sí</option>
               <option value="0">No</option>
             </select>
           </div>
 
           <div>
-            <label htmlFor="stock" className="block mb-1 text-sm font-medium text-neutral-800">Stock</label>
+            <label
+              htmlFor="stock"
+              className="block mb-1 text-sm font-medium text-neutral-800"
+            >
+              Stock
+            </label>
             <input
               id="stock"
               name="stock"
@@ -278,7 +382,12 @@ const TipoTablasForm = () => {
           </div>
 
           <div>
-            <label htmlFor="foto" className="block mb-1 text-sm font-medium text-neutral-800">Foto</label>
+            <label
+              htmlFor="foto"
+              className="block mb-1 text-sm font-medium text-neutral-800"
+            >
+              Foto
+            </label>
             <input
               ref={fileInputRef}
               type="file"
@@ -303,7 +412,7 @@ const TipoTablasForm = () => {
           </div>
 
           {err && (
-            <p className={messageType==="error" ? "text-red-500" : "text-green-500"}>
+            <p className={messageType === "error" ? "text-red-500" : "text-green-500"}>
               {err}
             </p>
           )}

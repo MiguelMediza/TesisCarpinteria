@@ -6,7 +6,7 @@ import tablasBackground from "../../assets/tablasBackground.jpg";
 
 const ClavosForm = () => {
   const { currentUser } = useContext(AuthContext);
-  const { id } = useParams(); // id_materia_prima
+  const { id } = useParams(); 
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
@@ -26,36 +26,39 @@ const ClavosForm = () => {
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
 
-  // Cargar datos al editar
-  useEffect(() => {
-    if (!id) return;
-    (async () => {
-      try {
-        const { data } = await api.get(`/clavos/${id}`);
-        setInputs({
-          titulo: data.titulo || "",
-          tipo: data.tipo || "",
-          medidas: data.medidas || "",
-          material: data.material || "",
-          precio_unidad: data.precio_unidad?.toString() || "",
-          stock: data.stock?.toString() || "",
-          comentarios: data.comentarios || "",
-        });
+  const [serverFotoUrl, setServerFotoUrl] = useState(null);
+  const [fotoRemove, setFotoRemove] = useState(false);
 
-        // Soporta R2 (foto_url) y, como fallback, archivo local (foto)
-        if (data.foto_url) {
-          setPreview(data.foto_url);
-        } else if (data.foto) {
-          setPreview(`/images/clavos/${encodeURIComponent(data.foto)}`);
-        } else {
-          setPreview(null);
+  // Cargar datos al editar 
+    useEffect(() => {
+      if (!id) return;
+      (async () => {
+        try {
+          const { data } = await api.get(`/clavos/${id}`);
+          setInputs({
+            titulo: data.titulo || "",
+            tipo: data.tipo || "",
+            medidas: data.medidas || "",
+            material: data.material || "",
+            precio_unidad: data.precio_unidad?.toString() || "",
+            stock: data.stock?.toString() || "",
+            comentarios: data.comentarios || "",
+          });
+
+          if (data.foto_url) {
+            setPreview(data.foto_url);
+            setServerFotoUrl(data.foto_url); 
+          } else {
+            setPreview(null);
+            setServerFotoUrl(null);
+          }
+          setFotoRemove(false); 
+        } catch {
+          setErr("No se pudo cargar el clavo.");
+          setMessageType("error");
         }
-      } catch {
-        setErr("No se pudo cargar el clavo.");
-        setMessageType("error");
-      }
-    })();
-  }, [id]);
+      })();
+    }, [id]);
 
   const validateInputs = () => {
     if (!inputs.titulo) return "El título es requerido.";
@@ -83,12 +86,7 @@ const ClavosForm = () => {
     if (!file) return;
     setFotoFile(file);
     setPreview(URL.createObjectURL(file));
-  };
-
-  const clearImage = () => {
-    setFotoFile(null);
-    setPreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    setFotoRemove(false);
   };
 
   const handleSubmit = async (e) => {
@@ -99,10 +97,10 @@ const ClavosForm = () => {
       setMessageType("error");
       return;
     }
+
     try {
       const formData = new FormData();
 
-      // Puedes enviar categoria si tu backend lo usa, si no, quítalo.
       formData.append("categoria", "clavo");
 
       Object.entries(inputs).forEach(([key, value]) => {
@@ -114,19 +112,34 @@ const ClavosForm = () => {
         }
       });
 
-      if (fotoFile) formData.append("foto", fotoFile); // <- tiene que llamarse "foto"
+      if (fotoFile) formData.append("foto", fotoFile);
+
+      // ⬇️⬇️ IMPORTANTE: si estoy editando, no subí foto nueva y el user pidió borrar:
+      if (id && !fotoFile && fotoRemove) {
+        formData.append("foto_remove", "1");
+      }
 
       if (id) {
-        await api.put(`/clavos/${id}`, formData);
+        await api.put(`/clavos/${id}`, formData, {
+          headers: { "Content-Type": "multipart/form-data" }
+        });
         setErr("Clavo actualizado correctamente.");
       } else {
-        await api.post(`/clavos/agregar`, formData);
+        await api.post(`/clavos/agregar`, formData, {
+          headers: { "Content-Type": "multipart/form-data" }
+        });
         setErr("Clavo creado exitosamente.");
       }
 
       setMessageType("success");
       setInputs(initialInputs);
-      clearImage();
+      // limpiar estados de foto
+      setFotoFile(null);
+      setPreview(null);
+      setServerFotoUrl(null);
+      setFotoRemove(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+
       setTimeout(() => navigate("/clavos/listar"), 500);
     } catch (error) {
       const payload = error?.response?.data;
@@ -136,6 +149,7 @@ const ClavosForm = () => {
       console.error(error);
     }
   };
+
 
   return (
     <section className="relative flex items-center justify-center min-h-screen bg-neutral-50">
@@ -273,13 +287,22 @@ const ClavosForm = () => {
                 <img src={preview} alt="Preview" className="w-full h-auto rounded" />
                 <button
                   type="button"
-                  onClick={clearImage}
+                  onClick={() => {
+                    setFotoFile(null);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+
+                    setPreview(null);
+
+                    setFotoRemove(!!serverFotoUrl);
+                  }}
                   className="absolute top-1 right-1 bg-gray-800 bg-opacity-50 text-white rounded-full p-1 hover:bg-opacity-75"
+                  title="Quitar imagen"
                 >
                   &times;
                 </button>
               </div>
             )}
+
           </div>
 
           {/* Comentarios */}

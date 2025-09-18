@@ -137,8 +137,7 @@ const TablasForm = () => {
       setInputs(initialInputs);
       clearImage();
 
-      // Opcional: navegar al listado si quieres
-      // setTimeout(() => navigate("/tablas/listar"), 500);
+      setTimeout(() => navigate("/tablas/listar"), 500);
     } catch (error) {
       let msg = "Error al guardar la tabla.";
       if (error.response) {

@@ -250,7 +250,7 @@ export const listFibras = async (req, res) => {
         mp.titulo,
         mp.precio_unidad,
         mp.stock,
-        mp.foto,           -- key en R2
+        mp.foto,           
         mp.comentarios,
         f.ancho_cm,
         f.largo_cm

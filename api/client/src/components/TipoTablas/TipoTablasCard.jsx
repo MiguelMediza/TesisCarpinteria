@@ -1,7 +1,8 @@
 import React, { useContext } from "react";
 import { AuthContext } from "../../context/authContext";
+import { Image } from 'antd';
 
-const TipoTablaCard = ({ tipoTabla, onEdit, onDelete }) => {
+const TipoTablasCard = ({ tipoTabla, onEdit, onDelete }) => {
   const { currentUser } = useContext(AuthContext);
   const {
     id_tipo_tabla,
@@ -9,18 +10,22 @@ const TipoTablaCard = ({ tipoTabla, onEdit, onDelete }) => {
     largo_cm,
     ancho_cm,
     espesor_mm,
-    foto,
+    foto,        
+    foto_url,    
     precio_unidad,
     cepillada,
     stock
-  } = tipoTabla;
+  } = tipoTabla || {};
+
+  const R2 = (import.meta.env.VITE_R2_PUBLIC_BASE || "").replace(/\/+$/, "");
+  const imageUrl = foto_url ?? (foto ? `${R2}/${String(foto).replace(/^\/+/, "")}` : null);
 
   return (
     <div className="border rounded-lg p-4 flex flex-col justify-between bg-white shadow-sm">
       <div>
-        {foto && (
-          <img
-            src={foto}
+        {imageUrl && (
+          <Image
+            src={imageUrl}
             alt={titulo}
             className="w-full h-32 object-cover mb-4 rounded"
             loading="lazy"
@@ -33,7 +38,7 @@ const TipoTablaCard = ({ tipoTabla, onEdit, onDelete }) => {
         <p className="mb-2 text-gray-800">{`${largo_cm} × ${ancho_cm} × ${espesor_mm}`}</p>
 
         <p className="text-sm text-gray-600">Cepillada:</p>
-        <p className="mb-2 text-gray-800">{cepillada ? "Sí" : "No"}</p>
+        <p className="mb-2 text-gray-800">{Number(cepillada) ? "Sí" : "No"}</p>
 
         {currentUser?.tipo === "admin" && (
           <>
@@ -64,4 +69,4 @@ const TipoTablaCard = ({ tipoTabla, onEdit, onDelete }) => {
   );
 };
 
-export default TipoTablaCard;
+export default TipoTablasCard;

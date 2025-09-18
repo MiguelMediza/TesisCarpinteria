@@ -11,43 +11,38 @@ const TipoTablasList = () => {
   const [toDelete, setToDelete] = useState(null);
   const navigate = useNavigate();
 
+  const R2 = (import.meta.env.VITE_R2_PUBLIC_BASE || "").replace(/\/+$/, "");
+  const imgFrom = (row) =>
+    row?.foto_url ?? (row?.foto ? `${R2}/${String(row.foto).replace(/^\/+/, "")}` : null);
+
   useEffect(() => {
     const fetchTipos = async () => {
       try {
         const res = await api.get("/tipotablas/listar");
-        setTipos(res.data);
-      } catch (err) {
+        setTipos(res.data || []);
+      } catch {
         setError("No se pudieron cargar los tipos de tabla.");
       }
     };
     fetchTipos();
   }, []);
 
-  const handleEdit = (id) => {
-    navigate(`/tipotablas/${id}`);
-  };
-
-  const handleDeleteClick = (tipo) => {
-    setToDelete(tipo);
-  };
-
+  const handleEdit = (id) => navigate(`/tipotablas/${id}`);
+  const handleDeleteClick = (tipo) => setToDelete(tipo);
   const confirmDelete = async () => {
     try {
       await api.delete(`/tipotablas/${toDelete.id_tipo_tabla}`);
-      setTipos(prev => prev.filter(t => t.id_tipo_tabla !== toDelete.id_tipo_tabla));
-    } catch (err) {
+      setTipos((prev) => prev.filter((t) => t.id_tipo_tabla !== toDelete.id_tipo_tabla));
+    } catch {
       setError("Error al eliminar el tipo de tabla.");
     } finally {
       setToDelete(null);
     }
   };
+  const cancelDelete = () => setToDelete(null);
 
-  const cancelDelete = () => {
-    setToDelete(null);
-  };
-
-  const filteredTipos = tipos.filter(t =>
-    t.titulo.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredTipos = tipos.filter((t) =>
+    (t.titulo || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -69,7 +64,7 @@ const TipoTablasList = () => {
           type="text"
           placeholder="Buscar tipo por título..."
           value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
+          onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
@@ -78,22 +73,23 @@ const TipoTablasList = () => {
         {filteredTipos.map((t) => (
           <TipoTablasCard
             key={t.id_tipo_tabla}
-            tipoTabla={t}
+            tipoTabla={{
+              ...t,
+              foto_url: t.foto_url ?? (t.foto ? `${R2}/${String(t.foto).replace(/^\/+/, "")}` : null),
+            }}
             onEdit={handleEdit}
             onDelete={() => handleDeleteClick(t)}
           />
         ))}
         {filteredTipos.length === 0 && (
-          <p className="col-span-full text-center text-gray-500">
-            No se encontraron tipos de tabla.
-          </p>
+          <p className="col-span-full text-center text-gray-500">No se encontraron tipos de tabla.</p>
         )}
       </div>
 
       <DeleteConfirm
         isOpen={!!toDelete}
         title={toDelete?.titulo}
-        imageSrc={toDelete ? toDelete.foto || null : null}
+        imageSrc={toDelete ? imgFrom(toDelete) : null}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
       />
