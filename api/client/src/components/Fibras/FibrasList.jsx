@@ -8,7 +8,7 @@ const FibrasList = () => {
   const [fibras, setFibras] = useState([]);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [toDelete, setToDelete] = useState(null); // fibra seleccionada para borrar
+  const [toDelete, setToDelete] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -53,7 +53,7 @@ const FibrasList = () => {
 
   // Filtrar por título
   const filteredFibras = fibras.filter(f =>
-    f.titulo.toLowerCase().includes(searchTerm.toLowerCase())
+    (f.titulo || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -99,7 +99,7 @@ const FibrasList = () => {
       <DeleteConfirm
         isOpen={!!toDelete}
         title={toDelete?.titulo}
-        imageSrc={toDelete ? `/fibras/${encodeURIComponent(toDelete.foto)}` : null}
+        imageSrc={toDelete?.foto_url || null}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
       />

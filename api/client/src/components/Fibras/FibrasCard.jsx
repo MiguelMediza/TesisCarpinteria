@@ -8,21 +8,24 @@ const FibrasCard = ({ fibra, onEdit, onDelete }) => {
     titulo,
     precio_unidad,
     stock,
-    foto,
     comentarios,
     largo_cm,
-    ancho_cm
+    ancho_cm,
+    foto_url, 
   } = fibra;
 
   return (
     <div className="border rounded-lg p-4 flex flex-col justify-between bg-white shadow-sm">
       <div>
-        {foto && (
+        {foto_url && (
           <img
-            src={`/images/fibras/${encodeURIComponent(foto)}`}
+            src={foto_url}
             alt={titulo}
             loading="lazy"
             className="w-full h-32 object-cover mb-4 rounded"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
           />
         )}
 

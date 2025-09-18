@@ -6,7 +6,7 @@ import tablasBackground from "../../assets/tablasBackground.jpg";
 
 const FibrasForm = () => {
   const { currentUser } = useContext(AuthContext);
-  const { id } = useParams();               // id_materia_prima
+  const { id } = useParams();               
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
@@ -25,22 +25,20 @@ const FibrasForm = () => {
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
 
-  // Load existing data on edit
+
   useEffect(() => {
     if (!id) return;
     api.get(`/fibras/${id}`)
       .then(({ data }) => {
         setInputs({
-          titulo:       data.titulo     || "",
-          ancho_cm:     data.ancho_cm?.toString() || "",
-          largo_cm:     data.largo_cm?.toString() || "",
-          precio_unidad:data.precio_unidad?.toString() || "",
-          stock:        data.stock?.toString() || "",
-          comentarios:  data.comentarios|| "",
+          titulo:        data.titulo     || "",
+          ancho_cm:      data.ancho_cm?.toString() || "",
+          largo_cm:      data.largo_cm?.toString() || "",
+          precio_unidad: data.precio_unidad?.toString() || "",
+          stock:         data.stock?.toString() || "",
+          comentarios:   data.comentarios || "",
         });
-        if (data.foto) {
-          setPreview(`/images/fibras/${encodeURIComponent(data.foto)}`);
-        }
+        if (data.foto_url) setPreview(data.foto_url);
       })
       .catch(() => {
         setErr("No se pudo cargar la fibra.");

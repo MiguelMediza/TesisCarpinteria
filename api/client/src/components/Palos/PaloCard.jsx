@@ -8,7 +8,7 @@ const PaloCard = ({ palo, onEdit, onDelete }) => {
     titulo,
     precio_unidad,
     stock,
-    foto,
+    foto_url,          
     comentarios_mp,
     largo_cm,
     diametro_mm,
@@ -18,10 +18,12 @@ const PaloCard = ({ palo, onEdit, onDelete }) => {
   return (
     <div className="border rounded-lg p-4 flex flex-col justify-between bg-white shadow-sm">
       <div>
-        {foto && (
+        {foto_url && (
           <img
-            src={`/images/palos/${encodeURIComponent(foto)}`}
+            src={foto_url}
             alt={titulo}
+            loading="lazy"
+            onError={(e) => { e.currentTarget.style.display = "none"; }}
             className="w-full h-32 object-cover mb-4 rounded"
           />
         )}
@@ -69,3 +71,4 @@ const PaloCard = ({ palo, onEdit, onDelete }) => {
 };
 
 export default PaloCard;
+  

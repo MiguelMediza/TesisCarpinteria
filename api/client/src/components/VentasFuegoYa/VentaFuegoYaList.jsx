@@ -173,7 +173,7 @@ const VentaFuegoyaList = () => {
       <DeleteConfirm
         isOpen={!!toDelete}
         title={`Venta #${toDelete?.id_ventaFuegoya}`}
-        imageSrc={null}
+        imageSrc={toDelete?.foto_url || toDelete?.foto || null}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
       />

@@ -8,7 +8,7 @@ const TablasList = () => {
   const [tablas, setTablas] = useState([]);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [toDelete, setToDelete] = useState(null); // tabla seleccionada para borrar
+  const [toDelete, setToDelete] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -28,12 +28,10 @@ const TablasList = () => {
     navigate(`/tablas/${id}`);
   };
 
-  // Abrir modal
   const handleDeleteClick = (tabla) => {
     setToDelete(tabla);
   };
 
-  // Confirmar borrado
   const confirmDelete = async () => {
     try {
       await api.delete(`/tablas/${toDelete.id_materia_prima}`);
@@ -48,12 +46,10 @@ const TablasList = () => {
     }
   };
 
-  // Cancelar borrado
   const cancelDelete = () => {
     setToDelete(null);
   };
 
-  // Filtrar por título
   const filteredTablas = tablas.filter(t =>
     t.titulo.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -72,7 +68,6 @@ const TablasList = () => {
 
       {error && <p className="mb-4 text-red-500">{error}</p>}
 
-      {/* Buscador de tablas */}
       <div className="mb-4">
         <input
           type="text"
@@ -102,7 +97,7 @@ const TablasList = () => {
       <DeleteConfirm
         isOpen={!!toDelete}
         title={toDelete?.titulo}
-        imageSrc={toDelete ? `/images/tablas/${encodeURIComponent(toDelete.foto)}` : null}
+        imageSrc={toDelete?.foto_url || null}    /* CAMBIO: usar URL completa */
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
       />

@@ -1,15 +1,15 @@
+// controllers/ventafuegoya.js
 import { pool } from "../db.js";
-import fs from "fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname  = path.dirname(__filename);
+import { r2Delete } from "../lib/r2.js";
 
 const PAGO_ESTADOS = new Set(["credito", "pago"]);
 const isValidPagoEstado = (v) => !v || PAGO_ESTADOS.has(v);
 
-// ✅ Normaliza "YYYY-MM-DDTHH:MM" o "YYYY-MM-DD HH:MM" a "YYYY-MM-DD HH:MM:SS" (o null)
+// R2 helpers
+const PUBLIC_BASE = (process.env.R2_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
+const urlFromKey = (key) => (key ? `${PUBLIC_BASE}/${key}` : null);
+
+// Normaliza "YYYY-MM-DDTHH:MM" o "YYYY-MM-DD HH:MM" a "YYYY-MM-DD HH:MM:SS" (o null)
 const toMySQLDateTime = (s) => {
   if (s == null) return null;
   const raw = String(s).trim();
@@ -23,21 +23,23 @@ const toMySQLDateTime = (s) => {
 
 /* ========================= CREATE ============================== */
 export const createVentaFuegoya = async (req, res) => {
+  const conn = await pool.getConnection();
   try {
     const {
       fecha_realizada,
       precio_total,
       id_cliente,
       id_fuego_ya,
-      cantidadbolsas,                 // 👈 NUEVO
+      cantidadbolsas,
       comentarios,
       estadopago,
-      fechapago
+      fechapago,
     } = req.body;
 
-    const foto = req.file?.filename || null;
+    // req.fileR2 = { key, url } si hay imagen subida a R2
+    const fotoKey = req.fileR2?.key || null;
 
-    // Validaciones básicas
+    // Validaciones
     if (!fecha_realizada) {
       return res.status(400).json({ error: "La fecha de la venta es obligatoria." });
     }
@@ -51,11 +53,11 @@ export const createVentaFuegoya = async (req, res) => {
       return res.status(400).json({ error: "estadopago inválido. Use 'credito' o 'pago'." });
     }
     if (cantidadbolsas == null) {
-    return res.status(400).json({ error: "cantidadbolsas es obligatorio." });
+      return res.status(400).json({ error: "cantidadbolsas es obligatorio." });
     }
     const cb = parseInt(cantidadbolsas, 10);
     if (!Number.isInteger(cb) || cb < 0) {
-    return res.status(400).json({ error: "cantidadbolsas debe ser un entero mayor o igual a 0." });
+      return res.status(400).json({ error: "cantidadbolsas debe ser un entero >= 0." });
     }
 
     // Verificar cliente si vino
@@ -69,41 +71,64 @@ export const createVentaFuegoya = async (req, res) => {
       }
     }
 
-    // Verificar fuego_ya
-    const [fy] = await pool.query(
-      `SELECT id_fuego_ya FROM fuego_ya WHERE id_fuego_ya = ?`,
+    await conn.beginTransaction();
+
+    // Verificar fuego_ya + stock (FOR UPDATE)
+    const [[fy]] = await conn.query(
+      `SELECT id_fuego_ya, stock FROM fuego_ya WHERE id_fuego_ya = ? FOR UPDATE`,
       [id_fuego_ya]
     );
-    if (fy.length === 0) {
+    if (!fy) {
+      await conn.rollback();
       return res.status(400).json({ error: "El registro de fuego_ya no existe." });
+    }
+    if ((fy.stock ?? 0) < cb) {
+      await conn.rollback();
+      return res.status(400).json({ error: "Stock insuficiente de Fuego Ya." });
     }
 
     const fechapagoSQL = toMySQLDateTime(fechapago);
 
-    const sql = `
+    // Insert venta
+    const [ins] = await conn.query(
+      `
       INSERT INTO venta_fuegoya
         (fecha_realizada, precio_total, id_cliente, id_fuego_ya, cantidadbolsas, foto, comentarios, estadopago, fechapago)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-    const [ins] = await pool.query(sql, [
-      fecha_realizada,
-      precio_total != null ? parseFloat(precio_total) : null,
-      id_cliente || null,
-      parseInt(id_fuego_ya, 10),
-      cantidadbolsas != null ? parseInt(cantidadbolsas, 10) : null,   // 👈 NUEVO
-      foto,
-      comentarios || null,
-      estadopago || null,
-      fechapagoSQL
-    ]);
+      `,
+      [
+        fecha_realizada,
+        precio_total != null ? parseFloat(precio_total) : null,
+        id_cliente || null,
+        parseInt(id_fuego_ya, 10),
+        cb,
+        fotoKey,                 // << guarda KEY de R2
+        comentarios || null,
+        estadopago || null,
+        fechapagoSQL,
+      ]
+    );
+
+    // Descontar stock
+    await conn.query(
+      `UPDATE fuego_ya SET stock = stock - ? WHERE id_fuego_ya = ?`,
+      [cb, id_fuego_ya]
+    );
+
+    await conn.commit();
 
     return res.status(201).json({
       id_ventaFuegoya: ins.insertId,
-      message: "Venta Fuegoya creada exitosamente!"
+      message: "Venta Fuegoya creada exitosamente!",
+      foto_key: fotoKey,
+      foto_url: urlFromKey(fotoKey),
     });
   } catch (err) {
+    await conn.rollback();
     console.error("❌ createVentaFuegoya:", err);
     return res.status(500).json({ error: "Error interno del servidor", details: err.message });
+  } finally {
+    conn.release();
   }
 };
 
@@ -138,8 +163,9 @@ export const getVentaFuegoyaById = async (req, res) => {
       : [r?.nombre_cliente, r?.apellido_cliente].filter(Boolean).join(" ") || (r.id_cliente ? `Cliente #${r.id_cliente}` : "Sin cliente");
 
     return res.status(200).json({
-      ...r, // incluye cantidadbolsas
-      cliente_display
+      ...r,
+      foto_url: urlFromKey(r.foto),
+      cliente_display,
     });
   } catch (err) {
     console.error("❌ getVentaFuegoyaById:", err);
@@ -149,135 +175,203 @@ export const getVentaFuegoyaById = async (req, res) => {
 
 /* =========================== UPDATE ============================ */
 export const updateVentaFuegoya = async (req, res) => {
-  const connection = await pool.getConnection();
+  const conn = await pool.getConnection();
   try {
     const { id } = req.params;
     const {
       fecha_realizada,
       precio_total,
       id_cliente,
-      id_fuego_ya,
-      cantidadbolsas,   // 👈 NUEVO
+      id_fuego_ya,      // puede cambiar el fuego ya
+      cantidadbolsas,   // puede cambiar cantidad
       comentarios,
       estadopago,
-      fechapago
+      fechapago,
     } = req.body;
-    const newFoto = req.file?.filename || null;
 
-    // Ver existencia + obtener foto vieja
-    const [exists] = await connection.query(
-      `SELECT foto FROM venta_fuegoya WHERE id_ventaFuegoya = ?`,
+    const newFotoKey = req.fileR2?.key || null;
+
+    await conn.beginTransaction();
+
+    // Row actual de la venta (FOR UPDATE)
+    const [[curr]] = await conn.query(
+      `SELECT id_fuego_ya, cantidadbolsas, foto FROM venta_fuegoya WHERE id_ventaFuegoya = ? FOR UPDATE`,
       [id]
     );
-    if (exists.length === 0) {
+    if (!curr) {
+      await conn.rollback();
       return res.status(404).json("Venta Fuegoya no encontrada!");
     }
-    const oldFoto = exists[0].foto;
+    const oldFY = curr.id_fuego_ya;
+    const oldCB = parseInt(curr.cantidadbolsas, 10) || 0;
+    const oldFotoKey = curr.foto || null;
 
-    // Validaciones ligeras si vienen campos
+    // Validaciones
     if (precio_total != null && isNaN(parseFloat(precio_total))) {
+      await conn.rollback();
       return res.status(400).json({ error: "precio_total debe ser numérico si se envía." });
     }
     if (estadopago != null && !isValidPagoEstado(estadopago)) {
+      await conn.rollback();
       return res.status(400).json({ error: "estadopago inválido. Use 'credito' o 'pago'." });
     }
     if (cantidadbolsas != null) {
       const cb = parseInt(cantidadbolsas, 10);
       if (!Number.isInteger(cb) || cb < 0) {
-        return res.status(400).json({ error: "cantidadbolsas debe ser un entero mayor o igual a 0." });
+        await conn.rollback();
+        return res.status(400).json({ error: "cantidadbolsas debe ser un entero >= 0." });
       }
     }
     if (id_cliente) {
-      const [cli] = await connection.query(
+      const [[cli]] = await conn.query(
         `SELECT id_cliente FROM clientes WHERE id_cliente = ?`,
         [id_cliente]
       );
-      if (cli.length === 0) {
+      if (!cli) {
+        await conn.rollback();
         return res.status(400).json({ error: "El cliente especificado no existe." });
       }
     }
-    if (id_fuego_ya) {
-      const [fy] = await connection.query(
-        `SELECT id_fuego_ya FROM fuego_ya WHERE id_fuego_ya = ?`,
-        [id_fuego_ya]
+
+    // Nuevos valores efectivos
+    const newFY = (id_fuego_ya !== undefined && id_fuego_ya !== null) ? parseInt(id_fuego_ya, 10) : oldFY;
+    const newCB = (cantidadbolsas !== undefined && cantidadbolsas !== null) ? parseInt(cantidadbolsas, 10) : oldCB;
+
+    // Ajuste de stock si cambió id_fuego_ya o cantidad
+    if (newFY !== oldFY) {
+      // Lock ambos
+      const [[fyOld]] = await conn.query(
+        `SELECT id_fuego_ya, stock FROM fuego_ya WHERE id_fuego_ya = ? FOR UPDATE`,
+        [oldFY]
       );
-      if (fy.length === 0) {
-        return res.status(400).json({ error: "El registro de fuego_ya especificado no existe." });
+      const [[fyNew]] = await conn.query(
+        `SELECT id_fuego_ya, stock FROM fuego_ya WHERE id_fuego_ya = ? FOR UPDATE`,
+        [newFY]
+      );
+      if (!fyNew) {
+        await conn.rollback();
+        return res.status(400).json({ error: "El nuevo fuego_ya especificado no existe." });
+      }
+      // devolver stock al viejo
+      if (oldCB > 0) {
+        await conn.query(`UPDATE fuego_ya SET stock = stock + ? WHERE id_fuego_ya = ?`, [oldCB, oldFY]);
+      }
+      // descontar del nuevo (validar)
+      if ((fyNew.stock ?? 0) < newCB) {
+        await conn.rollback();
+        return res.status(400).json({ error: "Stock insuficiente en el nuevo Fuego Ya." });
+      }
+      await conn.query(`UPDATE fuego_ya SET stock = stock - ? WHERE id_fuego_ya = ?`, [newCB, newFY]);
+    } else if (newCB !== oldCB) {
+      // Misma FY, ajustar delta
+      const delta = newCB - oldCB;
+      if (delta !== 0) {
+        const [[fy]] = await conn.query(
+          `SELECT id_fuego_ya, stock FROM fuego_ya WHERE id_fuego_ya = ? FOR UPDATE`,
+          [oldFY]
+        );
+        if (delta > 0) {
+          // necesito más stock
+          if ((fy.stock ?? 0) < delta) {
+            await conn.rollback();
+            return res.status(400).json({ error: "Stock insuficiente de Fuego Ya." });
+          }
+          await conn.query(`UPDATE fuego_ya SET stock = stock - ? WHERE id_fuego_ya = ?`, [delta, oldFY]);
+        } else {
+          // devuelvo stock
+          await conn.query(`UPDATE fuego_ya SET stock = stock + ? WHERE id_fuego_ya = ?`, [-delta, oldFY]);
+        }
       }
     }
 
-    await connection.beginTransaction();
-
-    // SET dinámico
+    // Armar UPDATE dinámico
     const sets = [];
     const vals = [];
 
     if (fecha_realizada !== undefined) { sets.push("fecha_realizada = ?"); vals.push(fecha_realizada || null); }
     if (precio_total !== undefined)    { sets.push("precio_total = ?");    vals.push(precio_total != null ? parseFloat(precio_total) : null); }
     if (id_cliente !== undefined)      { sets.push("id_cliente = ?");      vals.push(id_cliente || null); }
-    if (id_fuego_ya !== undefined)     { sets.push("id_fuego_ya = ?");     vals.push(id_fuego_ya || null); }
-    if (cantidadbolsas !== undefined)  { sets.push("cantidadbolsas = ?");  vals.push(cantidadbolsas != null ? parseInt(cantidadbolsas, 10) : null); } // 👈 NUEVO
+    if (id_fuego_ya !== undefined)     { sets.push("id_fuego_ya = ?");     vals.push(newFY); }
+    if (cantidadbolsas !== undefined)  { sets.push("cantidadbolsas = ?");  vals.push(newCB); }
     if (comentarios !== undefined)     { sets.push("comentarios = ?");     vals.push(comentarios || null); }
     if (estadopago !== undefined)      { sets.push("estadopago = ?");      vals.push(estadopago || null); }
     if (fechapago !== undefined)       { sets.push("fechapago = ?");       vals.push(toMySQLDateTime(fechapago)); }
-    if (newFoto !== null)              { sets.push("foto = COALESCE(?, foto)"); vals.push(newFoto); }
+    if (newFotoKey !== null)           { sets.push("foto = COALESCE(?, foto)"); vals.push(newFotoKey); }
 
     if (sets.length === 0) {
-      await connection.rollback();
+      await conn.rollback();
       return res.status(400).json({ error: "No hay campos para actualizar." });
     }
 
-    const sql = `UPDATE venta_fuegoya SET ${sets.join(", ")} WHERE id_ventaFuegoya = ?`;
-    vals.push(id);
+    await conn.query(
+      `UPDATE venta_fuegoya SET ${sets.join(", ")} WHERE id_ventaFuegoya = ?`,
+      [...vals, id]
+    );
 
-    await connection.query(sql, vals);
-    await connection.commit();
+    await conn.commit();
 
-    // Borrar foto antigua si se reemplazó
-    if (newFoto && oldFoto) {
-      const oldPath = path.join(__dirname, "../images/venta_fuegoya", oldFoto);
-      fs.unlink(oldPath).catch(() => console.warn("⚠️ No se pudo borrar la foto antigua:", oldFoto));
+    // borrar imagen vieja en R2 si se reemplazó
+    if (newFotoKey && oldFotoKey && newFotoKey !== oldFotoKey) {
+      try { await r2Delete(oldFotoKey); } catch {}
     }
 
-    return res.status(200).json("Venta Fuegoya actualizada correctamente!");
+    return res.status(200).json({
+      message: "Venta Fuegoya actualizada correctamente!",
+      foto_key: newFotoKey || oldFotoKey || null,
+      foto_url: urlFromKey(newFotoKey || oldFotoKey),
+    });
   } catch (err) {
-    await connection.rollback();
+    await conn.rollback();
     console.error("❌ updateVentaFuegoya:", err);
     return res.status(500).json({ error: "Error interno del servidor", details: err.message });
   } finally {
-    connection.release();
+    conn.release();
   }
 };
 
 /* ============================ DELETE =========================== */
 export const deleteVentaFuegoya = async (req, res) => {
-  const connection = await pool.getConnection();
+  const conn = await pool.getConnection();
   try {
     const { id } = req.params;
 
-    const [rows] = await connection.query(
-      `SELECT foto FROM venta_fuegoya WHERE id_ventaFuegoya = ?`,
+    await conn.beginTransaction();
+
+    // Leer venta (FOR UPDATE)
+    const [[row]] = await conn.query(
+      `SELECT id_fuego_ya, cantidadbolsas, foto FROM venta_fuegoya WHERE id_ventaFuegoya = ? FOR UPDATE`,
       [id]
     );
-    if (rows.length === 0) return res.status(404).json("Venta Fuegoya no encontrada!");
-    const oldFoto = rows[0].foto;
+    if (!row) {
+      await conn.rollback();
+      return res.status(404).json("Venta Fuegoya no encontrada!");
+    }
+    const addBack = parseInt(row.cantidadbolsas, 10) || 0;
 
-    await connection.beginTransaction();
-    await connection.query(`DELETE FROM venta_fuegoya WHERE id_ventaFuegoya = ?`, [id]);
-    await connection.commit();
+    // Devolver stock (opcional pero sano)
+    if (row.id_fuego_ya && addBack > 0) {
+      await conn.query(
+        `UPDATE fuego_ya SET stock = stock + ? WHERE id_fuego_ya = ?`,
+        [addBack, row.id_fuego_ya]
+      );
+    }
 
-    if (oldFoto) {
-      const fp = path.join(__dirname, "../images/venta_fuegoya", oldFoto);
-      fs.unlink(fp).catch(() => console.warn("⚠️ No se pudo borrar la foto:", oldFoto));
+    // Borrar venta
+    await conn.query(`DELETE FROM venta_fuegoya WHERE id_ventaFuegoya = ?`, [id]);
+    await conn.commit();
+
+    // Borrar imagen en R2
+    if (row.foto) {
+      try { await r2Delete(row.foto); } catch {}
     }
 
     return res.status(200).json("Venta Fuegoya eliminada correctamente!");
   } catch (err) {
-    await connection.rollback();
+    await conn.rollback();
     console.error("❌ deleteVentaFuegoya:", err);
     return res.status(500).json({ error: "Error interno del servidor", details: err.message });
   } finally {
-    connection.release();
+    conn.release();
   }
 };
 
@@ -292,8 +386,7 @@ export const listVentaFuegoya = async (req, res) => {
     if (desde) { where.push("v.fecha_realizada >= ?"); params.push(desde); }
     if (hasta) { where.push("v.fecha_realizada <= ?"); params.push(hasta); }
     if (estadopago && isValidPagoEstado(estadopago)) {
-      where.push("v.estadopago = ?");
-      params.push(estadopago);
+      where.push("v.estadopago = ?"); params.push(estadopago);
     }
     if (cliente && cliente.trim()) {
       const like = `%${cliente.trim()}%`;
@@ -319,7 +412,7 @@ export const listVentaFuegoya = async (req, res) => {
 
     const [rows] = await pool.query(sql, params);
 
-    const mapped = rows.map(r => {
+    const mapped = rows.map((r) => {
       const display = r?.es_empresa
         ? (r?.empresa_cliente || (r.id_cliente ? `Empresa #${r.id_cliente}` : "Sin cliente"))
         : [r?.nombre_cliente, r?.apellido_cliente].filter(Boolean).join(" ") || (r.id_cliente ? `Cliente #${r.id_cliente}` : "Sin cliente");
@@ -329,9 +422,10 @@ export const listVentaFuegoya = async (req, res) => {
         : true;
 
       return {
-        ...r, // incluye cantidadbolsas
+        ...r,
+        foto_url: urlFromKey(r.foto),
         cliente_display: display,
-        cliente_eliminado
+        cliente_eliminado,
       };
     });
 
@@ -354,11 +448,11 @@ export const changeEstadoPagoVentaFuegoya = async (req, res) => {
       return res.status(400).json("estadopago inválido. Use 'credito' o 'pago'.");
     }
 
-    const [ex] = await conn.query(
+    const [[ex]] = await conn.query(
       `SELECT 1 FROM venta_fuegoya WHERE id_ventaFuegoya = ?`,
       [id]
     );
-    if (ex.length === 0) {
+    if (!ex) {
       conn.release();
       return res.status(404).json("Venta Fuegoya no encontrada.");
     }

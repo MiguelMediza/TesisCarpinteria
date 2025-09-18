@@ -12,7 +12,7 @@ export const pool = createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  // Si usás el host público, permitimos self-signed:
+
   ssl:
     sslMode === "true" || sslMode === "require" || sslMode === "public" || sslMode === "skip"
       ? { rejectUnauthorized: false, minVersion: "TLSv1.2" }

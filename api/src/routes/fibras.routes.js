@@ -1,37 +1,39 @@
+// routes/fibras.routes.js
 import { Router } from "express";
 import multer from "multer";
-import path from 'path';
-import { fileURLToPath } from "url";
 import {
   createFibra,
   listFibras,
   getFibraById,
   updateFibra,
-  deleteFibra
+  deleteFibra,
 } from "../controllers/fibras.js";
+import { r2Put } from "../lib/r2.js";
 
 const router = Router();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const storage = multer.diskStorage({
-  destination(req, file, cb) {
-    // la carpeta images/fibras está un nivel arriba de /routes
-    cb(null, path.join(__dirname, "../images/fibras"));
-  },
-  filename(req, file, cb) {
-    cb(null, Date.now() + "_" + file.originalname);
-  }
+// Multer en memoria (no disco). 10MB por defecto.
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
 });
-export const upload = multer({ storage });
 
-// Crear una nueva fibra (con foto)
-router.post(
-  "/agregar",
-  upload.single("foto"),
-  createFibra
-);
+// Middleware: si hay archivo, subir a R2 y colgar { key, url } en req.fileR2
+const uploadToR2 =
+  (folder) =>
+  async (req, res, next) => {
+    try {
+      if (req.file) {
+        req.fileR2 = await r2Put({ folder, file: req.file });
+      }
+      next();
+    } catch (e) {
+      next(e);
+    }
+  };
+
+// Crear una nueva fibra (con foto opcional)
+router.post("/agregar", upload.single("foto"), uploadToR2("fibras"), createFibra);
 
 // Listar todas las fibras
 router.get("/listar", listFibras);
@@ -40,11 +42,7 @@ router.get("/listar", listFibras);
 router.get("/:id", getFibraById);
 
 // Actualizar fibra existente (foto opcional)
-router.put(
-  "/:id",
-  upload.single("foto"),
-  updateFibra
-);
+router.put("/:id", upload.single("foto"), uploadToR2("fibras"), updateFibra);
 
 // Eliminar una fibra
 router.delete("/:id", deleteFibra);

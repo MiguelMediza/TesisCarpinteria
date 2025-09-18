@@ -11,9 +11,9 @@ import {
 const router = Router();
 
 router.post("/agregar", createPedido);
-router.get("/listar", listPedidos);          // filtros: ?estado=&desde=&hasta=&cliente=
+router.get("/listar", listPedidos);          
 router.get("/:id", getPedidoById);
-router.put("/:id", updatePedido);            // reemplaza items si mandas "items"
+router.put("/:id", updatePedido);            
 router.delete("/:id", deletePedido);
 
 // cambiar solo estado

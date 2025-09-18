@@ -2,11 +2,11 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef, useContext } from "react";
 import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
-import pelletsBackground from "../../assets/tablasBackground.jpg"; 
+import pelletsBackground from "../../assets/tablasBackground.jpg";
 
 const PelletsForm = () => {
   const { currentUser } = useContext(AuthContext);
-  const { id } = useParams(); 
+  const { id } = useParams();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
@@ -33,9 +33,7 @@ const PelletsForm = () => {
           precio_unidad: data.precio_unidad?.toString() || "",
           stock: data.stock?.toString() || ""
         });
-        if (data.foto) {
-          setPreview(`/images/pellets/${encodeURIComponent(data.foto)}`);
-        }
+        if (data.foto_url) setPreview(data.foto_url);
       })
       .catch(() => {
         setErr("No se pudo cargar el pellet.");
@@ -110,12 +108,10 @@ const PelletsForm = () => {
         });
         setErr("Pellet creado exitosamente.");
       }
-
       setMessageType("success");
       setInputs(initialInputs);
       clearImage();
       setTimeout(() => navigate("/pellets/listar"), 700);
-
     } catch (error) {
       let msg = "Error al guardar el pellet.";
       if (error.response && error.response.data) {
@@ -142,19 +138,16 @@ const PelletsForm = () => {
         </h1>
 
         <form className="space-y-4" onSubmit={handleSubmit} encType="multipart/form-data">
-          {/* Título */}
           <div>
             <label className="block mb-1 text-sm font-medium">Título</label>
             <input name="titulo" value={inputs.titulo} onChange={handleChange} className="w-full p-2 border rounded" />
           </div>
 
-          {/* Bolsa (kg) */}
           <div>
             <label className="block mb-1 text-sm font-medium">Bolsa (kg)</label>
             <input name="bolsa_kilogramos" value={inputs.bolsa_kilogramos} onChange={handleChange} className="w-full p-2 border rounded" />
           </div>
 
-          {/* Precio */}
           {currentUser?.tipo !== "encargado" && (
             <div>
               <label className="block mb-1 text-sm font-medium">Precio Unitario</label>
@@ -162,13 +155,11 @@ const PelletsForm = () => {
             </div>
           )}
 
-          {/* Stock */}
           <div>
             <label className="block mb-1 text-sm font-medium">Stock</label>
             <input name="stock" value={inputs.stock} onChange={handleChange} className="w-full p-2 border rounded" />
           </div>
 
-          {/* Foto */}
           <div>
             <label className="block mb-1 text-sm font-medium">Foto</label>
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFotoChange} className="w-full p-2 border rounded" />
@@ -180,10 +171,8 @@ const PelletsForm = () => {
             )}
           </div>
 
-          {/* Mensaje de error o éxito */}
           {err && <p className={messageType === "error" ? "text-red-500" : "text-green-500"}>{err}</p>}
 
-          {/* Botón submit */}
           <button type="submit" className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
             {id ? "Guardar Cambios" : "Crear Pellet"}
           </button>

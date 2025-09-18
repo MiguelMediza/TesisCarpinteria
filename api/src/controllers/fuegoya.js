@@ -1,50 +1,58 @@
+// controllers/fuegoya.js
 import { pool } from "../db.js";
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { r2Delete } from "../lib/r2.js";
 
-// Crear un nuevo fuegoYa
+const PUBLIC_BASE = (process.env.R2_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
+
+const urlFromKey = (key) => {
+  if (!key) return null;
+  // si ya es una URL absoluta, respetar
+  if (/^https?:\/\//i.test(key)) return key;
+
+  const clean = String(key).replace(/^\/+/, ""); // quita leading slashes
+  return PUBLIC_BASE ? `${PUBLIC_BASE}/${clean}` : `/${clean}`;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Crear un nuevo Fuego Y
 export const createFuegoYa = async (req, res) => {
-    try{
-        const{
-            tipo,
-            precio_unidad,
-            stock
-        } = req.body;
-        const foto = req.file?.filename || req.body.foto || null;
+  try {
+    const { tipo, precio_unidad, stock } = req.body;
 
-    console.log("🔔 createFuegoYa hit:", req.body, "file:", req.file);
+    // req.fileR2 = { key, url } si se subió archivo a R2
+    const fotoKey = req.fileR2?.key || null;
 
-    const insertFuego = `
+    const insertQ = `
       INSERT INTO fuego_ya
         (tipo, precio_unidad, stock, foto)
       VALUES (?, ?, ?, ?)
     `;
-    const [Result] = await pool.query(insertFuego, [
+    const [result] = await pool.query(insertQ, [
       tipo,
-      parseFloat(precio_unidad),
-      parseInt(stock, 10),
-      foto
+      precio_unidad != null ? parseFloat(precio_unidad) : null,
+      stock != null ? parseInt(stock, 10) : null,
+      fotoKey,
     ]);
 
-    const idFuegoYa = Result.insertId;
-    console.log("✅ Fuego Ya creado:", idFuegoYa);
     return res.status(201).json({
-      id_fuego_ya: idFuegoYa,
-      message: "Fuego Ya creado exitosamente!"
+      id_fuego_ya: result.insertId,
+      message: "Fuego Ya creado exitosamente!",
+      foto_key: fotoKey,
+      foto_url: urlFromKey(fotoKey),
     });
-    } catch (err) {
-    console.error("❌ Error en create Fuego Ya:", err);
+  } catch (err) {
+    console.error("❌ Error en createFuegoYa:", err);
     return res
       .status(500)
       .json({ error: "Internal server error", details: err.message });
-    }
+  }
 };
 
-// Obtener un fuego ya por ID con todos sus datos
+// ─────────────────────────────────────────────────────────────────────────────
+// Obtener un Fuego Ya por ID
 export const getFuegoYaById = async (req, res) => {
   try {
-    const { id } = req.params; 
+    const { id } = req.params;
 
     const [rows] = await pool.query(
       `
@@ -53,18 +61,20 @@ export const getFuegoYaById = async (req, res) => {
         tipo,
         precio_unidad,
         stock,
-        foto
+        foto   -- guarda la KEY en R2
       FROM fuego_ya
       WHERE id_fuego_ya = ?
       `,
       [id]
     );
 
-    if (rows.length === 0) {
-      return res.status(404).json("Fuego Ya no encontrado!");
-    }
+    if (rows.length === 0) return res.status(404).json("Fuego Ya no encontrado!");
 
-    return res.status(200).json(rows[0]);
+    const row = rows[0];
+    return res.status(200).json({
+      ...row,
+      foto_url: urlFromKey(row.foto),
+    });
   } catch (err) {
     console.error("❌ Error en getFuegoYaById:", err);
     return res
@@ -73,127 +83,128 @@ export const getFuegoYaById = async (req, res) => {
   }
 };
 
-//Modificar un fuego ya existente
+// ─────────────────────────────────────────────────────────────────────────────
+// Modificar un Fuego Ya existente
 export const updateFuegoYa = async (req, res) => {
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
   const connection = await pool.getConnection();
   try {
     const { id } = req.params;
-    const {
-      tipo,
-      precio_unidad,
-      stock
-    } = req.body;
+    const { tipo, precio_unidad, stock } = req.body;
 
-    //Verificar que exista
+    // Verificar existencia y obtener foto anterior (key)
     const [exists] = await connection.query(
-      'SELECT foto FROM fuego_ya WHERE id_fuego_ya = ?',
+      `SELECT foto FROM fuego_ya WHERE id_fuego_ya = ?`,
       [id]
     );
     if (exists.length === 0) {
-      return res.status(404).json('Fuego ya no encontrado!');
+      connection.release();
+      return res.status(404).json("Fuego Ya no encontrado!");
     }
-    const oldFoto = exists[0].foto;
+    const oldFotoKey = exists[0].foto || null;
+
+    // Si hay nueva imagen subida a R2, viene en req.fileR2.key
+    const newFotoKey = req.fileR2?.key || null;
 
     await connection.beginTransaction();
 
-    //Actualizar fuego Ya
-    const updateMP = `
+    const updateQ = `
       UPDATE fuego_ya SET
         tipo = ?,
         precio_unidad = ?,
         stock = ?,
-        foto = COALESCE(?, foto)
+        foto = COALESCE(?, foto)  -- sólo cambia si hay nueva foto
       WHERE id_fuego_ya = ?
     `;
-    // si viene req.file, usamos req.file.filename, si no null (COALESCE deja el antiguo)
-    const newFoto = req.file?.filename || null;
-    await connection.query(updateMP, [
+    await connection.query(updateQ, [
       tipo,
-      parseFloat(precio_unidad),
-      parseInt(stock, 10),
-      newFoto,
-      id
+      precio_unidad != null ? parseFloat(precio_unidad) : null,
+      stock != null ? parseInt(stock, 10) : null,
+      newFotoKey,
+      id,
     ]);
 
     await connection.commit();
 
-    //Borrar imagen antigua si reemplazamos
-    if (newFoto && oldFoto) {
-      const oldPath = path.join(__dirname, '../images/fuego_ya', oldFoto);
-      fs.unlink(oldPath).catch(() => {
-        console.warn('No se pudo borrar la imagen antigua:', oldFoto);
-      });
+    // Si se subió una nueva imagen y cambió, borrar la vieja en R2
+    if (newFotoKey && oldFotoKey && newFotoKey !== oldFotoKey) {
+      try {
+        await r2Delete(oldFotoKey);
+      } catch (e) {
+        console.warn("⚠️ No se pudo borrar la imagen antigua en R2:", oldFotoKey, e?.message);
+      }
     }
 
-    return res.status(200).json('Fuego Ya modificado exitosamente!');
+    return res.status(200).json({
+      message: "Fuego Ya modificado exitosamente!",
+      foto_key: newFotoKey || oldFotoKey || null,
+      foto_url: urlFromKey(newFotoKey || oldFotoKey),
+    });
   } catch (err) {
     await connection.rollback();
-    console.error('❌ Error en updateFuegoYa:', err);
+    console.error("❌ Error en updateFuegoYa:", err);
     return res
       .status(500)
-      .json({ error: 'Internal server error', details: err.message });
+      .json({ error: "Internal server error", details: err.message });
   } finally {
     connection.release();
   }
 };
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Eliminar un fuego ya y su imagen
+// ─────────────────────────────────────────────────────────────────────────────
+// Eliminar un Fuego Ya y su imagen (si existe) en R2
 export const deleteFuegoYa = async (req, res) => {
   const connection = await pool.getConnection();
   try {
     const { id } = req.params;
 
-    //Leer el nombre de la imagen antes de borrar
+    // Obtener key antes de borrar
     const [rows] = await connection.query(
-      'SELECT foto FROM fuego_ya WHERE id_fuego_ya = ?',
+      `SELECT foto FROM fuego_ya WHERE id_fuego_ya = ?`,
       [id]
     );
     if (rows.length === 0) {
-      return res.status(404).json('Fuego Ya no encontrado!');
+      connection.release();
+      return res.status(404).json("Fuego Ya no encontrado!");
     }
-    const fotoNombre = rows[0].foto; // puede ser null o string
+    const fotoKey = rows[0].foto || null;
 
-    // Transacción para borrar hijo y padre
     await connection.beginTransaction();
 
-    const [childResult] = await connection.query(
-      'DELETE FROM fuego_ya WHERE id_fuego_ya = ?',
+    const [delRes] = await connection.query(
+      `DELETE FROM fuego_ya WHERE id_fuego_ya = ?`,
       [id]
     );
-    if (childResult.affectedRows === 0) {
+    if (delRes.affectedRows === 0) {
       await connection.rollback();
-      return res.status(404).json('Fuego Ya no encontrado!');
+      connection.release();
+      return res.status(404).json("Fuego Ya no encontrado!");
     }
 
     await connection.commit();
 
-    if (fotoNombre) {
-      const filePath = path.join(__dirname, '../images/fuego_ya', fotoNombre);
+    // Borrar en R2
+    if (fotoKey) {
       try {
-        await fs.unlink(filePath);
-      } catch (fsErr) {
-        console.warn('No se pudo borrar la imagen:', fsErr.message);
+        await r2Delete(fotoKey);
+      } catch (e) {
+        console.warn("⚠️ No se pudo borrar la imagen en R2:", fotoKey, e?.message);
       }
     }
 
-    console.log('✅ Fuego Ya eliminado');
-    return res.status(200).json('Fuego Ya eliminado exitosamente!');
+    return res.status(200).json("Fuego Ya eliminado exitosamente!");
   } catch (err) {
     await connection.rollback();
-    console.error('❌ Error en deleteFuegoYa:', err);
+    console.error("❌ Error en deleteFuegoYa:", err);
     return res
       .status(500)
-      .json({ error: 'Internal server error', details: err.message });
+      .json({ error: "Internal server error", details: err.message });
   } finally {
     connection.release();
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Listar todos los Fuego Ya
 export const listFuegoYa = async (req, res) => {
   try {
     const [rows] = await pool.query(
@@ -203,12 +214,18 @@ export const listFuegoYa = async (req, res) => {
         tipo,
         precio_unidad,
         stock,
-        foto
+        foto   -- KEY en R2
       FROM fuego_ya
       ORDER BY tipo ASC
       `
     );
-    return res.status(200).json(rows);
+
+    const withUrls = rows.map((r) => ({
+      ...r,
+      foto_url: urlFromKey(r.foto),
+    }));
+
+    return res.status(200).json(withUrls);
   } catch (err) {
     console.error("❌ Error en listFuegoYa:", err);
     return res
@@ -216,4 +233,3 @@ export const listFuegoYa = async (req, res) => {
       .json({ error: "Internal server error", details: err.message });
   }
 };
-

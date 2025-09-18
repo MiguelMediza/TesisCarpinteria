@@ -1,31 +1,34 @@
-// src/components/Home/LowStockCard.jsx
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
 const colorByStock = (stock) => {
-  if (stock < 100)  return "bg-red-50 text-red-700 border-red-200";
-  if (stock < 250)  return "bg-yellow-50 text-yellow-800 border-yellow-200";
+  const n = Number(stock ?? 0);
+  if (n < 100) return "bg-red-50 text-red-700 border-red-200";
+  if (n < 250) return "bg-yellow-50 text-yellow-800 border-yellow-200";
   return "bg-orange-50 text-orange-800 border-orange-200";
 };
 
-// Map para navegar rápido a la pantalla adecuada
 const routeBaseByOrigen = {
   materiaprima: "/materiaprima/listar",
-  tipo_tablas:  "/tipotablas/listar",
-  tipo_tacos:   "/tipotacos/listar",
+  tipo_tablas: "/tipotablas/listar",
+  tipo_tacos: "/tipotacos/listar",
   tipo_patines: "/tipopatines/listar",
-  fuego_ya:     "/fuegoya/listar",
-  pellets:      "/pellets/listar",
+  fuego_ya: "/fuegoya/listar",
+  pellets: "/pellets/listar",
 };
 
 const StockBajo = ({ item }) => {
   const navigate = useNavigate();
-  const { origen, id, titulo, stock, foto_url } = item;
+  const origen = item?.origen || "";
+  const id = item?.id;
+  const titulo = item?.titulo || "";
+  const stock = Number(item?.stock ?? 0);
   const pill = colorByStock(stock);
+  const imgSrc = item?.foto_url || null;
 
   const goTo = () => {
     const base = routeBaseByOrigen[origen] || "/";
-    navigate(base); // o navigate(`${base}/${id}`) si querés ir directo al detalle/edición
+    navigate(base);
   };
 
   return (
@@ -34,8 +37,16 @@ const StockBajo = ({ item }) => {
       onClick={goTo}
       title="Ver detalle / editar"
     >
-      {foto_url ? (
-        <img src={foto_url} alt={titulo} className="w-full h-28 object-cover" />
+      {imgSrc ? (
+        <img
+          src={imgSrc}
+          alt={titulo}
+          loading="lazy"
+          className="w-full h-28 object-cover"
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
+        />
       ) : (
         <div className="w-full h-28 bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
           sin imagen

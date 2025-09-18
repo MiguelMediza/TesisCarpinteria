@@ -1,6 +1,9 @@
 // routes/stockBajo.controller.js
 import { pool } from "../db.js";
 
+const PUBLIC_BASE = process.env.R2_PUBLIC_BASE_URL || "";
+const urlFromKey = (key) => (key ? `${PUBLIC_BASE}/${key}` : null);
+
 export const listStockBajo = async (req, res) => {
   try {
     const threshold = Number(req.query.threshold ?? 500);
@@ -40,36 +43,14 @@ export const listStockBajo = async (req, res) => {
       threshold, threshold, threshold, threshold, threshold, threshold
     ]);
 
-    
-    const base = `${req.protocol}://${req.get("host")}`;
-
-    const imgBaseByOrigen = {
-      tabla: "/images/tablas",
-      palo: "/images/palos",
-      clavo: "/images/clavos",
-      fibra: "/images/fibras",
-
-      tipo_tablas: "/images/tipo_tablas",
-      tipo_tacos: "/images/tipo_tacos",
-      tipo_patines: "/images/tipo_patines",
-
-      fuego_ya: "/images/fuego_ya",
-      pellets: "/images/pellets",
-    };
-
-    const mapped = rows.map((r) => {
-      const baseDir = imgBaseByOrigen[r.origen] || ""; 
-      return {
-        ...r,
-        foto_url: r.foto && baseDir ? `${base}${baseDir}/${r.foto}` : null,
-      };
-    });
+    const mapped = rows.map((r) => ({
+      ...r,
+      foto_url: urlFromKey(r.foto),
+    }));
 
     res.status(200).json(mapped);
   } catch (err) {
-    console.error("❌ listStockBajo:", err);
-    res
-      .status(500)
-      .json({ error: "Error interno del servidor", details: err.message });
+    console.error("listStockBajo:", err);
+    res.status(500).json({ error: "Error interno del servidor", details: err.message });
   }
 };

@@ -8,22 +8,28 @@ const ClavosCard = ({ clavo, onEdit, onDelete }) => {
     titulo,
     precio_unidad,
     stock,
-    foto,
+    foto,        // legacy (nombre de archivo local)
+    foto_key,    // opcional, por si lo usas en otros lados
+    foto_url,    // NUEVO: url pública del CDN
     comentarios,
     tipo,
     medidas,
     material
   } = clavo;
 
+  // Usa CDN si existe; si no, ruta local como fallback
+  const imgSrc =
+    foto_url || (foto ? `/images/clavos/${encodeURIComponent(foto)}` : null);
+
   return (
     <div className="border rounded-lg p-4 flex flex-col justify-between bg-white shadow-sm">
       <div>
-        {foto && (
+        {imgSrc && (
           <img
-            src={`/images/clavos/${encodeURIComponent(foto)}`}
+            src={imgSrc}
             alt={titulo}
             loading="lazy"
-            onError={(e) => { e.currentTarget.src = '/images/placeholder.png'; }}
+            // onError={(e) => { e.currentTarget.src = "/images/placeholder.png"; }}
             className="w-full h-32 object-cover mb-4 rounded"
           />
         )}

@@ -3,10 +3,10 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import { api } from "../../api";
 import bgImg from "../../assets/tablasBackground.jpg";
 
-const PAGO_OPCIONES = ["credito", "pago"]; // el toggle “real” con fecha lo hacés desde la Card
+const PAGO_OPCIONES = ["credito", "pago"]; 
 
 const VentaFuegoyaForm = () => {
-  const { id } = useParams(); // id_ventaFuegoya si edita
+  const { id } = useParams(); 
   const navigate = useNavigate();
 
   const [inputs, setInputs] = useState({
@@ -14,7 +14,7 @@ const VentaFuegoyaForm = () => {
     precio_total: "",
     id_cliente: "",
     id_fuego_ya: "",
-    cantidadbolsas: "",          // 👈 NUEVO
+    cantidadbolsas: "",          
     comentarios: "",
     estadopago: "credito",
     fechapago: "",
@@ -22,12 +22,12 @@ const VentaFuegoyaForm = () => {
   const [fechapagoView, setFechapagoView] = useState("");
 
   const [fotoFile, setFotoFile] = useState(null);
-  const [fotoNombre, setFotoNombre] = useState("");
+  const [previewUrl, setPreviewUrl] = useState(null); 
 
   const [clientes, setClientes] = useState([]);
   const [fuegos, setFuegos] = useState([]);
 
-  const [precioTouched, setPrecioTouched] = useState(false); // 👈 si el usuario editó el precio manualmente
+  const [precioTouched, setPrecioTouched] = useState(false); 
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
 
@@ -47,7 +47,6 @@ const VentaFuegoyaForm = () => {
     return (idFuego) => {
       const fy = fuegos.find(f => String(f.id_fuego_ya) === String(idFuego));
       if (!fy) return null;
-      // intentos en orden
       if (fy.precio_unidad != null) return Number(fy.precio_unidad);
       return null;
     };
@@ -88,8 +87,8 @@ const VentaFuegoyaForm = () => {
           fechapago: formatDateFromISO(data.fechapago),
         });
         setFechapagoView(data.fechapago || "");
-        setFotoNombre(data.foto || "");
-        setPrecioTouched(true); // al editar, respetamos el precio guardado
+        setPreviewUrl(data.foto_url || null);
+        setPrecioTouched(true); 
       } catch (e) {
         console.error(e);
         setErr("No se pudo cargar la venta.");
@@ -98,7 +97,7 @@ const VentaFuegoyaForm = () => {
     })();
   }, [id]);
 
-  // Auto-cálculo del precio total si usuario NO lo tocó manualmente
+  
   useEffect(() => {
     if (!inputs.id_fuego_ya) return;
     const unit = getUnitPrice(inputs.id_fuego_ya);
@@ -116,44 +115,44 @@ const VentaFuegoyaForm = () => {
       const next = { ...prev, [name]: value };
 
       if (name === "precio_total") {
-        // permitir decimales: quitar todo menos dígitos y punto; limitar a un punto
+        // permitir solo números y un punto decimal
         const raw = value.replace(/[^0-9.]/g, "");
         const parts = raw.split(".");
         const sane = parts.length > 2 ? `${parts[0]}.${parts.slice(1).join("")}` : raw;
         next.precio_total = sane;
-        setPrecioTouched(true); // usuario edita manualmente
+        setPrecioTouched(true); 
       }
 
       if (name === "cantidadbolsas") {
-        // solo enteros >= 0
+        
         const onlyDigits = value.replace(/[^\d]/g, "");
         next.cantidadbolsas = onlyDigits;
-        // si cambia cantidad, si precio NO fue tocado, el useEffect recalculará
         if (precioTouched) {
-          // no hacemos nada; respetamos precio manual
+          
         }
       }
 
       if (name === "id_fuego_ya") {
-        // al cambiar fuego_ya, si precio fue tocado, mantenemos;
-        // si no, useEffect recalcula
+        
       }
 
       return next;
     });
   };
 
-  const handleFile = (e) => {
-    const file = e.target.files?.[0] || null;
-    setFotoFile(file);
-  };
+ const handleFile = (e) => {
+   const file = e.target.files?.[0] || null;
+   setFotoFile(file);
+   if (file) {
+     setPreviewUrl(URL.createObjectURL(file)); 
+   } };
 
   const recalcPrecio = () => {
     const unit = getUnitPrice(inputs.id_fuego_ya);
     const qty = parseInt(inputs.cantidadbolsas, 10) || 0;
     if (unit != null) {
       setInputs(prev => ({ ...prev, precio_total: (unit * qty).toFixed(2) }));
-      setPrecioTouched(false); // volvemos al modo auto hasta que el user toque de nuevo
+      setPrecioTouched(false); 
     }
   };
 
@@ -199,17 +198,11 @@ const VentaFuegoyaForm = () => {
     try {
       if (id) {
         await api.put(
-          `/ventafuegoya/${id}`,
-          fd,
-          { headers: { "Content-Type": "multipart/form-data" } }
-        );
+          `/ventafuegoya/${id}`, fd);
         setErr("Venta Fuegoya actualizada correctamente.");
       } else {
         await api.post(
-          "/ventafuegoya/agregar",
-          fd,
-          { headers: { "Content-Type": "multipart/form-data" } }
-        );
+          "/ventafuegoya/agregar", fd);
         setErr("Venta Fuegoya creada exitosamente.");
       }
       setMessageType("success");
@@ -237,7 +230,7 @@ const VentaFuegoyaForm = () => {
         </h1>
 
         <form className="space-y-5" onSubmit={handleSubmit}>
-          {/* Fuego Ya (obligatorio) */}
+          {/* Fuego Ya */}
           <div>
             <label className="block mb-1 text-sm font-medium">Fuego Ya *</label>
             <select
@@ -295,7 +288,7 @@ const VentaFuegoyaForm = () => {
             />
           </div>
 
-          {/* Cantidad de bolsas (arriba del precio) */}
+          {/* Cantidad de bolsas */}
           <div>
             <label className="block mb-1 text-sm font-medium">Cantidad de bolsas</label>
             <input
@@ -309,7 +302,7 @@ const VentaFuegoyaForm = () => {
             />
           </div>
 
-          {/* Estado de pago (visual) */}
+          {/* Estado de pago */}
           <div>
             <label className="block mb-1 text-sm font-medium">Estado de pago</label>
             <select
@@ -333,7 +326,7 @@ const VentaFuegoyaForm = () => {
             )}
           </div>
 
-          {/* Precio total (auto, editable) */}
+          {/* Precio total */}
           <div>
             <label className="block mb-1 text-sm font-medium">Precio total</label>
             <div className="flex gap-2">
@@ -384,10 +377,10 @@ const VentaFuegoyaForm = () => {
               onChange={handleFile}
               className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
             />
-            {id && fotoNombre && (
-              <p className="text-xs text-neutral-600 mt-1">
-                Imagen actual: <span className="font-mono">{fotoNombre}</span>
-              </p>
+            {previewUrl && (
+              <div className="mt-2">
+                <img src={previewUrl} alt="Foto" className="max-h-48 rounded border" />
+              </div>
             )}
           </div>
 

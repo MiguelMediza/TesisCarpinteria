@@ -4,12 +4,12 @@ import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
 import tablasBackground from "../../assets/tablasBackground.jpg";
 
-const TABLES_PER_PATIN = 1; // Debe coincidir con el backend / triggers
-const TACOS_PER_PATIN = 3;  // Debe coincidir con el backend / triggers
+const TABLES_PER_PATIN = 1;
+const TACOS_PER_PATIN = 3;
 
 const TipoPatinesForm = () => {
   const { currentUser } = useContext(AuthContext);
-  const { id } = useParams(); // id_tipo_patin
+  const { id } = useParams();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
@@ -32,18 +32,11 @@ const TipoPatinesForm = () => {
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
 
-  // Fetch tablas y tacos
   useEffect(() => {
-    api.get("/tipotablas/listar")
-      .then(({ data }) => setTablas(data))
-      .catch(() => console.error("❌ Error cargando tipo_tablas"));
-
-    api.get("/tipotacos/listar")
-      .then(({ data }) => setTacos(data))
-      .catch(() => console.error("❌ Error cargando tipo_tacos"));
+    api.get("/tipotablas/listar").then(({ data }) => setTablas(data)).catch(() => {});
+    api.get("/tipotacos/listar").then(({ data }) => setTacos(data)).catch(() => {});
   }, []);
 
-  // Si estamos editando, cargar el patín existente
   useEffect(() => {
     if (!id) return;
     api.get(`/tipopatines/${id}`)
@@ -56,13 +49,13 @@ const TipoPatinesForm = () => {
           stock: data.stock?.toString() || "",
           comentarios: data.comentarios || ""
         });
-        // setear seleccionados cuando existan listas
         const tabla = tablas.find(t => t.id_tipo_tabla === data.id_tipo_tabla);
-        const taco  = tacos.find(t => t.id_tipo_taco  === data.id_tipo_taco);
+        const taco = tacos.find(t => t.id_tipo_taco === data.id_tipo_taco);
         if (tabla) setSelectedTabla(tabla);
-        if (taco)  setSelectedTaco(taco);
-
-        if (data.logo) setPreview(`/images/tipo_patines/${encodeURIComponent(data.logo)}`);
+        if (taco) setSelectedTaco(taco);
+     
+        const img = data.logo_url || null;
+        if (img) setPreview(img);
       })
       .catch(() => {
         setErr("No se pudo cargar el tipo de patín.");
@@ -70,25 +63,17 @@ const TipoPatinesForm = () => {
       });
   }, [id, tablas, tacos]);
 
-  // Validación de campos
   const validate = () => {
     if (!inputs.id_tipo_tabla) return "Selecciona una tabla.";
     if (!inputs.id_tipo_taco) return "Selecciona un taco.";
     if (!inputs.titulo) return "El título es requerido.";
-    if (!inputs.medidas) return "La medida es requerida.";
-    if (isNaN(inputs.medidas) || +inputs.medidas <= 0) return "Medida inválida.";
-    if (!inputs.stock || !Number.isInteger(+inputs.stock) || +inputs.stock < 0)
-      return "Stock inválido.";
+    if (!inputs.medidas) return "Las medidas son requeridas.";
+    if (!inputs.stock || !Number.isInteger(+inputs.stock) || +inputs.stock < 0) return "Stock inválido.";
     return null;
   };
 
-  // Handlers
   const handleChange = e => {
     const { name, value } = e.target;
-    // numeric fields
-    if (["medidas","stock"].includes(name)) {
-      if (!/^[0-9]*\.?[0-9]*$/.test(value)) return;
-    }
     if (name === "stock" && !/^\d*$/.test(value)) return;
     setInputs(prev => ({ ...prev, [name]: value }));
   };
@@ -118,23 +103,20 @@ const TipoPatinesForm = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Control de stock disponible (usar mismas constantes)
   const stockMax = selectedTabla && selectedTaco
     ? Math.min(
         Math.floor((selectedTabla.stock ?? 0) / TABLES_PER_PATIN),
-        Math.floor((selectedTaco.stock  ?? 0) / TACOS_PER_PATIN)
+        Math.floor((selectedTaco.stock ?? 0) / TACOS_PER_PATIN)
       )
     : 0;
 
-  // Preview de precio calculado (solo visual)
   const precioPreview = (selectedTabla && selectedTaco)
     ? (
         (Number(selectedTabla?.precio_unidad || 0) * TABLES_PER_PATIN) +
-        (Number(selectedTaco?.precio_unidad  || 0) * TACOS_PER_PATIN)
+        (Number(selectedTaco?.precio_unidad || 0) * TACOS_PER_PATIN)
       ).toFixed(2)
     : null;
 
-  // Enviar datos
   const handleSubmit = async e => {
     e.preventDefault();
     const v = validate();
@@ -149,35 +131,25 @@ const TipoPatinesForm = () => {
       fd.append("id_tipo_taco", inputs.id_tipo_taco);
       fd.append("titulo", inputs.titulo);
       fd.append("medidas", inputs.medidas);
-      // precio_unidad NO se envía: lo calcula el backend
       fd.append("stock", inputs.stock);
       fd.append("comentarios", inputs.comentarios);
       if (logoFile) fd.append("logo", logoFile);
 
       if (id) {
-        await api.put(`/tipopatines/${id}`, fd, {
-          headers: { "Content-Type": "multipart/form-data" }
-        });
+        await api.put(`/tipopatines/${id}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
         setErr("Tipo de patín actualizado.");
       } else {
-        await api.post("/tipopatines/agregar", fd, {
-          headers: { "Content-Type": "multipart/form-data" }
-        });
+        await api.post("/tipopatines/agregar", fd, { headers: { "Content-Type": "multipart/form-data" } });
         setErr("Tipo de patín creado.");
       }
       setMessageType("success");
       setTimeout(() => navigate("/tipopatines/listar"), 600);
     } catch (error) {
-      // Muestra el error de la respuesta del servidor
       let mensaje = "Error al guardar.";
       if (error.response && error.response.data) {
-        if (typeof error.response.data === "string") {
-          mensaje = error.response.data;
-        } else if (error.response.data.error) {
-          mensaje = error.response.data.error;
-        } else if (error.response.data.message) {
-          mensaje = error.response.data.message;
-        }
+        if (typeof error.response.data === "string") mensaje = error.response.data;
+        else if (error.response.data.error) mensaje = error.response.data.error;
+        else if (error.response.data.message) mensaje = error.response.data.message;
       }
       setErr(mensaje);
       setMessageType("error");
@@ -194,13 +166,10 @@ const TipoPatinesForm = () => {
         <Link to="/tipopatines/listar" className="block mb-6 text-2xl font-semibold text-neutral-800 text-center">
           Imanod Control de Stock
         </Link>
-
         <h1 className="text-2xl font-bold text-neutral-900 text-center mb-4">
           {id ? "Editar Tipo de Patín" : "Nuevo Tipo de Patín"}
         </h1>
-
         <form className="space-y-4" onSubmit={handleSubmit} encType="multipart/form-data">
-          {/* Selección tabla */}
           <div>
             <label className="block mb-1 text-sm font-medium">Tabla utilizada</label>
             <select value={inputs.id_tipo_tabla} onChange={handleParentTabla} className="w-full p-2 border rounded">
@@ -212,8 +181,6 @@ const TipoPatinesForm = () => {
               ))}
             </select>
           </div>
-
-          {/* Selección taco */}
           <div>
             <label className="block mb-1 text-sm font-medium">Taco utilizado</label>
             <select value={inputs.id_tipo_taco} onChange={handleParentTaco} className="w-full p-2 border rounded">
@@ -225,8 +192,6 @@ const TipoPatinesForm = () => {
               ))}
             </select>
           </div>
-
-          {/* Información de stock */}
           {selectedTabla && selectedTaco && (
             <div className="text-sm text-gray-700">
               <p><strong>Stock Tabla:</strong> {selectedTabla.stock}</p>
@@ -234,21 +199,17 @@ const TipoPatinesForm = () => {
               <p><strong>Máximo patines posible:</strong> {stockMax}</p>
             </div>
           )}
-
-          {/* Precio calculado automáticamente (solo visual) */}
           {currentUser?.tipo === "admin" && (
-          <div className="text-sm text-gray-700">
-            <p>
-              <strong>Precio calculado (auto): </strong>
-              {precioPreview !== null ? `$ ${precioPreview}` : "—"}
-            </p>
-            <p className="text-xs text-gray-500">
-              Se calcula como: precio tabla × {TABLES_PER_PATIN} + precio taco × {TACOS_PER_PATIN}.
-            </p>
-          </div>
+            <div className="text-sm text-gray-700">
+              <p>
+                <strong>Precio calculado (auto): </strong>
+                {precioPreview !== null ? `$ ${precioPreview}` : "—"}
+              </p>
+              <p className="text-xs text-gray-500">
+                Se calcula como: precio tabla × {TABLES_PER_PATIN} + precio taco × {TACOS_PER_PATIN}.
+              </p>
+            </div>
           )}
-
-          {/* Otros campos */}
           <input
             name="titulo"
             value={inputs.titulo}
@@ -277,8 +238,6 @@ const TipoPatinesForm = () => {
             placeholder="Comentarios"
             className="w-full p-2 border rounded"
           />
-
-          {/* Logo */}
           <div>
             <label>Logo</label>
             <input
@@ -301,15 +260,11 @@ const TipoPatinesForm = () => {
               </div>
             )}
           </div>
-
-          {/* Mensaje */}
           {err && (
             <p className={messageType === "error" ? "text-red-500" : "text-green-500"}>
               {err}
             </p>
           )}
-
-          {/* Botón */}
           <button type="submit" className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
             {id ? "Guardar Cambios" : "Crear Tipo de Patín"}
           </button>

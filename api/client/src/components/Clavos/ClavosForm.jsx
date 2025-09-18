@@ -41,8 +41,14 @@ const ClavosForm = () => {
           stock: data.stock?.toString() || "",
           comentarios: data.comentarios || "",
         });
-        if (data.foto) {
+
+        // Soporta R2 (foto_url) y, como fallback, archivo local (foto)
+        if (data.foto_url) {
+          setPreview(data.foto_url);
+        } else if (data.foto) {
           setPreview(`/images/clavos/${encodeURIComponent(data.foto)}`);
+        } else {
+          setPreview(null);
         }
       } catch {
         setErr("No se pudo cargar el clavo.");
@@ -95,16 +101,20 @@ const ClavosForm = () => {
     }
     try {
       const formData = new FormData();
+
+      // Puedes enviar categoria si tu backend lo usa, si no, quítalo.
       formData.append("categoria", "clavo");
+
       Object.entries(inputs).forEach(([key, value]) => {
         if (key === "precio_unidad") {
-          const precio = currentUser?.tipo === "encargado" ? "0" : value;
+          const precio = currentUser?.tipo === "encargado" ? "0" : value || "0";
           formData.append(key, precio);
         } else {
-          formData.append(key, value);
+          formData.append(key, value ?? "");
         }
       });
-      if (fotoFile) formData.append("foto", fotoFile);
+
+      if (fotoFile) formData.append("foto", fotoFile); // <- tiene que llamarse "foto"
 
       if (id) {
         await api.put(`/clavos/${id}`, formData);
@@ -140,6 +150,7 @@ const ClavosForm = () => {
         <h1 className="text-2xl font-bold text-neutral-900 text-center mb-4">
           {id ? "Editar Clavo" : "Nuevo Clavo"}
         </h1>
+
         <form className="space-y-4 md:space-y-6" onSubmit={handleSubmit} encType="multipart/form-data">
           {/* Título */}
           <div>
@@ -156,12 +167,10 @@ const ClavosForm = () => {
               className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
             />
           </div>
+
           {/* Tipo */}
           <div>
-            <label
-              htmlFor="tipo"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
+            <label htmlFor="tipo" className="block mb-1 text-sm font-medium text-neutral-800">
               Tipo
             </label>
             <select
@@ -192,6 +201,7 @@ const ClavosForm = () => {
               className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
             />
           </div>
+
           {/* Material */}
           <div>
             <label htmlFor="material" className="block mb-1 text-sm font-medium text-neutral-800">
@@ -207,6 +217,7 @@ const ClavosForm = () => {
               className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
             />
           </div>
+
           {/* Precio unitario */}
           {currentUser?.tipo !== "encargado" && (
             <div>
@@ -225,6 +236,7 @@ const ClavosForm = () => {
               />
             </div>
           )}
+
           {/* Stock */}
           <div>
             <label htmlFor="stock" className="block mb-1 text-sm font-medium text-neutral-800">
@@ -241,6 +253,7 @@ const ClavosForm = () => {
               className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
             />
           </div>
+
           {/* Foto */}
           <div>
             <label htmlFor="foto" className="block mb-1 text-sm font-medium text-neutral-800">
@@ -268,6 +281,7 @@ const ClavosForm = () => {
               </div>
             )}
           </div>
+
           {/* Comentarios */}
           <div>
             <label htmlFor="comentarios" className="block mb-1 text-sm font-medium text-neutral-800">
@@ -283,15 +297,22 @@ const ClavosForm = () => {
               className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
             />
           </div>
+
           {/* Mensaje */}
-            {err && (
+          {err && (
             <span className={messageType === "error" ? "text-red-500" : "text-green-500"}>
               {err}
             </span>
           )}
-          <button type="submit" className="w-full py-2.5 text-white bg-neutral-700 hover:bg-neutral-800 rounded transition">
+
+          {/* Submit new */}
+          <button
+            type="submit"
+            className="w-full py-2.5 text-white bg-neutral-700 hover:bg-neutral-800 rounded transition"
+          >
             {id ? "Guardar Cambios" : "Crear Clavo"}
           </button>
+
           <p className="mt-4 text-sm text-neutral-700 text-center">
             <Link to="/clavos/listar" className="font-medium underline">
               Volver al listado de clavos

@@ -40,8 +40,8 @@ const PalosForm = () => {
           stock: data.stock?.toString() || "",
           comentarios: data.comentarios_mp || "",
         });
-        if (data.foto) {
-          setPreview(`/images/palos/${encodeURIComponent(data.foto)}`);
+        if (data.foto_url) {
+          setPreview(data.foto_url); 
         }
       })
       .catch(() => {
@@ -111,7 +111,7 @@ const PalosForm = () => {
         if (key === "precio_unidad") {
           const precio =
             currentUser?.tipo === "encargado" ? "0" : value;
-          formData.append(key, precio);
+        formData.append(key, precio);
         } else {
           formData.append(key, value);
         }
@@ -136,7 +136,6 @@ const PalosForm = () => {
       setMessageType("success");
       setInputs(initialInputs);
       clearImage();
-      // navigate back after a moment
       setTimeout(() => navigate("/palos/listar"), 500);
     } catch (error) {
       let msg = "Error al guardar el palo.";
@@ -174,7 +173,6 @@ const PalosForm = () => {
           onSubmit={handleSubmit}
           encType="multipart/form-data"
         >
-          {/* Título */}
           <div>
             <label
               htmlFor="titulo"
@@ -193,7 +191,6 @@ const PalosForm = () => {
             />
           </div>
 
-          {/* Largo */}
           <div>
             <label
               htmlFor="largo_cm"
@@ -213,7 +210,6 @@ const PalosForm = () => {
             />
           </div>
 
-          {/* Diámetro */}
           <div>
             <label
               htmlFor="diametro_mm"
@@ -233,7 +229,6 @@ const PalosForm = () => {
             />
           </div>
 
-          {/* Tipo de madera */}
           <div>
             <label
               htmlFor="tipo_madera"
@@ -257,7 +252,6 @@ const PalosForm = () => {
             </select>
           </div>
 
-          {/* Precio unitario */}
           {currentUser?.tipo !== "encargado" && (
             <div>
               <label
@@ -279,7 +273,6 @@ const PalosForm = () => {
             </div>
           )}
 
-          {/* Stock */}
           <div>
             <label
               htmlFor="stock"
@@ -299,7 +292,6 @@ const PalosForm = () => {
             />
           </div>
 
-          {/* Foto */}
           <div>
             <label
               htmlFor="foto"
@@ -322,6 +314,7 @@ const PalosForm = () => {
                   src={preview}
                   alt="Preview"
                   className="w-full h-auto rounded"
+                  onError={(e) => { e.currentTarget.style.display = "none"; }}
                 />
                 <button
                   type="button"
@@ -334,7 +327,6 @@ const PalosForm = () => {
             )}
           </div>
 
-          {/* Comentarios */}
           <div>
             <label
               htmlFor="comentarios"
@@ -353,7 +345,6 @@ const PalosForm = () => {
             />
           </div>
 
-          {/* Mensaje */}
           {err && (
             <span
               className={
@@ -366,7 +357,6 @@ const PalosForm = () => {
             </span>
           )}
 
-          {/* Submit */}
           <button
             type="submit"
             className="w-full py-2.5 text-white bg-neutral-700 hover:bg-neutral-800 rounded transition"

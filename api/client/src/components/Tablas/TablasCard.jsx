@@ -1,5 +1,6 @@
 import React, { useContext } from "react";
 import { AuthContext } from "../../context/authContext";
+
 const TablaCard = ({ tabla, onEdit, onDelete }) => {
   const { currentUser } = useContext(AuthContext);
   const {
@@ -7,7 +8,7 @@ const TablaCard = ({ tabla, onEdit, onDelete }) => {
     titulo,
     precio_unidad,
     stock,
-    foto,
+    foto_url,            // CAMBIO: usar foto_url del backend
     comentarios,
     largo_cm,
     ancho_cm,
@@ -19,9 +20,9 @@ const TablaCard = ({ tabla, onEdit, onDelete }) => {
   return (
     <div className="border rounded-lg p-4 flex flex-col justify-between bg-white shadow-sm">
       <div>
-        {foto && (
+        {foto_url && (                         
           <img
-            src={`/images/tablas/${encodeURIComponent(foto)}`}
+            src={foto_url}                     
             alt={titulo}
             className="w-full h-32 object-cover mb-4 rounded"
           />

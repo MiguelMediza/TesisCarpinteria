@@ -1,10 +1,11 @@
+// controllers/fibras.js
 import { pool } from "../db.js";
-import fs from "fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
+import { r2Delete } from "../lib/r2.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const PUBLIC_BASE = (process.env.R2_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
+
+// helper: construye URL pública desde la key
+const urlFromKey = (key) => (key ? `${PUBLIC_BASE}/${key}` : null);
 
 // Crear una nueva fibra
 export const createFibra = async (req, res) => {
@@ -15,27 +16,29 @@ export const createFibra = async (req, res) => {
       stock,
       comentarios,
       ancho_cm,
-      largo_cm
+      largo_cm,
     } = req.body;
-    const foto = req.file?.filename || null;
 
-    //Inserción en materiaprima
+    // Si se subió archivo, req.fileR2 = { key, url }
+    const fotoKey = req.fileR2?.key || null;
+
+    // Inserción en materiaprima
     const insertMP = `
       INSERT INTO materiaprima
         (categoria, titulo, precio_unidad, stock, foto, comentarios)
       VALUES (?, ?, ?, ?, ?, ?)
     `;
     const [mpResult] = await pool.query(insertMP, [
-      'fibra',
-      titulo,
-      parseFloat(precio_unidad),
-      parseInt(stock, 10),
-      foto,
-      comentarios || null
+      "fibra",
+      titulo || null,
+      precio_unidad != null ? parseFloat(precio_unidad) : 0,
+      stock != null ? parseInt(stock, 10) : 0,
+      fotoKey,
+      comentarios || null,
     ]);
     const id_materia_prima = mpResult.insertId;
 
-    //Inserción en fibras
+    // Inserción en fibras
     const insertFibra = `
       INSERT INTO fibras
         (id_materia_prima, ancho_cm, largo_cm)
@@ -43,18 +46,19 @@ export const createFibra = async (req, res) => {
     `;
     await pool.query(insertFibra, [
       id_materia_prima,
-      parseFloat(ancho_cm),
-      parseFloat(largo_cm)
+      ancho_cm != null ? parseFloat(ancho_cm) : null,
+      largo_cm != null ? parseFloat(largo_cm) : null,
     ]);
 
     return res.status(201).json({
       id_materia_prima,
-      message: "Fibra creada exitosamente!"
+      message: "Fibra creada exitosamente!",
     });
-
   } catch (err) {
     console.error("❌ Error en createFibra:", err);
-    return res.status(500).json({ error: "Internal server error", details: err.message });
+    return res
+      .status(500)
+      .json({ error: "Internal server error", details: err.message });
   }
 };
 
@@ -70,7 +74,7 @@ export const getFibraById = async (req, res) => {
         mp.titulo,
         mp.precio_unidad,
         mp.stock,
-        mp.foto,
+        mp.foto,           -- key en R2
         mp.comentarios,
         f.ancho_cm,
         f.largo_cm
@@ -81,13 +85,20 @@ export const getFibraById = async (req, res) => {
       `,
       [id]
     );
+
     if (rows.length === 0) {
       return res.status(404).json("Fibra no encontrada!");
     }
-    return res.status(200).json(rows[0]);
+
+    const row = rows[0];
+    const foto_url = urlFromKey(row.foto);
+
+    return res.status(200).json({ ...row, foto_url });
   } catch (err) {
     console.error("❌ Error en getFibraById:", err);
-    return res.status(500).json({ error: "Internal server error", details: err.message });
+    return res
+      .status(500)
+      .json({ error: "Internal server error", details: err.message });
   }
 };
 
@@ -102,10 +113,10 @@ export const updateFibra = async (req, res) => {
       stock,
       comentarios,
       ancho_cm,
-      largo_cm
+      largo_cm,
     } = req.body;
 
-    //Verificar existencia y foto antigua
+    // Verificar existencia y obtener foto antigua (key)
     const [exists] = await connection.query(
       "SELECT foto FROM materiaprima WHERE id_materia_prima = ?",
       [id]
@@ -113,12 +124,12 @@ export const updateFibra = async (req, res) => {
     if (exists.length === 0) {
       return res.status(404).json("Fibra no encontrada!");
     }
-    const oldFoto = exists[0].foto;
-    const newFoto = req.file?.filename || null;
+    const oldFotoKey = exists[0].foto;
+    const newFotoKey = req.fileR2?.key || null;
 
     await connection.beginTransaction();
 
-    //Actualizar materiaprima
+    // Actualizar materiaprima
     const updateMP = `
       UPDATE materiaprima SET
         titulo = ?,
@@ -129,15 +140,15 @@ export const updateFibra = async (req, res) => {
       WHERE id_materia_prima = ?
     `;
     await connection.query(updateMP, [
-      titulo,
-      parseFloat(precio_unidad),
-      parseInt(stock, 10),
+      titulo || null,
+      precio_unidad != null ? parseFloat(precio_unidad) : 0,
+      stock != null ? parseInt(stock, 10) : 0,
       comentarios || null,
-      newFoto,
-      id
+      newFotoKey, // si es null, mantiene la anterior
+      id,
     ]);
 
-    //Actualizar fibras
+    // Actualizar fibras
     const updateF = `
       UPDATE fibras SET
         ancho_cm = ?,
@@ -145,35 +156,41 @@ export const updateFibra = async (req, res) => {
       WHERE id_materia_prima = ?
     `;
     await connection.query(updateF, [
-      parseFloat(ancho_cm),
-      parseFloat(largo_cm),
-      id
+      ancho_cm != null ? parseFloat(ancho_cm) : null,
+      largo_cm != null ? parseFloat(largo_cm) : null,
+      id,
     ]);
 
     await connection.commit();
 
-    // Borrar foto antigua si se reemplazó
-    if (newFoto && oldFoto) {
-      const oldPath = path.join(__dirname, '../images/fibras', oldFoto);
-      fs.unlink(oldPath).catch(() => console.warn('No se pudo borrar foto antigua:', oldFoto));
+    // Borrar foto antigua en R2 si se reemplazó
+    if (newFotoKey && oldFotoKey && newFotoKey !== oldFotoKey) {
+      try {
+        await r2Delete(oldFotoKey);
+      } catch (e) {
+        console.warn("No se pudo borrar la imagen antigua en R2:", oldFotoKey, e?.message);
+      }
     }
 
     return res.status(200).json("Fibra modificada exitosamente!");
   } catch (err) {
     await connection.rollback();
     console.error("❌ Error en updateFibra:", err);
-    return res.status(500).json({ error: "Internal server error", details: err.message });
+    return res
+      .status(500)
+      .json({ error: "Internal server error", details: err.message });
   } finally {
     connection.release();
   }
 };
 
-// Eliminar una fibra y su imagen
+// Eliminar una fibra y su imagen (R2)
 export const deleteFibra = async (req, res) => {
   const connection = await pool.getConnection();
   try {
     const { id } = req.params;
-    // Obtener foto antigua
+
+    // Obtener foto (key) antes de borrar
     const [rows] = await connection.query(
       "SELECT foto FROM materiaprima WHERE id_materia_prima = ?",
       [id]
@@ -181,9 +198,11 @@ export const deleteFibra = async (req, res) => {
     if (rows.length === 0) {
       return res.status(404).json("Fibra no encontrada!");
     }
-    const fotoNombre = rows[0].foto;
+    const fotoKey = rows[0].foto;
 
     await connection.beginTransaction();
+
+    // Borrar detalle y padre
     const [child] = await connection.query(
       "DELETE FROM fibras WHERE id_materia_prima = ?",
       [id]
@@ -196,24 +215,31 @@ export const deleteFibra = async (req, res) => {
       "DELETE FROM materiaprima WHERE id_materia_prima = ?",
       [id]
     );
+
     await connection.commit();
 
-    if (fotoNombre) {
-      const filePath = path.join(__dirname, '../images/fibras', fotoNombre);
-      fs.unlink(filePath).catch(() => console.warn('No se pudo borrar la foto:', fotoNombre));
+    // Intentar borrar objeto en R2 (si hay key)
+    if (fotoKey) {
+      try {
+        await r2Delete(fotoKey);
+      } catch (e) {
+        console.warn("No se pudo borrar la imagen en R2:", fotoKey, e?.message);
+      }
     }
 
     return res.status(200).json("Fibra eliminada exitosamente!");
   } catch (err) {
     await connection.rollback();
     console.error("❌ Error en deleteFibra:", err);
-    return res.status(500).json({ error: "Internal server error", details: err.message });
+    return res
+      .status(500)
+      .json({ error: "Internal server error", details: err.message });
   } finally {
     connection.release();
   }
 };
 
-// Listar todas las fibras con sus datos respectivos en materiaprima
+// Listar todas las fibras con sus datos
 export const listFibras = async (req, res) => {
   try {
     const [rows] = await pool.query(
@@ -224,7 +250,7 @@ export const listFibras = async (req, res) => {
         mp.titulo,
         mp.precio_unidad,
         mp.stock,
-        mp.foto,
+        mp.foto,           -- key en R2
         mp.comentarios,
         f.ancho_cm,
         f.largo_cm
@@ -235,9 +261,17 @@ export const listFibras = async (req, res) => {
       ORDER BY mp.titulo ASC
       `
     );
-    return res.status(200).json(rows);
+
+    const data = rows.map((r) => ({
+      ...r,
+      foto_url: urlFromKey(r.foto),
+    }));
+
+    return res.status(200).json(data);
   } catch (err) {
     console.error("❌ Error en listFibras:", err);
-    return res.status(500).json({ error: "Internal server error", details: err.message });
+    return res
+      .status(500)
+      .json({ error: "Internal server error", details: err.message });
   }
 };

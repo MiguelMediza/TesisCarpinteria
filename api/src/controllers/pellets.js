@@ -1,35 +1,28 @@
 import { pool } from "../db.js";
-import fs from "fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
+import { r2Delete } from "../lib/r2.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const basePublic = (process.env.R2_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
 
 export const createPellet = async (req, res) => {
   try {
     const { titulo, bolsa_kilogramos, precio_unidad, stock } = req.body;
-    const foto = req.file?.filename || null;
-
+    const fotoKey = req.fileR2?.key || null;
     const insertSQL = `
       INSERT INTO pellets (titulo, bolsa_kilogramos, precio_unidad, stock, foto)
       VALUES (?, ?, ?, ?, ?)
     `;
-
     const [result] = await pool.query(insertSQL, [
-      titulo,
+      titulo || null,
       parseFloat(bolsa_kilogramos) || 0,
       parseFloat(precio_unidad) || 0,
       parseInt(stock, 10) || 0,
-      foto,
+      fotoKey
     ]);
-
     return res.status(201).json({
       id_pellet: result.insertId,
-      message: "Pellet creado exitosamente!",
+      message: "Pellet creado exitosamente!"
     });
   } catch (err) {
-    console.error("❌ Error en createPellet:", err);
     return res.status(500).json({ error: "Internal server error", details: err.message });
   }
 };
@@ -38,15 +31,23 @@ export const getPelletById = async (req, res) => {
   try {
     const { id } = req.params;
     const [rows] = await pool.query(
-      `SELECT * FROM pellets WHERE id_pellet = ?`,
-      [id]
+      `
+      SELECT
+        id_pellet,
+        titulo,
+        bolsa_kilogramos,
+        precio_unidad,
+        stock,
+        foto,
+        CASE WHEN foto IS NOT NULL AND foto <> '' THEN CONCAT(?, '/', foto) ELSE NULL END AS foto_url
+      FROM pellets
+      WHERE id_pellet = ?
+      `,
+      [basePublic, id]
     );
-
     if (rows.length === 0) return res.status(404).json("Pellet no encontrado!");
-
     return res.status(200).json(rows[0]);
   } catch (err) {
-    console.error("❌ Error en getPelletById:", err);
     return res.status(500).json({ error: "Internal server error", details: err.message });
   }
 };
@@ -56,47 +57,48 @@ export const updatePellet = async (req, res) => {
   try {
     const { id } = req.params;
     const { titulo, bolsa_kilogramos, precio_unidad, stock } = req.body;
-    const newFoto = req.file?.filename || null;
-
-    // Obtener foto antigua
-    const [[old]] = await connection.query(
+    const [exists] = await connection.query(
       `SELECT foto FROM pellets WHERE id_pellet = ?`,
       [id]
     );
-    if (!old) return res.status(404).json("Pellet no encontrado!");
-    const oldFoto = old.foto;
+    if (exists.length === 0) {
+      connection.release();
+      return res.status(404).json("Pellet no encontrado!");
+    }
+    const oldFoto = exists[0].foto || null;
+    const newFotoKey = req.fileR2?.key || null;
 
     await connection.beginTransaction();
-
     await connection.query(
-      `UPDATE pellets SET 
-        titulo = ?, bolsa_kilogramos = ?, precio_unidad = ?, stock = ?, foto = COALESCE(?, foto)
-       WHERE id_pellet = ?`,
+      `
+      UPDATE pellets SET
+        titulo = ?,
+        bolsa_kilogramos = ?,
+        precio_unidad = ?,
+        stock = ?,
+        foto = COALESCE(?, foto)
+      WHERE id_pellet = ?
+      `,
       [
-        titulo,
+        titulo || null,
         parseFloat(bolsa_kilogramos) || 0,
         parseFloat(precio_unidad) || 0,
         parseInt(stock, 10) || 0,
-        newFoto,
-        id,
+        newFotoKey,
+        id
       ]
     );
-
     await connection.commit();
+    connection.release();
 
-    // Borrar foto antigua si se reemplazó
-    if (newFoto && oldFoto) {
-      const oldPath = path.join(__dirname, "../images/pellets", oldFoto);
-      fs.unlink(oldPath).catch(() => console.warn("⚠️ No se pudo borrar la foto antigua:", oldFoto));
+    if (newFotoKey && oldFoto && oldFoto !== newFotoKey) {
+      try { await r2Delete(oldFoto); } catch {}
     }
-
     return res.status(200).json("Pellet actualizado exitosamente!");
   } catch (err) {
     await connection.rollback();
-    console.error("❌ Error en updatePellet:", err);
-    return res.status(500).json({ error: "Internal server error", details: err.message });
-  } finally {
     connection.release();
+    return res.status(500).json({ error: "Internal server error", details: err.message });
   }
 };
 
@@ -104,40 +106,51 @@ export const deletePellet = async (req, res) => {
   const connection = await pool.getConnection();
   try {
     const { id } = req.params;
-
-    const [[pellet]] = await connection.query(
+    const [rows] = await connection.query(
       `SELECT foto FROM pellets WHERE id_pellet = ?`,
       [id]
     );
-    if (!pellet) return res.status(404).json("Pellet no encontrado!");
-    const fotoNombre = pellet.foto;
+    if (rows.length === 0) {
+      connection.release();
+      return res.status(404).json("Pellet no encontrado!");
+    }
+    const fotoKey = rows[0].foto || null;
 
     await connection.beginTransaction();
     await connection.query(`DELETE FROM pellets WHERE id_pellet = ?`, [id]);
     await connection.commit();
+    connection.release();
 
-    // Borrar archivo de imagen si existe
-    if (fotoNombre) {
-      const filePath = path.join(__dirname, "../images/pellets", fotoNombre);
-      fs.unlink(filePath).catch(() => console.warn("⚠️ No se pudo borrar la foto:", fotoNombre));
+    if (fotoKey) {
+      try { await r2Delete(fotoKey); } catch {}
     }
-
     return res.status(200).json("Pellet eliminado exitosamente!");
   } catch (err) {
     await connection.rollback();
-    console.error("❌ Error en deletePellet:", err);
-    return res.status(500).json({ error: "Internal server error", details: err.message });
-  } finally {
     connection.release();
+    return res.status(500).json({ error: "Internal server error", details: err.message });
   }
 };
 
 export const listPellets = async (req, res) => {
   try {
-    const [rows] = await pool.query(`SELECT * FROM pellets ORDER BY titulo ASC`);
+    const [rows] = await pool.query(
+      `
+      SELECT
+        id_pellet,
+        titulo,
+        bolsa_kilogramos,
+        precio_unidad,
+        stock,
+        foto,
+        CASE WHEN foto IS NOT NULL AND foto <> '' THEN CONCAT(?, '/', foto) ELSE NULL END AS foto_url
+      FROM pellets
+      ORDER BY titulo ASC
+      `,
+      [basePublic]
+    );
     return res.status(200).json(rows);
   } catch (err) {
-    console.error("❌ Error en listPellets:", err);
     return res.status(500).json({ error: "Internal server error", details: err.message });
   }
 };

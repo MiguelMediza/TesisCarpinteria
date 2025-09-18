@@ -56,18 +56,28 @@ const formatMoney = (n) => {
 const VentaFuegoYaCard = ({ venta, onEdit, onDelete, onPagoChanged }) => {
   const { currentUser } = useContext(AuthContext);
 
-  const {
-    id_ventaFuegoya,
-    fecha_realizada,
-    precio_total,
-    comentarios,
-    estadopago: estadoInicial = "credito",
-    fechapago,
-    cliente_display,
-    fuego_ya_tipo,
-    foto,
-    cantidadbolsas,
-  } = venta || {};
+ const {
+   id_ventaFuegoya,
+   fecha_realizada,
+   precio_total,
+   comentarios,
+   estadopago: estadoInicial = "credito",
+   fechapago,
+   cliente_display,
+   fuego_ya_tipo,
+   foto,       
+   foto_url,   
+   cantidadbolsas,
+ } = venta || {};
+
+ 
+ const R2_BASE = (import.meta.env.VITE_R2_PUBLIC_BASE || "").replace(/\/+$/, "");
+ const imgSrc = useMemo(() => {
+   if (foto_url) return foto_url;                
+   if (!foto) return null;
+   if (/^https?:\/\//i.test(foto)) return foto;  
+   return R2_BASE ? `${R2_BASE}/venta_fuegoya/${encodeURIComponent(foto)}` : null; 
+ }, [foto, foto_url, R2_BASE]);
 
   const [estadopago, setEstadopago] = useState(estadoInicial);
   const [fechaPagoLocal, setFechaPagoLocal] = useState(fechapago || null);
@@ -111,9 +121,9 @@ const VentaFuegoYaCard = ({ venta, onEdit, onDelete, onPagoChanged }) => {
 
   return (
     <div className="border rounded-lg bg-white shadow-sm flex flex-col justify-between w-full h-full overflow-hidden">
-      {foto && (
+      {imgSrc && (
         <img
-          src={`/images/venta_fuegoya/${encodeURIComponent(foto)}`}
+          src={imgSrc}
           alt={`Venta ${id_ventaFuegoya}`}
           className="w-full h-40 object-cover"
         />

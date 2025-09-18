@@ -59,6 +59,8 @@ const PrototipoPalletList = () => {
     return hay(p.titulo) || hay(p.cliente_empresa) || hay(`${p.cliente_nombre || ""} ${p.cliente_apellido || ""}`);
   });
 
+  const modalImg = toDelete ? (toDelete.foto_url || toDelete.foto || null) : null;
+
   return (
     <section className="p-4 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-6">
@@ -104,7 +106,7 @@ const PrototipoPalletList = () => {
       <DeleteConfirm
         isOpen={!!toDelete}
         title={toDelete ? (toDelete.titulo || `Prototipo #${toDelete.id_prototipo}`) : ""}
-        imageSrc={toDelete?.foto ? `/images/prototipos/${encodeURIComponent(toDelete.foto)}` : null}
+        imageSrc={modalImg}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
       />

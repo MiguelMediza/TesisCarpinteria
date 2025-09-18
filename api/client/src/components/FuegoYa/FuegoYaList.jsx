@@ -8,7 +8,7 @@ const FuegoYaList = () => {
   const [fuegoya, setFuegoYa] = useState([]);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [toDelete, setToDelete] = useState(null); // fuegoya seleccionada para borrar
+  const [toDelete, setToDelete] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -16,7 +16,6 @@ const FuegoYaList = () => {
       try {
         const res = await api.get("/fuegoya/listar");
         setFuegoYa(res.data);
-        
       } catch (err) {
         console.error(err);
         setError("No se pudieron cargar los fuegoya.");
@@ -25,22 +24,13 @@ const FuegoYaList = () => {
     fetchFuegoYa();
   }, []);
 
-  const handleEdit = (id) => {
-    navigate(`/fuegoya/${id}`);
-  };
+  const handleEdit = (id) => navigate(`/fuegoya/${id}`);
+  const handleDeleteClick = (f) => setToDelete(f);
 
-  // Abrir modal
-  const handleDeleteClick = (fuegoya) => {
-    setToDelete(fuegoya);
-  };
-
-  // Confirmar borrado
   const confirmDelete = async () => {
     try {
       await api.delete(`/fuegoya/${toDelete.id_fuego_ya}`);
-      setFuegoYa(prev =>
-        prev.filter(t => t.id_fuego_ya !== toDelete.id_fuego_ya)
-      );
+      setFuegoYa((prev) => prev.filter((t) => t.id_fuego_ya !== toDelete.id_fuego_ya));
     } catch (err) {
       console.error(err);
       setError("Error al eliminar la fuegoya.");
@@ -49,15 +39,13 @@ const FuegoYaList = () => {
     }
   };
 
-  // Cancelar borrado
-  const cancelDelete = () => {
-    setToDelete(null);
-  };
+  const cancelDelete = () => setToDelete(null);
 
-  // Filtrar por título
-  const filteredFuegoYa = fuegoya.filter(t =>
-    t.tipo.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredFuegoYa = fuegoya.filter((t) =>
+    (t.tipo || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+ const modalImgSrc = toDelete?.foto_url || toDelete?.foto || null;
 
   return (
     <section className="p-4 bg-gray-50 min-h-screen">
@@ -73,13 +61,12 @@ const FuegoYaList = () => {
 
       {error && <p className="mb-4 text-red-500">{error}</p>}
 
-      {/* Buscador de fuegoya */}
       <div className="mb-4">
         <input
           type="text"
           placeholder="Buscar Fuego Ya por tipo..."
           value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
+          onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
@@ -103,7 +90,7 @@ const FuegoYaList = () => {
       <DeleteConfirm
         isOpen={!!toDelete}
         title={toDelete?.tipo}
-        imageSrc={toDelete ? `/images/fuegoya/${encodeURIComponent(toDelete.foto)}` : null}
+        imageSrc={modalImgSrc}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
       />

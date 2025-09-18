@@ -8,7 +8,7 @@ const PalosList = () => {
   const [palos, setPalos] = useState([]);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [toDelete, setToDelete] = useState(null); // palo seleccionado para borrar
+  const [toDelete, setToDelete] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -28,12 +28,10 @@ const PalosList = () => {
     navigate(`/palos/${id}`);
   };
 
-  // Abrir modal
   const handleDeleteClick = (palo) => {
     setToDelete(palo);
   };
 
-  // Confirmar borrado
   const confirmDelete = async () => {
     try {
       await api.delete(`/palos/${toDelete.id_materia_prima}`);
@@ -46,14 +44,12 @@ const PalosList = () => {
     }
   };
 
-  // Cancelar borrado
   const cancelDelete = () => {
     setToDelete(null);
   };
 
-  // Filtrar por título
   const filteredPalos = palos.filter(p =>
-    p.titulo.toLowerCase().includes(searchTerm.toLowerCase())
+    (p.titulo || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -70,7 +66,6 @@ const PalosList = () => {
 
       {error && <p className="mb-4 text-red-500">{error}</p>}
 
-      {/* Buscador de palos */}
       <div className="mb-4">
         <input
           type="text"
@@ -97,11 +92,10 @@ const PalosList = () => {
         )}
       </div>
 
-      {/* Modal de confirmación */}
       <DeleteConfirm
         isOpen={!!toDelete}
         title={toDelete?.titulo}
-        imageSrc={toDelete ? `/images/palos/${encodeURIComponent(toDelete.foto)}` : null}
+        imageSrc={toDelete?.foto_url || null} 
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
       />

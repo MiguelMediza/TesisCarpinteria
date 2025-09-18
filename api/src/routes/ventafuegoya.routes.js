@@ -1,47 +1,49 @@
 import { Router } from "express";
 import multer from "multer";
-import path from 'path';
-import { fileURLToPath } from "url";
-const router = Router();
 import { createVentaFuegoya, updateVentaFuegoya, deleteVentaFuegoya, listVentaFuegoya, getVentaFuegoyaById, changeEstadoPagoVentaFuegoya } from "../controllers/ventafuegoya.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { r2Put } from "../lib/r2.js";
 
-const storage = multer.diskStorage({
-  destination(req, file, cb) {
-    // la carpeta images está un nivel arriba de /routes
-    cb(null, path.join(__dirname, "../images/venta_fuegoya"));
+const router = Router();
+
+// Multer en memoria + validación de tipo
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype && file.mimetype.startsWith("image/")) return cb(null, true);
+    cb(new Error("Sólo se permiten imágenes"));
   },
-  filename(req, file, cb) {
-    cb(null, Date.now() + "_" + file.originalname);
-  }
 });
-export const upload = multer({ storage });
 
-// Crear (con foto)
-router.post(
-  "/agregar",
-  upload.single('foto'),
-  createVentaFuegoya
-);
+// Si hay archivo, súbelo a R2 y deja { key, url } en req.fileR2
+const uploadToR2 = (folder) => async (req, res, next) => {
+  try {
+    if (req.file) {
+      req.fileR2 = await r2Put({ folder, file: req.file });
+    }
+    next();
+  } catch (e) {
+    next(e);
+  }
+};
+
+// Crear (foto opcional)
+router.post("/agregar", upload.single("foto"), uploadToR2("venta_fuegoya"), createVentaFuegoya);
 
 // Listar
 router.get("/listar", listVentaFuegoya);
 
-// Obtener por ID
+// Obtener uno
 router.get("/:id", getVentaFuegoyaById);
 
-// Actualizar (con foto opcional)
-router.put(
-  "/:id",
-  upload.single('foto'),
-  updateVentaFuegoya
-);
+// Actualizar (foto opcional)
+router.put("/:id", upload.single("foto"), uploadToR2("venta_fuegoya"), updateVentaFuegoya);
 
 // Eliminar
 router.delete("/:id", deleteVentaFuegoya);
 
+// Cambiar estado de pago
 router.put("/:id/estadopago", changeEstadoPagoVentaFuegoya);
 
 export default router;

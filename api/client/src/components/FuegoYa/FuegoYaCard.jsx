@@ -1,30 +1,28 @@
 import React, { useContext } from "react";
 import { AuthContext } from "../../context/authContext";
+
 const FuegoYaCard = ({ fuegoya, onEdit, onDelete }) => {
   const { currentUser } = useContext(AuthContext);
-  const {
-    id_fuego_ya,
-    tipo,
-    precio_unidad,
-    stock,
-    foto,
-  } = fuegoya;
+  const { id_fuego_ya, tipo, precio_unidad, stock, foto, foto_url } = fuegoya;
+  const imgSrc = foto_url || foto || null;
 
   return (
     <div className="border rounded-lg p-4 flex flex-col justify-between bg-white shadow-sm">
       <div>
-        {foto && (
+        {imgSrc && (
           <img
-            src={`/images/fuego_ya/${encodeURIComponent(foto)}`}
+            src={imgSrc}
             alt={tipo}
+            loading="lazy"
             className="w-full h-32 object-cover mb-4 rounded"
+            onError={(e) => { e.currentTarget.style.display = "none"; }}
           />
         )}
 
         <p className="text-sm text-gray-600">Tipo:</p>
         <p className="mb-2 text-gray-800">{tipo}</p>
 
-        {currentUser?.tipo === 'admin' && (
+        {currentUser?.tipo === "admin" && (
           <>
             <p className="text-sm text-gray-600">Precio Unitario:</p>
             <p className="mb-2 text-gray-800">{precio_unidad}</p>
@@ -33,7 +31,6 @@ const FuegoYaCard = ({ fuegoya, onEdit, onDelete }) => {
 
         <p className="text-sm text-gray-600">Stock:</p>
         <p className="mb-2 text-gray-800">{stock}</p>
-
       </div>
 
       <div className="mt-4 flex space-x-2">

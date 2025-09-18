@@ -21,7 +21,8 @@ const PrototipoPalletCard = ({ prototipo, onEdit, onDelete }) => {
     id_prototipo,
     titulo,
     medidas,
-    foto,
+    foto,             
+    foto_url,           
     cantidad_patines,
     id_tipo_patin,
     comentarios,
@@ -36,6 +37,8 @@ const PrototipoPalletCard = ({ prototipo, onEdit, onDelete }) => {
   );
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+
+  const imgSrc = foto_url || foto || null;
 
   useEffect(() => {
     let mounted = true;
@@ -74,11 +77,12 @@ const PrototipoPalletCard = ({ prototipo, onEdit, onDelete }) => {
       <div>
         {/* Header */}
         <div className="flex items-start gap-3 mb-3">
-          {foto && (
+          {imgSrc && (
             <img
-              src={`/images/prototipos/${encodeURIComponent(foto)}`}
+              src={imgSrc}
               alt={titulo || `Prototipo #${id_prototipo}`}
               className="w-28 h-28 object-cover rounded"
+              loading="lazy"
             />
           )}
           <div className="flex-1">

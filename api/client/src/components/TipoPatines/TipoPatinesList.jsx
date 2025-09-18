@@ -11,52 +11,49 @@ const TipoPatinesList = () => {
   const [toDelete, setToDelete] = useState(null);
   const navigate = useNavigate();
 
-  // Cargar todos los tipos de patines
+  const R2 = import.meta.env.VITE_R2_PUBLIC_BASE;
+  const BASE = (R2 || "").replace(/\/+$/,"");
+
   useEffect(() => {
     const fetchPatines = async () => {
       try {
         const res = await api.get("/tipopatines/listar");
         setPatines(res.data);
       } catch (err) {
-        console.error(err);
         setError("No se pudieron cargar los tipos de patines.");
       }
     };
     fetchPatines();
   }, []);
 
-  // Navegar a edición
   const handleEdit = (id) => {
     navigate(`/tipopatines/${id}`);
   };
 
-  // Abrir modal
   const handleDeleteClick = (patin) => {
     setToDelete(patin);
   };
 
-  // Confirmar eliminación
   const confirmDelete = async () => {
     try {
       await api.delete(`/tipopatines/${toDelete.id_tipo_patin}`);
       setPatines(prev => prev.filter(p => p.id_tipo_patin !== toDelete.id_tipo_patin));
     } catch (err) {
-      console.error(err);
       setError("Error al eliminar el tipo de patín.");
     } finally {
       setToDelete(null);
     }
   };
 
-  // Cancelar eliminación
   const cancelDelete = () => {
     setToDelete(null);
   };
 
-  // Filtrar resultados
   const filteredPatines = patines.filter(p =>
     p.titulo.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+
 
   return (
     <section className="p-4 bg-gray-50 min-h-screen">
@@ -72,7 +69,6 @@ const TipoPatinesList = () => {
 
       {error && <p className="mb-4 text-red-500">{error}</p>}
 
-      {/* Buscador */}
       <div className="mb-4">
         <input
           type="text"
@@ -83,7 +79,6 @@ const TipoPatinesList = () => {
         />
       </div>
 
-      {/* Listado */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {filteredPatines.map((p) => (
           <TipoPatinesCard
@@ -100,11 +95,10 @@ const TipoPatinesList = () => {
         )}
       </div>
 
-      {/* Modal Confirmación */}
       <DeleteConfirm
         isOpen={!!toDelete}
         title={toDelete?.titulo}
-        imageSrc={toDelete ? `/images/tipo_patines/${encodeURIComponent(toDelete.logo)}` : null}
+        imageSrc={toDelete?.logo_url ? toDelete.logo_url : (toDelete?.logo ? `${BASE}/${String(toDelete.logo).replace(/^\/+/,"")}` : null)   }
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
       />

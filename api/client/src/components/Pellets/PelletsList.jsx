@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import  { api } from "../../api";
+import { api } from "../../api";
 import { Link, useNavigate } from "react-router-dom";
 import PelletsCard from "./PelletsCard";
 import DeleteConfirm from "../Modals/DeleteConfirm";
@@ -8,7 +8,7 @@ const PelletsList = () => {
   const [pellets, setPellets] = useState([]);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [toDelete, setToDelete] = useState(null); 
+  const [toDelete, setToDelete] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -17,7 +17,6 @@ const PelletsList = () => {
         const res = await api.get("/pellets/listar");
         setPellets(res.data);
       } catch (err) {
-        console.error(err);
         setError("No se pudieron cargar los pellets.");
       }
     };
@@ -37,19 +36,16 @@ const PelletsList = () => {
       await api.delete(`/pellets/${toDelete.id_pellet}`);
       setPellets(prev => prev.filter(p => p.id_pellet !== toDelete.id_pellet));
     } catch (err) {
-      console.error(err);
       setError("Error al eliminar el pellet.");
     } finally {
       setToDelete(null);
     }
   };
 
-  const cancelDelete = () => {
-    setToDelete(null);
-  };
+  const cancelDelete = () => setToDelete(null);
 
   const filteredPellets = pellets.filter(p =>
-    p.titulo.toLowerCase().includes(searchTerm.toLowerCase())
+    (p.titulo || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -66,7 +62,6 @@ const PelletsList = () => {
 
       {error && <p className="mb-4 text-red-500">{error}</p>}
 
-      {/* Buscador */}
       <div className="mb-4">
         <input
           type="text"
@@ -77,7 +72,6 @@ const PelletsList = () => {
         />
       </div>
 
-      {/* Listado de pellets */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {filteredPellets.map((p) => (
           <PelletsCard
@@ -94,11 +88,10 @@ const PelletsList = () => {
         )}
       </div>
 
-      {/* Modal de confirmación de borrado */}
       <DeleteConfirm
         isOpen={!!toDelete}
         title={toDelete?.titulo}
-        imageSrc={toDelete ? `/images/pellets/${encodeURIComponent(toDelete.foto)}` : null}
+        imageSrc={toDelete?.foto_url || null}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
       />

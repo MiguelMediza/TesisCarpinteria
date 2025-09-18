@@ -3,16 +3,18 @@ import { AuthContext } from "../../context/authContext";
 
 const PelletsCard = ({ pellet, onEdit, onDelete }) => {
   const { currentUser } = useContext(AuthContext);
-  const { id_pellet, titulo, bolsa_kilogramos, precio_unidad, stock, foto } = pellet;
+  const { id_pellet, titulo, bolsa_kilogramos, precio_unidad, stock, foto_url } = pellet;
 
   return (
     <div className="border rounded-lg p-4 flex flex-col justify-between bg-white shadow-sm">
       <div>
-        {foto && (
+        {foto_url && (
           <img
-            src={`/images/pellets/${foto}`}
+            src={foto_url}
             alt={titulo}
+            loading="lazy"
             className="w-full h-32 object-cover mb-4 rounded"
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
           />
         )}
 

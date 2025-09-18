@@ -1,3 +1,4 @@
+// src/components/Clavos/ClavosList.jsx
 import React, { useEffect, useState } from "react";
 import { api } from "../../api";
 import { Link, useNavigate } from "react-router-dom";
@@ -25,7 +26,6 @@ const ClavosList = () => {
   }, []);
 
   const handleEdit = (id) => navigate(`/clavos/${id}`);
-
   const handleDeleteClick = (clavo) => setToDelete(clavo);
 
   const confirmDelete = async () => {
@@ -91,9 +91,7 @@ const ClavosList = () => {
       <DeleteConfirm
         isOpen={!!toDelete}
         title={toDelete?.titulo}
-        imageSrc={
-          toDelete?.foto ? `/images/clavos/${encodeURIComponent(toDelete.foto)}` : null
-        }
+        imageSrc={toDelete?.foto_url || null}  // ⬅️ usa la URL pública del CDN
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
       />

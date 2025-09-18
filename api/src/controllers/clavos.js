@@ -1,11 +1,12 @@
+// controllers/clavos.js
 import { pool } from "../db.js";
-import fs from "fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
+import { r2Delete } from "../lib/r2.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
+const PUBLIC_BASE = process.env.R2_PUBLIC_BASE_URL || ""; 
+const urlFromKey = (key) => (key ? `${PUBLIC_BASE}/${key}` : null);
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Crear un nuevo clavo
 export const createClavo = async (req, res) => {
   try {
@@ -16,11 +17,13 @@ export const createClavo = async (req, res) => {
       comentarios,
       tipo,
       medidas,
-      material
+      material,
     } = req.body;
-    const foto = req.file?.filename || null;
 
-    //Inserción en materiaprima
+    // req.fileR2 = { key, url } si se subió archivo
+    const fotoKey = req.fileR2?.key || null;
+
+    // Inserción en materiaprima
     const insertMP = `
       INSERT INTO materiaprima
         (categoria, titulo, precio_unidad, stock, foto, comentarios)
@@ -29,10 +32,10 @@ export const createClavo = async (req, res) => {
     const [mpResult] = await pool.query(insertMP, [
       "clavo",
       titulo,
-      parseFloat(precio_unidad),
-      parseInt(stock, 10),
-      foto,
-      comentarios || null
+      precio_unidad != null ? parseFloat(precio_unidad) : null,
+      stock != null ? parseInt(stock, 10) : null,
+      fotoKey,
+      comentarios || null,
     ]);
     const id_materia_prima = mpResult.insertId;
 
@@ -42,16 +45,13 @@ export const createClavo = async (req, res) => {
         (id_materia_prima, tipo, medidas, material)
       VALUES (?, ?, ?, ?)
     `;
-    await pool.query(insertCl, [
-      id_materia_prima,
-      tipo,
-      medidas,
-      material
-    ]);
+    await pool.query(insertCl, [id_materia_prima, tipo, medidas, material]);
 
     return res.status(201).json({
       id_materia_prima,
-      message: "Clavo creado exitosamente!"
+      message: "Clavo creado exitosamente!",
+      foto_key: fotoKey,
+      foto_url: urlFromKey(fotoKey),
     });
   } catch (err) {
     console.error("❌ Error en createClavo:", err);
@@ -61,6 +61,7 @@ export const createClavo = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
 // Obtener un clavo por ID (id_materia_prima)
 export const getClavoById = async (req, res) => {
   try {
@@ -72,7 +73,7 @@ export const getClavoById = async (req, res) => {
         mp.titulo,
         mp.precio_unidad,
         mp.stock,
-        mp.foto,
+        mp.foto,            -- guarda el KEY en R2
         mp.comentarios,
         c.tipo,
         c.medidas,
@@ -84,10 +85,14 @@ export const getClavoById = async (req, res) => {
       `,
       [id]
     );
-    if (rows.length === 0) {
-      return res.status(404).json("Clavo no encontrado!");
-    }
-    return res.status(200).json(rows[0]);
+
+    if (rows.length === 0) return res.status(404).json("Clavo no encontrado!");
+
+    const row = rows[0];
+    return res.status(200).json({
+      ...row,
+      foto_url: urlFromKey(row.foto),
+    });
   } catch (err) {
     console.error("❌ Error en getClavoById:", err);
     return res
@@ -96,11 +101,12 @@ export const getClavoById = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
 // Modificar un clavo existente
 export const updateClavo = async (req, res) => {
   const connection = await pool.getConnection();
   try {
-    const { id } = req.params; 
+    const { id } = req.params;
     const {
       titulo,
       precio_unidad,
@@ -108,11 +114,12 @@ export const updateClavo = async (req, res) => {
       comentarios,
       tipo,
       medidas,
-      material
+      material,
     } = req.body;
-    const newFoto = req.file?.filename || null;
 
-    //Verificar existencia y foto anterior
+    const newFotoKey = req.fileR2?.key || null;
+
+    // Verificar existencia y foto anterior
     const [exists] = await connection.query(
       `SELECT foto FROM materiaprima WHERE id_materia_prima = ?`,
       [id]
@@ -120,11 +127,11 @@ export const updateClavo = async (req, res) => {
     if (exists.length === 0) {
       return res.status(404).json("Clavo no encontrado!");
     }
-    const oldFoto = exists[0].foto;
+    const oldFotoKey = exists[0].foto;
 
     await connection.beginTransaction();
 
-    //Actualizar materiaprima
+    // Actualizar materiaprima
     const updateMP = `
       UPDATE materiaprima SET
         titulo = ?,
@@ -136,14 +143,14 @@ export const updateClavo = async (req, res) => {
     `;
     await connection.query(updateMP, [
       titulo,
-      parseFloat(precio_unidad),
-      parseInt(stock, 10),
+      precio_unidad != null ? parseFloat(precio_unidad) : null,
+      stock != null ? parseInt(stock, 10) : null,
       comentarios || null,
-      newFoto,
-      id
+      newFotoKey, // sólo cambia si hay nueva foto
+      id,
     ]);
 
-    //Actualizar clavos
+    // Actualizar clavos
     const updateCl = `
       UPDATE clavos SET
         tipo = ?,
@@ -151,24 +158,24 @@ export const updateClavo = async (req, res) => {
         material = ?
       WHERE id_materia_prima = ?
     `;
-    await connection.query(updateCl, [
-      tipo,
-      medidas,
-      material,
-      id
-    ]);
+    await connection.query(updateCl, [tipo, medidas, material, id]);
 
     await connection.commit();
 
-    //Borrar imagen antigua si se reemplazó
-    if (newFoto && oldFoto) {
-      const oldPath = path.join(__dirname, "../images/clavos", oldFoto);
-      fs.unlink(oldPath).catch(() => {
-        console.warn("No se pudo borrar la imagen antigua:", oldFoto);
-      });
+    // Si se subió nueva foto, borrar la anterior en R2
+    if (newFotoKey && oldFotoKey && newFotoKey !== oldFotoKey) {
+      try {
+        await r2Delete(oldFotoKey);
+      } catch (e) {
+        console.warn("No se pudo borrar la imagen antigua en R2:", oldFotoKey, e?.message);
+      }
     }
 
-    return res.status(200).json("Clavo modificado exitosamente!");
+    return res.status(200).json({
+      message: "Clavo modificado exitosamente!",
+      foto_key: newFotoKey || oldFotoKey || null,
+      foto_url: urlFromKey(newFotoKey || oldFotoKey),
+    });
   } catch (err) {
     await connection.rollback();
     console.error("❌ Error en updateClavo:", err);
@@ -180,25 +187,25 @@ export const updateClavo = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
 // Eliminar un clavo y su imagen
 export const deleteClavo = async (req, res) => {
   const connection = await pool.getConnection();
   try {
     const { id } = req.params;
 
-    //Leer foto antes de borrar
+    // Leer foto antes de borrar
     const [rows] = await connection.query(
       `SELECT foto FROM materiaprima WHERE id_materia_prima = ?`,
       [id]
     );
-    if (rows.length === 0) {
-      return res.status(404).json("Clavo no encontrado!");
-    }
-    const fotoNombre = rows[0].foto;
+    if (rows.length === 0) return res.status(404).json("Clavo no encontrado!");
+
+    const fotoKey = rows[0].foto;
 
     await connection.beginTransaction();
 
-    //Borrar detalle y padre
+    // Borrar detalle y padre
     const [childRes] = await connection.query(
       `DELETE FROM clavos WHERE id_materia_prima = ?`,
       [id]
@@ -214,12 +221,13 @@ export const deleteClavo = async (req, res) => {
 
     await connection.commit();
 
-    //Borrar archivo de imagen si existe
-    if (fotoNombre) {
-      const filePath = path.join(__dirname, "../images/clavos", fotoNombre);
-      fs.unlink(filePath).catch(() => {
-        console.warn("No se pudo borrar la imagen:", fotoNombre);
-      });
+    // Borrar archivo de imagen en R2 si existe
+    if (fotoKey) {
+      try {
+        await r2Delete(fotoKey);
+      } catch (e) {
+        console.warn("No se pudo borrar la imagen en R2:", fotoKey, e?.message);
+      }
     }
 
     return res.status(200).json("Clavo eliminado exitosamente!");
@@ -234,6 +242,7 @@ export const deleteClavo = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
 // Listar todos los clavos
 export const listClavos = async (req, res) => {
   try {
@@ -244,7 +253,7 @@ export const listClavos = async (req, res) => {
         mp.titulo,
         mp.precio_unidad,
         mp.stock,
-        mp.foto,
+        mp.foto,            -- KEY en R2
         mp.comentarios,
         c.tipo,
         c.medidas,
@@ -256,7 +265,14 @@ export const listClavos = async (req, res) => {
       ORDER BY mp.titulo ASC
       `
     );
-    return res.status(200).json(rows);
+
+    // Agregar foto_url calculada
+    const withUrls = rows.map((r) => ({
+      ...r,
+      foto_url: urlFromKey(r.foto),
+    }));
+
+    return res.status(200).json(withUrls);
   } catch (err) {
     console.error("❌ Error en listClavos:", err);
     return res

@@ -1,9 +1,5 @@
 import { pool } from "../db.js";
 
-
-    //CREAR CLIENTE
-    //Si es_empresa = true, se requieren los campos de empresa
-
 export const createCliente = async (req, res) => {
   try {
     const {

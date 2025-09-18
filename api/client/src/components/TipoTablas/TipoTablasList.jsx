@@ -8,7 +8,7 @@ const TipoTablasList = () => {
   const [tipos, setTipos] = useState([]);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [toDelete, setToDelete] = useState(null); 
+  const [toDelete, setToDelete] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -17,7 +17,6 @@ const TipoTablasList = () => {
         const res = await api.get("/tipotablas/listar");
         setTipos(res.data);
       } catch (err) {
-        console.error(err);
         setError("No se pudieron cargar los tipos de tabla.");
       }
     };
@@ -28,25 +27,21 @@ const TipoTablasList = () => {
     navigate(`/tipotablas/${id}`);
   };
 
-  // Abre modal de elinminación
   const handleDeleteClick = (tipo) => {
     setToDelete(tipo);
   };
 
-  // Confirmación de eliminación
   const confirmDelete = async () => {
     try {
       await api.delete(`/tipotablas/${toDelete.id_tipo_tabla}`);
       setTipos(prev => prev.filter(t => t.id_tipo_tabla !== toDelete.id_tipo_tabla));
     } catch (err) {
-      console.error(err);
       setError("Error al eliminar el tipo de tabla.");
     } finally {
       setToDelete(null);
     }
   };
 
-  // Cancela la eliminación
   const cancelDelete = () => {
     setToDelete(null);
   };
@@ -98,7 +93,7 @@ const TipoTablasList = () => {
       <DeleteConfirm
         isOpen={!!toDelete}
         title={toDelete?.titulo}
-        imageSrc={toDelete ? `/images/tipo_tablas/${encodeURIComponent(toDelete.foto)}` : null}
+        imageSrc={toDelete ? toDelete.foto || null : null}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
       />
@@ -107,5 +102,3 @@ const TipoTablasList = () => {
 };
 
 export default TipoTablasList;
-
-

@@ -4,7 +4,7 @@ import { api } from "../../api";
 import prototipoBg from "../../assets/tablasBackground.jpg";
 
 const PrototipoPalletForm = () => {
-  const { id } = useParams(); // id_prototipo si editar
+  const { id } = useParams(); 
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
@@ -12,8 +12,8 @@ const PrototipoPalletForm = () => {
   const [inputs, setInputs] = useState({
     titulo: "",
     medidas: "",
-    id_tipo_patin: "",     // opcional
-    cantidad_patines: "",  // número
+    id_tipo_patin: "",     
+    cantidad_patines: "",  
     comentarios: "",
     id_cliente: ""
   });
@@ -23,8 +23,8 @@ const PrototipoPalletForm = () => {
   const [tipoTablas, setTipoTablas] = useState([]);
   const [tipoTacos, setTipoTacos] = useState([]);
   const [tipoPatines, setTipoPatines] = useState([]);
-  const [clavos, setClavos] = useState([]); // desde materiaprima (categoria clavo)
-  const [fibras, setFibras] = useState([]); // desde materiaprima (categoria fibra)
+  const [clavos, setClavos] = useState([]); 
+  const [fibras, setFibras] = useState([]); 
 
   // Detalles dinámicos
   const [detTablas, setDetTablas] = useState([{ id_tipo_tabla: "", cantidad_lleva: "", aclaraciones: "" }]);
@@ -72,7 +72,7 @@ const PrototipoPalletForm = () => {
 
   // ---------- Cargar prototipo si edición ----------
   useEffect(() => {
-    if (!id) return;
+    if (!id || !/^\d+$/.test(id)) return;
     (async () => {
       try {
         const { data } = await api.get(`/prototipos/${id}`);
@@ -86,8 +86,7 @@ const PrototipoPalletForm = () => {
           id_cliente: data.id_cliente?.toString() || ""
         });
 
-        // Foto (si existiera)
-        if (data.foto) setPreview(`/images/prototipos/${encodeURIComponent(data.foto)}`);
+        if (data.foto_url || data.foto) setPreview(data.foto_url || data.foto);
 
         // BOM -> repartir
         const bom = data.bom_detalle || [];
@@ -158,61 +157,58 @@ const PrototipoPalletForm = () => {
   const delClavo = removeRow(setDetClavos);
   const delFibra = removeRow(setDetFibras);
 
-const validar = () => {
-  const isValidQty = (v) => /^\d+$/.test(String(v).trim()) && Number(v) > 0;
+  const validar = () => {
+    const isValidQty = (v) => /^\d+$/.test(String(v).trim()) && Number(v) > 0;
 
-  if (!inputs.titulo?.trim()) return "El título es obligatorio.";
-  if (!inputs.medidas?.trim()) return "Las medidas son obligatorias.";
+    if (!inputs.titulo?.trim()) return "El título es obligatorio.";
+    if (!inputs.medidas?.trim()) return "Las medidas son obligatorias.";
 
-  // Si hay selección, la cantidad debe ser > 0
-  const mustBeValid = (rows, idField, qtyField, label) => {
-    for (let i = 0; i < rows.length; i++) {
-      const r = rows[i];
-      if (r[idField]) {
-        if (!isValidQty(r[qtyField])) {
-          return `Ingrese una cantidad válida (> 0) para ${label} en la fila ${i + 1}`;
+    // Si hay selección, la cantidad debe ser > 0
+    const mustBeValid = (rows, idField, qtyField, label) => {
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        if (r[idField]) {
+          if (!isValidQty(r[qtyField])) {
+            return `Ingrese una cantidad válida (> 0) para ${label} en la fila ${i + 1}`;
+          }
         }
       }
+      return null;
+    };
+
+    const hasAtLeastOne = (rows, idField, qtyField) =>
+      rows.some(r => r[idField] && isValidQty(r[qtyField]));
+
+    // Reglas por sección (si selecciona algo, cantidad obligatoria)
+    const errSel =
+      mustBeValid(detTablas, "id_tipo_tabla", "cantidad_lleva", "tipo tabla") ||
+      mustBeValid(detTacos,  "id_tipo_taco",  "cantidad_lleva", "tipo taco")  ||
+      mustBeValid(detClavos, "id_materia_prima", "cantidad_lleva", "clavo")   ||
+      mustBeValid(detFibras, "id_materia_prima", "cantidad_lleva", "fibra");
+    if (errSel) return errSel;
+
+    // Clavos: al menos uno
+    if (!hasAtLeastOne(detClavos, "id_materia_prima", "cantidad_lleva")) {
+      return "Debe seleccionar al menos un tipo de clavo con cantidad > 0.";
     }
+
+    // Si NO hay patín: debe haber al menos una tabla y un taco
+    const sinPatin = !inputs.id_tipo_patin;
+    if (sinPatin) {
+      if (!hasAtLeastOne(detTablas, "id_tipo_tabla", "cantidad_lleva")) {
+        return "Si no selecciona patín, debe agregar al menos un tipo de tabla con cantidad > 0.";
+      }
+      if (!hasAtLeastOne(detTacos, "id_tipo_taco", "cantidad_lleva")) {
+        return "Si no selecciona patín, debe agregar al menos un tipo de taco con cantidad > 0.";
+      }
+    } else {
+      if (!isValidQty(inputs.cantidad_patines)) {
+        return "La cantidad de patines es obligatoria y debe ser mayor a 0.";
+      }
+    }
+
     return null;
   };
-
-  const hasAtLeastOne = (rows, idField, qtyField) =>
-    rows.some(r => r[idField] && isValidQty(r[qtyField]));
-
-  // Reglas por sección (si selecciona algo, cantidad obligatoria)
-  const errSel =
-    mustBeValid(detTablas, "id_tipo_tabla", "cantidad_lleva", "tipo tabla") ||
-    mustBeValid(detTacos,  "id_tipo_taco",  "cantidad_lleva", "tipo taco")  ||
-    mustBeValid(detClavos, "id_materia_prima", "cantidad_lleva", "clavo")   ||
-    mustBeValid(detFibras, "id_materia_prima", "cantidad_lleva", "fibra");
-  if (errSel) return errSel;
-
-  // Clavos: al menos uno
-  if (!hasAtLeastOne(detClavos, "id_materia_prima", "cantidad_lleva")) {
-    return "Debe seleccionar al menos un tipo de clavo con cantidad > 0.";
-  }
-
-  // Si NO hay patín: debe haber al menos una tabla y un taco
-  const sinPatin = !inputs.id_tipo_patin;
-  if (sinPatin) {
-    if (!hasAtLeastOne(detTablas, "id_tipo_tabla", "cantidad_lleva")) {
-      return "Si no selecciona patín, debe agregar al menos un tipo de tabla con cantidad > 0.";
-    }
-    if (!hasAtLeastOne(detTacos, "id_tipo_taco", "cantidad_lleva")) {
-      return "Si no selecciona patín, debe agregar al menos un tipo de taco con cantidad > 0.";
-    }
-  } else {
-    // (Opcional) exigir cantidad de patines > 0 si se eligió un patín
-    if (!isValidQty(inputs.cantidad_patines)) {
-      return "La cantidad de patines es obligatoria y debe ser mayor a 0.";
-    }
-  }
-
-  return null;
-};
-
-
 
   // ---------- Submit ----------
   const handleSubmit = async (e) => {
@@ -259,7 +255,7 @@ const validar = () => {
         }))
       ));
 
-      if (fotoFile) formData.append("foto", fotoFile);
+      if (fotoFile) formData.append("foto", fotoFile); 
 
       if (id) {
         await api.put(`/prototipos/${id}`, formData, {
@@ -451,29 +447,28 @@ const validar = () => {
                   ))}
                 </select>
                 <input
-                type="number"
-                min="1"
-                value={r.cantidad_lleva}
-                inputMode="numeric"
-                pattern="\d*"
-                onChange={(e) => {
-                  const onlyDigits = e.target.value.replace(/\D/g, "");
-                  handleTablas(i, "cantidad_lleva", onlyDigits);
-                }}
-                onKeyDown={(e) => {
-                  if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
+                  type="number"
+                  min="1"
+                  value={r.cantidad_lleva}
+                  inputMode="numeric"
+                  pattern="\d*"
+                  onChange={(e) => {
+                    const onlyDigits = e.target.value.replace(/\D/g, "");
+                    handleTablas(i, "cantidad_lleva", onlyDigits);
+                  }}
+                  onKeyDown={(e) => {
+                    if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onPaste={(e) => {
                     e.preventDefault();
-                  }
-                }}
-                onPaste={(e) => {
-                  e.preventDefault();
-                  const pasted = (e.clipboardData.getData("text") || "").replace(/\D/g, "");
-                  // ⬇️ antes estaba handleClavos
-                  handleTablas(i, "cantidad_lleva", pasted);
-                }}
-                placeholder="Cantidad"
-                className="md:col-span-2 p-2 border rounded bg-neutral-100"
-              />
+                    const pasted = (e.clipboardData.getData("text") || "").replace(/\D/g, "");
+                    handleTablas(i, "cantidad_lleva", pasted);
+                  }}
+                  placeholder="Cantidad"
+                  className="md:col-span-2 p-2 border rounded bg-neutral-100"
+                />
                 <input
                   type="text"
                   value={r.aclaraciones}
@@ -516,7 +511,6 @@ const validar = () => {
                   pattern="\d*"
                   onChange={(e) => {
                     const onlyDigits = e.target.value.replace(/\D/g, "");
-                    // ⬇️ antes estaba handleFibras
                     handleTacos(i, "cantidad_lleva", onlyDigits);
                   }}
                   onKeyDown={(e) => {
@@ -644,7 +638,6 @@ const validar = () => {
                   onPaste={(e) => {
                     e.preventDefault();
                     const pasted = (e.clipboardData.getData("text") || "").replace(/\D/g, "");
-                    // ⬇️ antes estaba handleClavos
                     handleFibras(i, "cantidad_lleva", pasted);
                   }}
                   placeholder="Cantidad"

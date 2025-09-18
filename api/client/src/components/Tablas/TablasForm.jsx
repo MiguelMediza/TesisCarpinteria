@@ -16,7 +16,7 @@ const TablasForm = () => {
     ancho_cm: "",
     espesor_mm: "",
     tipo_madera: "",
-    cepilladas: "",      // "si" | "no"
+    cepilladas: "",
     precio_unidad: "",
     stock: "",
     comentarios: "",
@@ -43,7 +43,9 @@ const TablasForm = () => {
           stock: data.stock?.toString() || "",
           comentarios: data.comentarios || "",
         });
-        if (data.foto) { setPreview(`/images/tablas/${encodeURIComponent(data.foto)}`);}
+        if (data.foto_url) {                 // CAMBIO
+          setPreview(data.foto_url);         // CAMBIO
+        }
       })
       .catch(() => {
         setErr("No se pudo cargar la tabla.");
@@ -72,7 +74,6 @@ const TablasForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    // Validaciones numéricas
     if (["largo_cm", "ancho_cm", "espesor_mm", "precio_unidad"].includes(name)) {
       if (!/^[0-9]*\.?[0-9]*$/.test(value)) return;
     }
@@ -136,6 +137,7 @@ const TablasForm = () => {
       setInputs(initialInputs);
       clearImage();
 
+      // Opcional: navegar al listado si quieres
       // setTimeout(() => navigate("/tablas/listar"), 500);
     } catch (error) {
       let msg = "Error al guardar la tabla.";
@@ -145,7 +147,6 @@ const TablasForm = () => {
       }
       setErr(msg);
       setMessageType("error");
-      console.error(error);
     }
   };
 
@@ -163,31 +164,26 @@ const TablasForm = () => {
           {id ? "Editar Tabla" : "Nueva Tabla"}
         </h1>
         <form className="space-y-4 md:space-y-6" onSubmit={handleSubmit} encType="multipart/form-data">
-          {/* Título */}
           <div>
             <label htmlFor="titulo" className="block mb-1 text-sm font-medium text-neutral-800">Título</label>
             <input type="text" name="titulo" id="titulo" value={inputs.titulo} onChange={handleChange} placeholder="Título de la tabla" className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400" />
           </div>
 
-          {/* Largo */}
           <div>
             <label htmlFor="largo_cm" className="block mb-1 text-sm font-medium text-neutral-800">Largo (cm)</label>
             <input type="text" inputMode="decimal" name="largo_cm" id="largo_cm" value={inputs.largo_cm} onChange={handleChange} placeholder="Ej: 200" className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400" />
           </div>
 
-          {/* Ancho */}
           <div>
             <label htmlFor="ancho_cm" className="block mb-1 text-sm font-medium text-neutral-800">Ancho (cm)</label>
             <input type="text" inputMode="decimal" name="ancho_cm" id="ancho_cm" value={inputs.ancho_cm} onChange={handleChange} placeholder="Ej: 25" className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400" />
           </div>
 
-          {/* Espesor */}
           <div>
             <label htmlFor="espesor_mm" className="block mb-1 text-sm font-medium text-neutral-800">Espesor (mm)</label>
             <input type="text" inputMode="decimal" name="espesor_mm" id="espesor_mm" value={inputs.espesor_mm} onChange={handleChange} placeholder="Ej: 20" className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400" />
           </div>
 
-          {/* Tipo de madera */}
           <div>
             <label htmlFor="tipo_madera" className="block mb-1 text-sm font-medium text-neutral-800">Tipo de Madera</label>
             <select name="tipo_madera" id="tipo_madera" value={inputs.tipo_madera} onChange={handleChange} className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400">
@@ -198,7 +194,6 @@ const TablasForm = () => {
             </select>
           </div>
 
-          {/* Cepilladas */}
           <div>
             <label htmlFor="cepilladas" className="block mb-1 text-sm font-medium text-neutral-800">Cepilladas</label>
             <select name="cepilladas" id="cepilladas" value={inputs.cepilladas} onChange={handleChange} className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400">
@@ -208,7 +203,6 @@ const TablasForm = () => {
             </select>
           </div>
 
-          {/* Precio unitario */}
           {currentUser?.tipo !== "encargado" && (
             <div>
               <label htmlFor="precio_unidad" className="block mb-1 text-sm font-medium text-neutral-800">Precio Unitario</label>
@@ -216,13 +210,11 @@ const TablasForm = () => {
             </div>
           )}
 
-          {/* Stock */}
           <div>
             <label htmlFor="stock" className="block mb-1 text-sm font-medium text-neutral-800">Stock</label>
             <input type="text" inputMode="numeric" name="stock" id="stock" value={inputs.stock} onChange={handleChange} placeholder="Ej: 50" className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400" />
           </div>
 
-          {/* Foto */}
           <div>
             <label htmlFor="foto" className="block mb-1 text-sm font-medium text-neutral-800">Foto</label>
             <input ref={fileInputRef} type="file" accept="image/*" name="foto" id="foto" onChange={handleFotoChange} className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400" />
@@ -240,16 +232,13 @@ const TablasForm = () => {
             )}
           </div>
 
-          {/* Comentarios */}
           <div>
             <label htmlFor="comentarios" className="block mb-1 text-sm font-medium text-neutral-800">Comentarios</label>
             <textarea name="comentarios" id="comentarios" value={inputs.comentarios} onChange={handleChange} placeholder="Comentarios adicionales" rows={3} className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400" />
           </div>
 
-          {/* Mensaje */}
           {err && (<span className={messageType === "error" ? "text-red-500" : "text-green-500"}>{err}</span>)}
 
-          {/* Submit */}
           <button type="submit" className="w-full py-2.5 text-white bg-neutral-700 hover:bg-neutral-800 rounded transition">{id ? "Guardar Cambios" : "Crear Tabla"}</button>
           <p className="mt-4 text-sm text-neutral-700 text-center"><Link to="/tablas/listar" className="font-medium underline">Volver al listado de tablas</Link></p>
         </form>

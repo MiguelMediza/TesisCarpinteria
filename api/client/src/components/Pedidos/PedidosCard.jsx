@@ -132,29 +132,39 @@ const PedidosCard = ({ pedido, onEdit, onDelete, onEstadoChanged }) => {
   {items.length > 0 ? (
     items.map((it, idx) => (
       <li key={idx} className="mt-1">
-        <span className="font-medium">
-          {it.prototipo_titulo || `Prototipo #${it.id_prototipo}`}
-        </span>
-        {it.medidas ? ` – ${it.medidas}` : ""} — {it.cantidad_pallets} u.
-        {/* Chips extra si hay datos */}
-        <span className="ml-2 inline-flex gap-2 align-middle">
-          {it.numero_lote?.trim() && (
-            <span className="text-xs px-2 py-0.5 rounded-full border bg-gray-50 text-gray-700 border-gray-200">
-              Lote: {it.numero_lote}
-            </span>
-          )}
-          {it.numero_tratamiento?.trim() && (
-            <span className="text-xs px-2 py-0.5 rounded-full border bg-gray-50 text-gray-700 border-gray-200">
-              Trat.: {it.numero_tratamiento}
-            </span>
-          )}
-        </span>
+        <div>
+          <span className="font-medium">
+            {it.prototipo_titulo || `Prototipo #${it.id_prototipo}`}
+          </span>
+          {it.medidas ? ` – ${it.medidas}` : ""} — {it.cantidad_pallets} u.
+          {/* Chips extra si hay datos */}
+          <span className="ml-2 inline-flex gap-2 align-middle">
+            {it.numero_lote?.trim() && (
+              <span className="text-xs px-2 py-0.5 rounded-full border bg-gray-50 text-gray-700 border-gray-200">
+                Lote: {it.numero_lote}
+              </span>
+            )}
+            {it.numero_tratamiento?.trim() && (
+              <span className="text-xs px-2 py-0.5 rounded-full border bg-gray-50 text-gray-700 border-gray-200">
+                Trat.: {it.numero_tratamiento}
+              </span>
+            )}
+          </span>
+        </div>
+
+        {/* Comentario debajo (muestra sólo si hay texto) */}
+        {(it.comentarios ?? "").toString().trim() && (
+          <p className="mt-1 ml-6 text-xs text-gray-600 italic">
+            {it.comentarios}
+          </p>
+        )}
       </li>
     ))
   ) : (
     <li>No hay ítems cargados</li>
   )}
 </ul>
+
 
         {/* Precio solo admin */}
         {currentUser?.tipo === "admin" && (
