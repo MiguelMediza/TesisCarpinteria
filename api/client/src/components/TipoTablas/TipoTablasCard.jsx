@@ -1,6 +1,6 @@
 import React, { useContext } from "react";
 import { AuthContext } from "../../context/authContext";
-import { Image } from 'antd';
+import { Image } from "antd";
 
 const TipoTablasCard = ({ tipoTabla, onEdit, onDelete }) => {
   const { currentUser } = useContext(AuthContext);
@@ -10,26 +10,38 @@ const TipoTablasCard = ({ tipoTabla, onEdit, onDelete }) => {
     largo_cm,
     ancho_cm,
     espesor_mm,
-    foto,        
-    foto_url,    
+    foto,
+    foto_url,
     precio_unidad,
     cepillada,
-    stock
+    stock,
   } = tipoTabla || {};
 
   const R2 = (import.meta.env.VITE_R2_PUBLIC_BASE || "").replace(/\/+$/, "");
-  const imageUrl = foto_url ?? (foto ? `${R2}/${String(foto).replace(/^\/+/, "")}` : null);
+  const imageUrl =
+    foto_url ?? (foto ? `${R2}/${String(foto).replace(/^\/+/, "")}` : null);
 
   return (
     <div className="border rounded-lg p-4 flex flex-col justify-between bg-white shadow-sm">
       <div>
         {imageUrl && (
-          <Image
-            src={imageUrl}
-            alt={titulo}
-            className="w-full h-32 object-cover mb-4 rounded"
-            loading="lazy"
-          />
+          <div className="w-full h-32 mb-4 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
+            <Image
+              src={imageUrl}
+              alt={titulo}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+                display: "block",
+              }}
+              loading="lazy"
+              fallback="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'/>"
+              preview={{
+                mask: <span style={{ fontSize: 12 }}>Click para ampliar</span>,
+              }}
+            />
+          </div>
         )}
 
         <p className="text-lg font-semibold text-gray-800 mb-2">{titulo}</p>

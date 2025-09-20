@@ -258,7 +258,7 @@ const Nav = () => {
             {currentUser?.tipo !== "encargado" && (
               <li><Link to="/ventas" onClick={handleNavigate} className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500">Ventas</Link></li>
             )}
-
+            <li><Link to="/clientes-fuegoya" onClick={handleNavigate} className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500">Clientes Fuego Ya</Link></li>
             <li><Link to="/fuegoya" onClick={handleNavigate} className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500">Fuego Ya</Link></li>
             <li><Link to="/ventafuegoya" onClick={handleNavigate} className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500">Venta FuegoYa</Link></li>
             <li><Link to="/pellets" onClick={handleNavigate} className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500">Pellets</Link></li>

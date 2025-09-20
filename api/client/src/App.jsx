@@ -46,6 +46,10 @@ import PedidosList from "./pages/pedidos/PedidosList";
 import VentaFuegoYa from "./pages/ventaFuegoYa/VentaFuegoYa";
 import VentaFuegoYaList from "./pages/ventaFuegoYa/VentaFuegoYaList";
 
+import ClientesFuegoYa from "./pages/clientesFuegoYa/ClientesFuegoYa";
+import ClientesFuegoYaList from "./pages/clientesFuegoYa/ClientesFuegoYaList";
+
+
 
 
 function App() {
@@ -191,6 +195,18 @@ function App() {
          {
           path: "/tipopatines/:id",
           element: <TipoPatines />,
+         },
+         {
+          path: "/clientes-fuegoya",
+          element: <FuegoYa/>
+         },
+         {
+          path: "/clientes-fuegoya/listar",
+          element: <FuegoYaList/>
+         },
+         {
+          path: "/clientes-fuegoya/:id",
+          element: <FuegoYa/>
          },
          {
           path: "/fuegoya",
