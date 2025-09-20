@@ -1,22 +1,43 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { api } from "../../api";
 import { Link, useNavigate } from "react-router-dom";
-import VentaFuegoyaCard from "./VentaFuegoYaCard";  // <- tu card de fuegoya
+import VentaFuegoyaCard from "./VentaFuegoYaCard";
 import DeleteConfirm from "../Modals/DeleteConfirm";
 
-const PAGO_ESTADOS = ["", "credito", "pago"]; // "" = todos
+const PAGO_ESTADOS = ["", "credito", "pago"]; 
 
-const VentaFuegoyaList = () => {
+const monthNames = [
+  "Enero","Febrero","Marzo","Abril","Mayo","Junio",
+  "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+];
+
+const yyyymmFirst = (y, m) => `${y}-${String(m).padStart(2,"0")}-01`;
+const yyyymmLast  = (y, m) => {
+  const last = new Date(Number(y), Number(m), 0); 
+  const yyyy = last.getFullYear();
+  const mm   = String(last.getMonth()+1).padStart(2,"0");
+  const dd   = String(last.getDate()).padStart(2,"0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const VentaFuegoYaList = () => {
   const [ventas, setVentas] = useState([]);
-  const [error, setError] = useState("");
+  const [error, setError]   = useState("");
 
-  // Filtros
-  const [clienteQ, setClienteQ] = useState(""); // texto libre (nombre/empresa)
-  const [estadopago, setEstadopago] = useState(""); // "", "credito", "pago"
-  const [desde, setDesde] = useState("");
-  const [hasta, setHasta] = useState("");
+  const [clienteQ, setClienteQ]     = useState(""); 
+  const [estadopago, setEstadopago] = useState(""); 
 
-  // UI eliminar
+  const now = useMemo(() => new Date(), []);
+  const [anio, setAnio]   = useState(String(now.getFullYear()));
+  const [mes, setMes]     = useState(String(now.getMonth() + 1)); 
+
+  const yearOptions = useMemo(() => {
+    const y = now.getFullYear();
+    const arr = [];
+    for (let i = y - 5; i <= y + 1; i++) arr.push(i);
+    return arr;
+  }, [now]);
+
   const [toDelete, setToDelete] = useState(null);
 
   const navigate = useNavigate();
@@ -24,14 +45,18 @@ const VentaFuegoyaList = () => {
   const fetchVentas = useCallback(async () => {
     try {
       const params = new URLSearchParams();
-      if (clienteQ.trim()) params.append("cliente", clienteQ.trim());
-      if (estadopago) params.append("estadopago", estadopago);
-      if (desde) params.append("desde", desde);
-      if (hasta) params.append("hasta", hasta);
 
-      const url = `/ventafuegoya/listar${
-        params.toString() ? `?${params.toString()}` : ""
-      }`;
+      if (clienteQ.trim()) params.append("cliente", clienteQ.trim());
+      if (estadopago)      params.append("estadopago", estadopago);
+
+      if (anio && mes) {
+        const desde = yyyymmFirst(anio, mes);
+        const hasta = yyyymmLast(anio, mes);
+        params.append("desde", desde);
+        params.append("hasta", hasta);
+      }
+
+      const url = `/ventafuegoya/listar${params.toString() ? `?${params.toString()}` : ""}`;
       const { data } = await api.get(url);
       setVentas(data || []);
       setError("");
@@ -39,27 +64,20 @@ const VentaFuegoyaList = () => {
       console.error(e);
       setError("No se pudieron cargar las ventas.");
     }
-  }, [clienteQ, estadopago, desde, hasta]);
+  }, [clienteQ, estadopago, anio, mes]);
 
   useEffect(() => {
     fetchVentas();
   }, [fetchVentas]);
 
-  const handleEdit = (id) => {
-    navigate(`/ventafuegoya/${id}`);
-  };
-
+  const handleEdit = (id) => navigate(`/ventafuegoya/${id}`);
   const handleDeleteClick = (venta) => setToDelete(venta);
   const cancelDelete = () => setToDelete(null);
 
   const confirmDelete = async () => {
     try {
-      await api.delete(
-        `/ventafuegoya/${toDelete.id_ventaFuegoya}`
-      );
-      setVentas((prev) =>
-        prev.filter((v) => v.id_ventaFuegoya !== toDelete.id_ventaFuegoya)
-      );
+      await api.delete(`/ventafuegoya/${toDelete.id_ventaFuegoya}`);
+      setVentas(prev => prev.filter(v => v.id_ventaFuegoya !== toDelete.id_ventaFuegoya));
     } catch (err) {
       console.error(err);
       setError("Error al eliminar la venta.");
@@ -68,14 +86,13 @@ const VentaFuegoyaList = () => {
     }
   };
 
-  // Cuando el Card cambie el estado de pago, refrescamos
   const handlePagoChanged = () => fetchVentas();
 
   const resetFiltros = () => {
     setClienteQ("");
     setEstadopago("");
-    setDesde("");
-    setHasta("");
+    setAnio(String(now.getFullYear()));
+    setMes(String(now.getMonth() + 1));
   };
 
   return (
@@ -92,14 +109,16 @@ const VentaFuegoyaList = () => {
 
       {/* Filtros */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-4">
+        {/* Cliente */}
         <input
           type="text"
           value={clienteQ}
           onChange={(e) => setClienteQ(e.target.value)}
           className="md:col-span-4 p-2 border border-gray-300 rounded"
-          placeholder="Buscar por cliente (nombre/empresa)"
+          placeholder="Buscar por cliente (nombre)"
         />
 
+        {/* Estado de pago */}
         <select
           value={estadopago}
           onChange={(e) => setEstadopago(e.target.value)}
@@ -116,20 +135,32 @@ const VentaFuegoyaList = () => {
           ))}
         </select>
 
-        <input
-          type="date"
-          value={desde}
-          onChange={(e) => setDesde(e.target.value)}
+        {/* Mes */}
+        <select
+          value={mes}
+          onChange={(e) => setMes(e.target.value)}
+          className="md:col-span-3 p-2 border border-gray-300 rounded"
+        >
+          {monthNames.map((n, idx) => {
+            const mVal = String(idx + 1);
+            return (
+              <option key={mVal} value={mVal}>
+                {n}
+              </option>
+            );
+          })}
+        </select>
+
+        {/* Año */}
+        <select
+          value={anio}
+          onChange={(e) => setAnio(e.target.value)}
           className="md:col-span-2 p-2 border border-gray-300 rounded"
-          placeholder="Desde"
-        />
-        <input
-          type="date"
-          value={hasta}
-          onChange={(e) => setHasta(e.target.value)}
-          className="md:col-span-2 p-2 border border-gray-300 rounded"
-          placeholder="Hasta"
-        />
+        >
+          {yearOptions.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
 
         <div className="md:col-span-12 flex gap-2">
           <button
@@ -145,7 +176,7 @@ const VentaFuegoyaList = () => {
             }}
             className="px-4 py-2 bg-neutral-200 text-neutral-800 rounded hover:bg-neutral-300 transition"
           >
-            Limpiar
+            Mes actual
           </button>
         </div>
       </div>
@@ -160,7 +191,7 @@ const VentaFuegoyaList = () => {
             venta={v}
             onEdit={handleEdit}
             onDelete={() => handleDeleteClick(v)}
-            onPagoChanged={handlePagoChanged} // refresca al cambiar pago
+            onPagoChanged={handlePagoChanged}
           />
         ))}
         {ventas.length === 0 && (
@@ -181,4 +212,4 @@ const VentaFuegoyaList = () => {
   );
 };
 
-export default VentaFuegoyaList;
+export default VentaFuegoYaList;

@@ -1,7 +1,9 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { api } from "../../api"; 
+import { api } from "../../api";
 import tablasBackground from "../../assets/tablasBackground.jpg";
+import logoImanod from "../../assets/logoImanod.png"; 
+
 const Register = () => {
   const navigate = useNavigate();
 
@@ -15,6 +17,7 @@ const Register = () => {
 
   const [err, setError] = useState(false);
   const [messageType, setMessageType] = useState("");
+
   const validateInputs = () => {
     if (!inputs.username) return "Es requerido el username.";
     if (!inputs.email) return "Es requerido un email.";
@@ -26,7 +29,7 @@ const Register = () => {
 
   const handleChange = (e) => {
     setInputs((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  }
+  };
 
   const handleClick = async (e) => {
     e.preventDefault();
@@ -34,31 +37,42 @@ const Register = () => {
     if (validationError) {
       setError(validationError);
       setMessageType("error");
-    return;
+      return;
     }
     try {
       await api.post("/usuarios/register", inputs);
       setError("Registrado exitosamente, ahora puedes iniciar sesión.");
       setMessageType("success");
       setInputs({ username: "", email: "", password: "", tipo: "", name: "" });
-      setTimeout(() => navigate("/login"), 3000); 
-  }catch (err) {
-    const msg = err?.response?.data?.message || err?.response?.data || "Error al registrarse.";
-    setError(msg);
-    setMessageType("error");
-    console.log(err);
-  }
-};
-  
+      setTimeout(() => navigate("/login"), 3000);
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data ||
+        "Error al registrarse.";
+      setError(msg);
+      setMessageType("error");
+      console.log(err);
+    }
+  };
+
   return (
-<section className="relative flex items-center justify-center min-h-screen bg-neutral-50">
-      {/* Fondo de madera difuminado */}
+    <section className="relative flex items-center justify-center min-h-screen bg-neutral-50">
       <div
         className="absolute inset-0 bg-cover bg-center filter blur opacity-90"
         style={{ backgroundImage: `url(${tablasBackground})` }}
       />
 
       <div className="relative z-10 w-full sm:max-w-md p-6 bg-white bg-opacity-80 rounded-lg shadow-md">
+        {/* 👇 Logo arriba del título */}
+        <img
+          src={logoImanod}
+          alt="Imanod"
+          className="mx-auto mb-4 w-28 h-28 rounded-xl object-contain bg-white/70 p-2 shadow-sm"
+          loading="lazy"
+        />
+
+
         <Link
           to="/"
           className="block mb-6 text-2xl font-semibold text-neutral-800 text-center"
@@ -70,16 +84,9 @@ const Register = () => {
           Register
         </h1>
 
-        <form
-          className="space-y-4 md:space-y-6"
-          onSubmit={handleClick}
-        >
-          {/* Username */}
+        <form className="space-y-4 md:space-y-6" onSubmit={handleClick}>
           <div>
-            <label
-              htmlFor="username"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
+            <label htmlFor="username" className="block mb-1 text-sm font-medium text-neutral-800">
               Usuario
             </label>
             <input
@@ -93,12 +100,8 @@ const Register = () => {
             />
           </div>
 
-          {/* Email */}
           <div>
-            <label
-              htmlFor="email"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
+            <label htmlFor="email" className="block mb-1 text-sm font-medium text-neutral-800">
               Email
             </label>
             <input
@@ -112,12 +115,8 @@ const Register = () => {
             />
           </div>
 
-          {/* Password */}
           <div>
-            <label
-              htmlFor="password"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
+            <label htmlFor="password" className="block mb-1 text-sm font-medium text-neutral-800">
               Contraseña
             </label>
             <input
@@ -131,12 +130,8 @@ const Register = () => {
             />
           </div>
 
-          {/* Name */}
           <div>
-            <label
-              htmlFor="name"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
+            <label htmlFor="name" className="block mb-1 text-sm font-medium text-neutral-800">
               Nombre
             </label>
             <input
@@ -150,12 +145,8 @@ const Register = () => {
             />
           </div>
 
-          {/* Tipo de usuario */}
           <div>
-            <label
-              htmlFor="tipo"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
+            <label htmlFor="tipo" className="block mb-1 text-sm font-medium text-neutral-800">
               Tipo de usuario
             </label>
             <select
@@ -165,28 +156,18 @@ const Register = () => {
               onChange={handleChange}
               className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
             >
-              <option value="" disabled>
-                Selecciona un tipo
-              </option>
+              <option value="" disabled>Selecciona un tipo</option>
               <option value="encargado">Encargado</option>
               <option value="admin">Admin</option>
             </select>
           </div>
 
-          
-            {err && (
-              <span
-                className={
-                messageType === "error"
-                  ? "text-red-500"
-                  : "text-green-500"
-                }
-                >
-                {err}
-              </span>
-            )}
+          {err && (
+            <span className={messageType === "error" ? "text-red-500" : "text-green-500"}>
+              {err}
+            </span>
+          )}
 
-          {/* Submit */}
           <button
             type="submit"
             className="w-full py-2.5 text-white bg-neutral-700 hover:bg-neutral-800 rounded transition"
@@ -195,7 +176,7 @@ const Register = () => {
           </button>
 
           <p className="mt-4 text-sm text-neutral-700 text-center">
-            ¿Ya tienes cuenta?{' '}
+            ¿Ya tienes cuenta?{" "}
             <Link to="/login" className="font-medium underline">
               Inicia sesión aquí
             </Link>

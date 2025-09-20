@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import ClientesFuegoYaCard from "./ClientesFuegoYaCard";
 import DeleteConfirm from "../Modals/DeleteConfirm";
@@ -9,21 +9,65 @@ const ClientesFuegoYaList = () => {
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [toDelete, setToDelete] = useState(null);
+  const [creditMap, setCreditMap] = useState(new Map()); 
+  const [loadingCredit, setLoadingCredit] = useState(false);
+
   const navigate = useNavigate();
 
   useEffect(() => {
-    let isMounted = true;
+    let alive = true;
     (async () => {
       try {
         const { data } = await api.get("/clientesfuegoya/listar");
-        if (isMounted) setClientes(data || []);
+        if (!alive) return;
+        setClientes(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("❌ Error al cargar clientes FuegoYa:", err);
-        if (isMounted) setError("No se pudieron cargar los clientes de FuegoYa.");
+        if (alive) setError("No se pudieron cargar los clientes de FuegoYa.");
       }
     })();
-    return () => { isMounted = false; };
+    return () => { alive = false; };
   }, []);
+
+  const filtered = useMemo(() => {
+    const q = searchTerm.toLowerCase().trim();
+    if (!q) return clientes;
+    return clientes.filter((c) =>
+      (c.nombre || "").toLowerCase().includes(q) ||
+      (c.telefono || "").toLowerCase().includes(q) ||
+      (c.email || "").toLowerCase().includes(q)
+    );
+  }, [clientes, searchTerm]);
+
+  useEffect(() => {
+    let alive = true;
+    const ids = filtered.map((c) => c.id_cliente).filter(Boolean);
+    if (ids.length === 0) {
+      setCreditMap(new Map());
+      return;
+    }
+    (async () => {
+      try {
+        setLoadingCredit(true);
+        const { data } = await api.get("/clientesfuegoya/credito/resumen", {
+          params: { ids: ids.join(",") },
+        });
+        if (!alive) return;
+        const map = new Map();
+        (Array.isArray(data) ? data : []).forEach((row) => {
+          map.set(row.id_cliente, row);
+        });
+        setCreditMap(map);
+      } catch (e) {
+        console.error("⚠️ Error cargando crédito (resumen):", e);
+        if (alive) {
+        }
+      } finally {
+        if (alive) setLoadingCredit(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [filtered]);
 
   const handleEdit = (id) => {
     navigate(`/clientesfuegoya/${id}`);
@@ -34,7 +78,14 @@ const ClientesFuegoYaList = () => {
   const confirmDelete = async () => {
     try {
       await api.delete(`/clientesfuegoya/${toDelete.id_cliente}`);
-      setClientes(prev => prev.filter(c => c.id_cliente !== toDelete.id_cliente));
+      setClientes((prev) =>
+        prev.filter((c) => c.id_cliente !== toDelete.id_cliente)
+      );
+      setCreditMap((prev) => {
+        const next = new Map(prev);
+        next.delete(toDelete.id_cliente);
+        return next;
+      });
     } catch (err) {
       console.error("❌ Error al eliminar cliente FuegoYa:", err);
       setError("Error al eliminar el cliente.");
@@ -45,15 +96,6 @@ const ClientesFuegoYaList = () => {
 
   const cancelDelete = () => setToDelete(null);
 
-  const filtered = clientes.filter((c) => {
-    const q = searchTerm.toLowerCase().trim();
-    return (
-      (c.nombre || "").toLowerCase().includes(q) ||
-      (c.telefono || "").toLowerCase().includes(q) ||
-      (c.email || "").toLowerCase().includes(q)
-    );
-  });
-
   return (
     <section className="p-4 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-6">
@@ -62,7 +104,7 @@ const ClientesFuegoYaList = () => {
           to="/clientesfuegoya"
           className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
         >
-          + Nuevo Cliente
+          + Nuevo Cliente Fuego Ya
         </Link>
       </div>
 
@@ -78,11 +120,18 @@ const ClientesFuegoYaList = () => {
         />
       </div>
 
+      {loadingCredit && (
+        <p className="mb-2 text-sm text-gray-500">
+          Cargando crédito de clientes…
+        </p>
+      )}
+
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map((c) => (
           <ClientesFuegoYaCard
             key={c.id_cliente}
             cliente={c}
+            credito={creditMap.get(c.id_cliente)}
             onEdit={handleEdit}
             onDelete={() => handleDeleteClick(c)}
           />

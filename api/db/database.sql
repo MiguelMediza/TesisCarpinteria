@@ -1,3 +1,7 @@
+CREATE DATABASE IF NOT EXISTS tesisdb CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+USE tesisdb;
+SET NAMES utf8mb4;
+
 CREATE TABLE usuarios(
 	idUser INT PRIMARY KEY AUTO_INCREMENT,
 	username VARCHAR(45) NOT NULL,
@@ -249,8 +253,16 @@ CREATE TABLE venta_fuegoya (
     comentarios VARCHAR(255),
     estadopago ENUM('credito', 'pago'),
     fechapago DATETIME,
-    FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente),
+    FOREIGN KEY (id_cliente) REFERENCES clientes_fuegoya(id_cliente),
     FOREIGN KEY (id_fuego_ya) REFERENCES fuego_ya(id_fuego_ya)
+);
+
+CREATE TABLE clientes_fuegoya (
+    id_cliente INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    telefono VARCHAR(20),
+    email VARCHAR(100),
+    estado BOOLEAN DEFAULT TRUE
 );
 
 CREATE TABLE pellets (
@@ -280,9 +292,9 @@ SELECT 'pellets', id_pellet, titulo, stock FROM pellets WHERE stock < 500;
 SELECT * FROM stock_bajo;
 
 
--- ===========================================
+
 -- 1) BOM detallado (incluye PATÍN con cantidad)
--- ===========================================
+
 DROP VIEW IF EXISTS vw_prototipo_bom_detalle;
 CREATE VIEW vw_prototipo_bom_detalle AS
 /* ====== TABLAS ====== */
@@ -372,3 +384,5 @@ LEFT JOIN vw_prototipo_bom_detalle bom
   ON bom.id_prototipo = pp.id_prototipo
 GROUP BY
   pp.id_prototipo, pp.titulo, pp.medidas, pp.id_cliente;
+  
+  SHOW TABLES;

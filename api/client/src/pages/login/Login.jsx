@@ -1,42 +1,44 @@
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/authContext";
-import { useState } from "react";
 import tablasBackground from "../../assets/tablasBackground.jpg";
-const Login = () => {
-    const [inputs, setInputs] = useState({
-      username: "",
-      password: "",
-    });
-  
-    const [err, setError] = useState(null);
+import logoImanod from "../../assets/logoImanod.png";
 
-    const navigate = useNavigate();
-    const handleChange = (e) => {
-      setInputs((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-    }
+const Login = () => {
+  const [inputs, setInputs] = useState({ username: "", password: "" });
+  const [err, setError] = useState(null);
+  const navigate = useNavigate();
   const { login } = useContext(AuthContext);
+
+  const handleChange = (e) => {
+    setInputs((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    try{
+    try {
       await login(inputs);
       navigate("/");
-    }catch (err) {
-      setError(err.response.data);
-      console.log(err);
+    } catch (err) {
+      setError(err.response?.data || "Error al iniciar sesión.");
     }
   };
 
   return (
- 
     <section className="relative flex items-center justify-center min-h-screen bg-neutral-50">
       <div
         className="absolute inset-0 bg-cover bg-center filter blur opacity-90"
         style={{ backgroundImage: `url(${tablasBackground})` }}
       />
-
       <div className="relative z-10 w-full sm:max-w-md p-6 bg-white bg-opacity-80 rounded-lg shadow-md">
+        {/* LOGO */}
+        <img
+          src={logoImanod}
+          alt="Imanod"
+          loading="lazy"
+          className="mx-auto mb-4 w-28 h-28 rounded-xl object-contain bg-white/70 p-2 shadow-sm"
+        />
+
         <Link
           to="/"
           className="block mb-6 text-2xl font-semibold text-neutral-800 text-center"
@@ -49,12 +51,8 @@ const Login = () => {
         </h1>
 
         <form className="space-y-4" onSubmit={handleLogin}>
-          {/* Username */}
           <div>
-            <label
-              htmlFor="username"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
+            <label htmlFor="username" className="block mb-1 text-sm font-medium text-neutral-800">
               Usuario
             </label>
             <input
@@ -68,12 +66,8 @@ const Login = () => {
             />
           </div>
 
-          {/* Password */}
           <div>
-            <label
-              htmlFor="password"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
+            <label htmlFor="password" className="block mb-1 text-sm font-medium text-neutral-800">
               Contraseña
             </label>
             <input
@@ -87,14 +81,8 @@ const Login = () => {
             />
           </div>
 
-          {/* Mensaje de error */}
-          {err && (
-            <div>
-              <span className="text-red-600 text-sm">{err}</span>
-            </div>
-          )}
+          {err && <div><span className="text-red-600 text-sm">{err}</span></div>}
 
-          {/* Botón Login */}
           <button
             type="submit"
             className="w-full py-2.5 text-white bg-neutral-700 hover:bg-neutral-800 rounded transition"
@@ -104,7 +92,7 @@ const Login = () => {
         </form>
 
         <p className="mt-4 text-sm text-neutral-700 text-center">
-          ¿No tienes cuenta?{' '}
+          ¿No tienes cuenta?{" "}
           <Link to="/register" className="font-medium underline">
             Regístrate aquí
           </Link>

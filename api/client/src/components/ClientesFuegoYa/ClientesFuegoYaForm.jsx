@@ -4,7 +4,7 @@ import { api } from "../../api";
 import bgImg from "../../assets/tablasBackground.jpg";
 
 const ClientesFuegoYaForm = () => {
-  const { id } = useParams(); // id_cliente si edita
+  const { id } = useParams(); 
   const navigate = useNavigate();
 
   const initialInputs = {
@@ -17,11 +17,10 @@ const ClientesFuegoYaForm = () => {
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
 
-  // Cargar si es edición
   useEffect(() => {
     if (!id) return;
     api
-      .get(`/clientes-fuegoya/${id}`)
+      .get(`/clientesfuegoya/${id}`)
       .then(({ data }) => {
         setInputs({
           nombre: data?.nombre || "",
@@ -37,7 +36,6 @@ const ClientesFuegoYaForm = () => {
 
   const validate = () => {
     if (!inputs.nombre?.trim()) return "El nombre es obligatorio.";
-    // email es opcional según tu tabla; si quisieras, acá podrías validar formato
     return null;
   };
 
@@ -64,14 +62,14 @@ const ClientesFuegoYaForm = () => {
 
     try {
       if (id) {
-        await api.put(`/clientes-fuegoya/${id}`, payload);
+        await api.put(`/clientesfuegoya/${id}`, payload);
         setErr("Cliente FuegoYa actualizado correctamente.");
       } else {
-        await api.post(`/clientes-fuegoya/agregar`, payload);
+        await api.post(`/clientesfuegoya/agregar`, payload);
         setErr("Cliente FuegoYa creado exitosamente.");
       }
       setMessageType("success");
-      setTimeout(() => navigate("/clientes-fuegoya/listar"), 600);
+      setTimeout(() => navigate("/clientesfuegoya/listar"), 600);
     } catch (error) {
       const msg =
         error?.response?.data?.message ||
@@ -90,7 +88,7 @@ const ClientesFuegoYaForm = () => {
       />
       <div className="relative z-10 w-full sm:max-w-md p-6 bg-white bg-opacity-80 rounded-lg shadow-md">
         <Link
-          to="/clientes-fuegoya/listar"
+          to="/clientesfuegoya/listar"
           className="block mb-6 text-2xl font-semibold text-neutral-800 text-center"
         >
           Imanod — Clientes FuegoYa
@@ -162,7 +160,7 @@ const ClientesFuegoYaForm = () => {
           </button>
 
           <p className="mt-4 text-sm text-neutral-700 text-center">
-            <Link to="/clientes-fuegoya/listar" className="font-medium underline">
+            <Link to="/clientesfuegoya/listar" className="font-medium underline">
               Volver al listado
             </Link>
           </p>

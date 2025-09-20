@@ -29,7 +29,7 @@ const Home = () => {
   useEffect(() => {
     const controller = new AbortController();
     fetchLowStock(controller.signal);
-    return () => controller.abort(); // cancelar si cambia el umbral o se desmonta
+    return () => controller.abort(); 
   }, [threshold]); 
 
   return (

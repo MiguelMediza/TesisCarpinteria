@@ -27,14 +27,15 @@ import prototiposRouter from "./routes/prototipos.routes.js";
 import materiaprimaRouter from "./routes/materiaprima.routes.js";
 import pedidosRouter from "./routes/pedidos.routes.js";
 import ventafuegoyaRouter from "./routes/ventafuegoya.routes.js";
+import clientesfuegoyaRouter from "./routes/clientesfuegoya.routes.js";
 
-// ─── Paths ────────────────────────────────────────────────────────────────────
+// ─── Paths ─
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const clientDist = path.resolve(__dirname, "../client/dist");
 const indexHtml = path.join(clientDist, "index.html");
 
-// ─── App ──────────────────────────────────────────────────────────────────────
+// ─── App ──
 const app = express();
 const isProd = process.env.NODE_ENV === "production";
 
@@ -46,7 +47,7 @@ process.on("uncaughtException", (err) => {
   console.error("UNCAUGHT_EXCEPTION:", err);
 });
 
-// ─── Middlewares base ─────────────────────────────────────────────────────────
+// ─── Middlewares base 
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Credentials", true);
   next();
@@ -62,7 +63,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// CORS SOLO en desarrollo (vite en 5173). En prod es mismo dominio → no hace falta.
 if (!isProd) {
   const allowedOrigins = [CORS_ORIGIN, "http://localhost:5173"].filter(Boolean);
   app.use(
@@ -73,7 +73,7 @@ if (!isProd) {
   );
 }
 
-// ─── Static de imágenes (api/src/images/*) ────────────────────────────────────
+// ─ Static de imágenes (api/src/images/*) ─
 app.use("/images/tablas", express.static(path.join(__dirname, "images", "tablas")));
 app.use("/images/palos", express.static(path.join(__dirname, "images", "palos")));
 app.use("/images/clavos", express.static(path.join(__dirname, "images", "clavos")));
@@ -87,10 +87,8 @@ app.use("/images/ventas", express.static(path.join(__dirname, "images", "ventas"
 app.use("/images/prototipos", express.static(path.join(__dirname, "images", "prototipos")));
 app.use("/images/venta_fuegoya", express.static(path.join(__dirname, "images", "venta_fuegoya")));
 
-// ─── Static del frontend build ────────────────────────────────────────────────
-// Sirve todo el contenido de dist
+
 app.use(express.static(clientDist));
-// Sirve explícitamente /assets con cache agresivo
 app.use(
   "/assets",
   express.static(path.join(clientDist, "assets"), { maxAge: "1y", immutable: true })
@@ -116,9 +114,8 @@ app.use("/api/src/prototipos", prototiposRouter);
 app.use("/api/src/materiaprima", materiaprimaRouter);
 app.use("/api/src/pedidos", pedidosRouter);
 app.use("/api/src/ventafuegoya", ventafuegoyaRouter);
+app.use("/api/src/clientesfuegoya", clientesfuegoyaRouter);
 
-// ─── Fallback SPA (Express 5 friendly, NO archivos) ───────────────────────────
-// Solo para GET, que no empiecen con /api/ y que NO tengan extensión (.js, .css, .png, etc.)
 app.use((req, res, next) => {
   const isGet = req.method === "GET";
   const isApi = req.path.startsWith("/api/");
@@ -134,9 +131,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// ─── Arranque ─────────────────────────────────────────────────────────────────
+// ─── Arranque ─
 console.log("Sirviendo frontend desde:", clientDist);
-const HOST = "0.0.0.0"; // importante para Railway
+const HOST = "0.0.0.0"; 
 app.listen(PORT, HOST, () => {
   console.log(`Server is running on http://${HOST}:${PORT}`);
 });

@@ -1,9 +1,7 @@
-// controllers/clientes_fuegoya.js
 import { pool } from "../db.js";
 
 const isNonEmpty = (s) => typeof s === "string" && s.trim().length > 0;
 
-/* CREATE */
 export const createClienteFY = async (req, res) => {
   try {
     const { nombre, telefono, email } = req.body;
@@ -11,7 +9,6 @@ export const createClienteFY = async (req, res) => {
       return res.status(400).json({ error: "El nombre es obligatorio." });
     }
 
-    // Email único opcional
     if (email) {
       const [dups] = await pool.query(
         "SELECT 1 FROM clientes_fuegoya WHERE email = ? LIMIT 1",
@@ -34,7 +31,6 @@ export const createClienteFY = async (req, res) => {
   }
 };
 
-/* READ by id */
 export const getClienteFYById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -50,7 +46,6 @@ export const getClienteFYById = async (req, res) => {
   }
 };
 
-/* LIST (filtros opcionales: q, estado) */
 export const listClientesFY = async (req, res) => {
   try {
     const { q, estado } = req.query;
@@ -80,7 +75,6 @@ export const listClientesFY = async (req, res) => {
   }
 };
 
-/* UPDATE (parcial) */
 export const updateClienteFY = async (req, res) => {
   try {
     const { id } = req.params;
@@ -126,7 +120,6 @@ export const updateClienteFY = async (req, res) => {
   }
 };
 
-/* DELETE (soft) */
 export const deleteClienteFY = async (req, res) => {
   try {
     const { id } = req.params;
@@ -142,3 +135,131 @@ export const deleteClienteFY = async (req, res) => {
     return res.status(500).json({ error: "Error interno", details: err.message });
   }
 };
+
+
+function groupByCliente(rows) {
+  const byClient = new Map();
+
+  for (const r of rows) {
+    if (!byClient.has(r.id_cliente)) {
+      byClient.set(r.id_cliente, {
+        id_cliente: r.id_cliente,
+        nombre: r.nombre,
+        telefono: r.telefono,
+        email: r.email,
+        estado: r.estado,
+        creditos: [],
+        credito_total: 0,
+      });
+    }
+    const acc = byClient.get(r.id_cliente);
+
+    acc.creditos.push({
+      id_fuego_ya: r.id_fuego_ya,
+      tipo: r.tipo,
+      bolsas: Number(r.bolsas) || 0,
+      precio_unitario: r.precio_unitario != null ? Number(r.precio_unitario) : null,
+      monto: Number(r.monto) || 0,
+    });
+
+    acc.credito_total += Number(r.monto) || 0;
+  }
+
+
+  for (const v of byClient.values()) {
+    v.creditos.sort((a, b) => String(a.tipo).localeCompare(String(b.tipo)));
+    v.credito_total = Number(v.credito_total.toFixed(2));
+  }
+
+  return Array.from(byClient.values());
+}
+
+export const getCreditoClienteFuegoya = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [[exists]] = await pool.query(
+      `SELECT id_cliente FROM clientes_fuegoya WHERE id_cliente = ?`,
+      [id]
+    );
+    if (!exists) {
+      return res.status(404).json("Cliente FuegoYa no encontrado.");
+    }
+    const [rows] = await pool.query(
+      `
+      SELECT
+        cf.id_cliente,
+        cf.nombre,
+        cf.telefono,
+        cf.email,
+        cf.estado,
+        v.id_fuego_ya,
+        fy.tipo,
+        SUM(v.cantidadbolsas) AS bolsas,
+        MAX(fy.precio_unidad) AS precio_unitario,
+        SUM(COALESCE(v.precio_total, v.cantidadbolsas * fy.precio_unidad)) AS monto
+      FROM clientes_fuegoya cf
+      JOIN venta_fuegoya v ON v.id_cliente = cf.id_cliente AND v.estadopago = 'credito'
+      JOIN fuego_ya fy      ON fy.id_fuego_ya = v.id_fuego_ya
+      WHERE cf.id_cliente = ?
+      GROUP BY cf.id_cliente, v.id_fuego_ya, fy.tipo
+      ORDER BY fy.tipo ASC
+      `,
+      [id]
+    );
+
+    if (rows.length === 0) {
+      const [[cliente]] = await pool.query(
+        `SELECT id_cliente, nombre, telefono, email, estado FROM clientes_fuegoya WHERE id_cliente = ?`,
+        [id]
+      );
+      return res.status(200).json({
+        ...cliente,
+        creditos: [],
+        credito_total: 0,
+      });
+    }
+
+    const [result] = groupByCliente(rows);
+    return res.status(200).json(result);
+  } catch (err) {
+    console.error("❌ getCreditoClienteFuegoya:", err);
+    return res.status(500).json({ error: "Error interno del servidor", details: err.message });
+  }
+};
+
+export const listCreditoClientesFuegoya = async (_req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `
+      SELECT
+        cf.id_cliente,
+        cf.nombre,
+        cf.telefono,
+        cf.email,
+        cf.estado,
+        v.id_fuego_ya,
+        fy.tipo,
+        SUM(v.cantidadbolsas) AS bolsas,
+        MAX(fy.precio_unidad) AS precio_unitario,
+        SUM(COALESCE(v.precio_total, v.cantidadbolsas * fy.precio_unidad)) AS monto
+      FROM clientes_fuegoya cf
+      JOIN venta_fuegoya v ON v.id_cliente = cf.id_cliente AND v.estadopago = 'credito'
+      JOIN fuego_ya fy      ON fy.id_fuego_ya = v.id_fuego_ya
+      GROUP BY cf.id_cliente, v.id_fuego_ya, fy.tipo
+      ORDER BY cf.nombre ASC, fy.tipo ASC
+      `
+    );
+
+    if (rows.length === 0) {
+      return res.status(200).json([]);
+    }
+
+    const grouped = groupByCliente(rows);
+    return res.status(200).json(grouped);
+  } catch (err) {
+    console.error("❌ listCreditoClientesFuegoya:", err);
+    return res.status(500).json({ error: "Error interno del servidor", details: err.message });
+  }
+};
+

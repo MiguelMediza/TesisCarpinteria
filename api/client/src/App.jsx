@@ -197,16 +197,16 @@ function App() {
           element: <TipoPatines />,
          },
          {
-          path: "/clientes-fuegoya",
-          element: <FuegoYa/>
+          path: "/clientesfuegoya",
+          element: <ClientesFuegoYa/>
          },
          {
-          path: "/clientes-fuegoya/listar",
-          element: <FuegoYaList/>
+          path: "/clientesfuegoya/listar",
+          element: <ClientesFuegoYaList/>
          },
          {
-          path: "/clientes-fuegoya/:id",
-          element: <FuegoYa/>
+          path: "/clientesfuegoya/:id",
+          element: <ClientesFuegoYa/>
          },
          {
           path: "/fuegoya",

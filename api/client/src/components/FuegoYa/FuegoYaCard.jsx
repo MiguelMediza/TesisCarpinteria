@@ -1,6 +1,6 @@
 import React, { useContext } from "react";
 import { AuthContext } from "../../context/authContext";
-
+import { Image } from "antd";
 const FuegoYaCard = ({ fuegoya, onEdit, onDelete }) => {
   const { currentUser } = useContext(AuthContext);
   const { id_fuego_ya, tipo, precio_unidad, stock, foto, foto_url } = fuegoya;
@@ -10,13 +10,22 @@ const FuegoYaCard = ({ fuegoya, onEdit, onDelete }) => {
     <div className="border rounded-lg p-4 flex flex-col justify-between bg-white shadow-sm">
       <div>
         {imgSrc && (
-          <img
-            src={imgSrc}
-            alt={tipo}
-            loading="lazy"
-            className="w-full h-32 object-cover mb-4 rounded"
-            onError={(e) => { e.currentTarget.style.display = "none"; }}
-          />
+          <div className="w-full h-32 mb-4 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
+            <Image
+              src={imgSrc}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+                display: "block",
+              }}
+              loading="lazy"
+              fallback="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'/>"
+              preview={{
+                mask: <span style={{ fontSize: 12 }}>Click para ampliar</span>,
+              }}
+            />
+          </div>
         )}
 
         <p className="text-sm text-gray-600">Tipo:</p>

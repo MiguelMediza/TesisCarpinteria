@@ -50,18 +50,15 @@ const Nav = () => {
   }, []);
 
   const handleNavigate = () => {
-    // cierra todo “oficialmente”
     closeAllMenus();
-    // fallback: forzar hidden en el collapse por si Flowbite no aplicó hide()
     const el = document.getElementById("navbar-default");
     if (el && !el.classList.contains("hidden")) el.classList.add("hidden");
-    // aria del trigger
+
     const trig = document.getElementById("triggerEl");
     if (trig) trig.setAttribute("aria-expanded", "false");
   };
 
   useEffect(() => {
-    // Collapse (hamburguesa)
     const $targetEl = document.getElementById("navbar-default");
     const $triggerEl = document.getElementById("triggerEl");
     if ($targetEl && $triggerEl && !collapseRef.current) {
@@ -71,7 +68,6 @@ const Nav = () => {
       }
     }
 
-    // Registrar dropdowns sin duplicar
     const registerDD = (menuId, triggerId, opts = {}) => {
       if (dropdownsRef.current[menuId]) return;
       const trigger = document.getElementById(triggerId);
@@ -84,10 +80,8 @@ const Nav = () => {
       }
     };
 
-    // Dropdown principal Materia Prima
     registerDD("dropdownMateriaPrimaMenu", "dropdownMateriaPrimaButton");
 
-    // Sub-dropdowns
     [
       "tablas",
       "palos",
@@ -102,7 +96,6 @@ const Nav = () => {
       })
     );
 
-    // Limpieza
     return () => {
       closeAllMenus();
       dropdownsRef.current = {};
@@ -110,18 +103,14 @@ const Nav = () => {
     };
   }, []);
 
-  // Cerrar todo al cambiar de ruta
   const location = useLocation();
   useEffect(() => {
     closeAllMenus();
   }, [location.pathname]);
 
-  // Cerrar sólo cuando se hace click en enlaces, NO en toggles
   const handleNavClick = (e) => {
-    // Si el click viene de un botón que abre/cierra dropdown, no cerrar
     if (e.target.closest("[data-dropdown-toggle]")) return;
 
-    // Si es un Link/anchor de navegación, cerrar (con fallback)
     const link = e.target.closest("a[href], a[role='menuitem']");
     if (link) handleNavigate();
   };
@@ -137,7 +126,7 @@ const Nav = () => {
           onClick={handleNavigate}
           className="flex items-center space-x-3 rtl:space-x-reverse"
         >
-          <img src={imanodLogo} className="h-15" alt="Imanod Logo" />
+          <img src={imanodLogo} className="h-12" alt="Imanod Logo" />
           <span className="self-center text-2xl font-semibold whitespace-nowrap dark:text-white">
             Imanod
           </span>
@@ -152,8 +141,20 @@ const Nav = () => {
           aria-expanded="false"
         >
           <span className="sr-only">Open main menu</span>
-          <svg className="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 17 14">
-            <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M1 1h15M1 7h15M1 13h15"/>
+          <svg
+            className="w-5 h-5"
+            aria-hidden="true"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 17 14"
+          >
+            <path
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M1 1h15M1 7h15M1 13h15"
+            />
           </svg>
         </button>
 
@@ -175,7 +176,7 @@ const Nav = () => {
               </Link>
             </li>
 
-            {/* Materia Prima (dropdown doble) */}
+           
             <li className="relative">
               <button
                 id="dropdownMateriaPrimaButton"
@@ -184,8 +185,19 @@ const Nav = () => {
                 className="flex items-center justify-between w-full py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent"
               >
                 Materia Prima
-                <svg className="w-2.5 h-2.5 ms-2.5" aria-hidden="true" fill="none" viewBox="0 0 10 6">
-                  <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 4 4 4-4"/>
+                <svg
+                  className="w-2.5 h-2.5 ms-2.5"
+                  aria-hidden="true"
+                  fill="none"
+                  viewBox="0 0 10 6"
+                >
+                  <path
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="m1 1 4 4 4-4"
+                  />
                 </svg>
               </button>
 
@@ -195,13 +207,48 @@ const Nav = () => {
               >
                 <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
                   {[
-                    { key: "tablas", add: "/tablas", list: "/tablas/listar", label: "Tablas" },
-                    { key: "palos", add: "/palos", list: "/palos/listar", label: "Palos" },
-                    { key: "clavos", add: "/clavos", list: "/clavos/listar", label: "Clavos" },
-                    { key: "fibras", add: "/fibras", list: "/fibras/listar", label: "Fibras" },
-                    { key: "tipostablas", add: "/tipotablas", list: "/tipotablas/listar", label: "Tipos de tablas" },
-                    { key: "tipostacos", add: "/tipotacos", list: "/tipotacos/listar", label: "Tipos de tacos" },
-                    { key: "tipospatines", add: "/tipopatines", list: "/tipopatines/listar", label: "Tipos de patines" },
+                    {
+                      key: "tablas",
+                      add: "/tablas",
+                      list: "/tablas/listar",
+                      label: "Tablas",
+                    },
+                    {
+                      key: "palos",
+                      add: "/palos",
+                      list: "/palos/listar",
+                      label: "Palos",
+                    },
+                    {
+                      key: "clavos",
+                      add: "/clavos",
+                      list: "/clavos/listar",
+                      label: "Clavos",
+                    },
+                    {
+                      key: "fibras",
+                      add: "/fibras",
+                      list: "/fibras/listar",
+                      label: "Fibras",
+                    },
+                    {
+                      key: "tipostablas",
+                      add: "/tipotablas",
+                      list: "/tipotablas/listar",
+                      label: "Tipos de tablas",
+                    },
+                    {
+                      key: "tipostacos",
+                      add: "/tipotacos",
+                      list: "/tipotacos/listar",
+                      label: "Tipos de tacos",
+                    },
+                    {
+                      key: "tipospatines",
+                      add: "/tipopatines",
+                      list: "/tipopatines/listar",
+                      label: "Tipos de patines",
+                    },
                   ].map((m) => (
                     <li className="relative" key={m.key}>
                       <button
@@ -212,8 +259,19 @@ const Nav = () => {
                         className="flex items-center justify-between w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
                       >
                         {m.label}
-                        <svg className="w-2.5 h-2.5 ms-2.5" aria-hidden="true" fill="none" viewBox="0 0 10 6">
-                          <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 1 4 4 4-4"/>
+                        <svg
+                          className="w-2.5 h-2.5 ms-2.5"
+                          aria-hidden="true"
+                          fill="none"
+                          viewBox="0 0 10 6"
+                        >
+                          <path
+                            stroke="currentColor"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="m1 1 4 4 4-4"
+                          />
                         </svg>
                       </button>
 
@@ -249,31 +307,121 @@ const Nav = () => {
             </li>
 
             {/* Otros menús */}
-            <li><Link to="/proveedores" onClick={handleNavigate} className="block py-2 px-3 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500">Proveedores</Link></li>
-            <li><Link to="/encargos" onClick={handleNavigate} className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500">Encargos</Link></li>
-            <li><Link to="/prototipos" onClick={handleNavigate} className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500">Prototipos</Link></li>
-            <li><Link to="/pedidos" onClick={handleNavigate} className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500">Pedidos</Link></li>
-            <li><Link to="/clientes" onClick={handleNavigate} className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500">Clientes</Link></li>
+            <li>
+              <Link
+                to="/proveedores"
+                onClick={handleNavigate}
+                className="block py-2 px-3 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
+              >
+                Proveedores
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/encargos"
+                onClick={handleNavigate}
+                className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
+              >
+                Encargos
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/prototipos"
+                onClick={handleNavigate}
+                className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
+              >
+                Prototipos
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/pedidos"
+                onClick={handleNavigate}
+                className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
+              >
+                Pedidos
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/clientes"
+                onClick={handleNavigate}
+                className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
+              >
+                Clientes
+              </Link>
+            </li>
 
             {currentUser?.tipo !== "encargado" && (
-              <li><Link to="/ventas" onClick={handleNavigate} className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500">Ventas</Link></li>
+              <li>
+                <Link
+                  to="/ventas"
+                  onClick={handleNavigate}
+                  className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
+                >
+                  Ventas
+                </Link>
+              </li>
             )}
-            <li><Link to="/clientes-fuegoya" onClick={handleNavigate} className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500">Clientes Fuego Ya</Link></li>
-            <li><Link to="/fuegoya" onClick={handleNavigate} className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500">Fuego Ya</Link></li>
-            <li><Link to="/ventafuegoya" onClick={handleNavigate} className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500">Venta FuegoYa</Link></li>
-            <li><Link to="/pellets" onClick={handleNavigate} className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500">Pellets</Link></li>
+            <li>
+              <Link
+                to="/pellets"
+                onClick={handleNavigate}
+                className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
+              >
+                Pellets
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/clientesfuegoya/listar"
+                onClick={handleNavigate}
+                className="block px-3 py-1 rounded border border-green-600 text-green-700 hover:bg-green-50 hover:text-green-800 transition
+               dark:text-green-300 dark:border-green-400 dark:hover:bg-green-900/30 dark:hover:text-green-200"
+              >
+                Clientes Fuego Ya
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/fuegoya/listar"
+                onClick={handleNavigate}
+                className="block px-3 py-1 rounded border border-green-600 text-green-700 hover:bg-green-50 hover:text-green-800 transition
+               dark:text-green-300 dark:border-green-400 dark:hover:bg-green-900/30 dark:hover:text-green-200"
+              >
+                Fuego Ya
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/ventafuegoya/listar"
+                onClick={handleNavigate}
+                className="block px-3 py-1 rounded border border-green-600 text-green-700 hover:bg-green-50 hover:text-green-800 transition
+               dark:text-green-300 dark:border-green-400 dark:hover:bg-green-900/30 dark:hover:text-green-200"
+              >
+                Venta FuegoYa
+              </Link>
+            </li>
+
 
             <li>
               {currentUser && (
                 <button
-                  onClick={() => {
-                    handleNavigate();
-                    logout();
+                  type="button"
+                  onClick={async (e) => {
+                    e.stopPropagation();        
+                    try {
+                      await logout();           
+                    } finally {
+                      handleNavigate();         
+                    }
                   }}
                   className="py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded transition font-semibold shadow-sm focus:outline-none focus:ring-2 md:ml-10 focus:ring-red-400 focus:ring-opacity-50"
                 >
                   Cerrar sesión
                 </button>
+
               )}
             </li>
           </ul>

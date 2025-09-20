@@ -5,7 +5,7 @@ import { r2Delete } from "../lib/r2.js";
 const PAGO_ESTADOS = new Set(["credito", "pago"]);
 const isValidPagoEstado = (v) => !v || PAGO_ESTADOS.has(v);
 
-// R2 helpers
+
 const PUBLIC_BASE = (process.env.R2_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
 const urlFromKey = (key) => (key ? `${PUBLIC_BASE}/${key}` : null);
 
@@ -28,7 +28,7 @@ export const createVentaFuegoya = async (req, res) => {
     const {
       fecha_realizada,
       precio_total,
-      id_cliente,
+      id_cliente,       
       id_fuego_ya,
       cantidadbolsas,
       comentarios,
@@ -36,7 +36,6 @@ export const createVentaFuegoya = async (req, res) => {
       fechapago,
     } = req.body;
 
-    // req.fileR2 = { key, url } si hay imagen subida a R2
     const fotoKey = req.fileR2?.key || null;
 
     // Validaciones
@@ -60,20 +59,18 @@ export const createVentaFuegoya = async (req, res) => {
       return res.status(400).json({ error: "cantidadbolsas debe ser un entero >= 0." });
     }
 
-    // Verificar cliente si vino
     if (id_cliente) {
       const [cli] = await pool.query(
-        `SELECT id_cliente FROM clientes WHERE id_cliente = ?`,
+        `SELECT id_cliente FROM clientes_fuegoya WHERE id_cliente = ?`,
         [id_cliente]
       );
       if (cli.length === 0) {
-        return res.status(400).json({ error: "El cliente seleccionado no existe." });
+        return res.status(400).json({ error: "El cliente (FuegoYa) seleccionado no existe." });
       }
     }
 
     await conn.beginTransaction();
 
-    // Verificar fuego_ya + stock (FOR UPDATE)
     const [[fy]] = await conn.query(
       `SELECT id_fuego_ya, stock FROM fuego_ya WHERE id_fuego_ya = ? FOR UPDATE`,
       [id_fuego_ya]
@@ -102,14 +99,13 @@ export const createVentaFuegoya = async (req, res) => {
         id_cliente || null,
         parseInt(id_fuego_ya, 10),
         cb,
-        fotoKey,                 // << guarda KEY de R2
+        fotoKey,                
         comentarios || null,
         estadopago || null,
         fechapagoSQL,
       ]
     );
 
-    // Descontar stock
     await conn.query(
       `UPDATE fuego_ya SET stock = stock - ? WHERE id_fuego_ya = ?`,
       [cb, id_fuego_ya]
@@ -141,15 +137,12 @@ export const getVentaFuegoyaById = async (req, res) => {
       `
       SELECT
         v.*,
-        c.es_empresa,
-        c.nombre           AS nombre_cliente,
-        c.apellido         AS apellido_cliente,
-        c.nombre_empresa   AS empresa_cliente,
-        c.estado           AS cliente_activo,
-        fy.tipo            AS fuego_ya_tipo
+        cf.nombre        AS cf_nombre,
+        cf.estado        AS cf_activo,
+        fy.tipo          AS fuego_ya_tipo
       FROM venta_fuegoya v
-      LEFT JOIN clientes c  ON c.id_cliente = v.id_cliente
-      LEFT JOIN fuego_ya fy ON fy.id_fuego_ya = v.id_fuego_ya
+      LEFT JOIN clientes_fuegoya cf ON cf.id_cliente = v.id_cliente
+      LEFT JOIN fuego_ya        fy ON fy.id_fuego_ya = v.id_fuego_ya
       WHERE v.id_ventaFuegoya = ?
       `,
       [id]
@@ -158,9 +151,7 @@ export const getVentaFuegoyaById = async (req, res) => {
     if (rows.length === 0) return res.status(404).json("Venta Fuegoya no encontrada!");
 
     const r = rows[0];
-    const cliente_display = r?.es_empresa
-      ? (r?.empresa_cliente || `Empresa #${r.id_cliente}`)
-      : [r?.nombre_cliente, r?.apellido_cliente].filter(Boolean).join(" ") || (r.id_cliente ? `Cliente #${r.id_cliente}` : "Sin cliente");
+    const cliente_display = r?.cf_nombre || (r.id_cliente ? `Cliente #${r.id_cliente}` : "Sin cliente");
 
     return res.status(200).json({
       ...r,
@@ -181,19 +172,20 @@ export const updateVentaFuegoya = async (req, res) => {
     const {
       fecha_realizada,
       precio_total,
-      id_cliente,
-      id_fuego_ya,      // puede cambiar el fuego ya
-      cantidadbolsas,   // puede cambiar cantidad
+      id_cliente,      
+      id_fuego_ya,     
+      cantidadbolsas,  
       comentarios,
       estadopago,
       fechapago,
+      borrar_foto      
     } = req.body;
 
     const newFotoKey = req.fileR2?.key || null;
 
     await conn.beginTransaction();
 
-    // Row actual de la venta (FOR UPDATE)
+    
     const [[curr]] = await conn.query(
       `SELECT id_fuego_ya, cantidadbolsas, foto FROM venta_fuegoya WHERE id_ventaFuegoya = ? FOR UPDATE`,
       [id]
@@ -206,7 +198,7 @@ export const updateVentaFuegoya = async (req, res) => {
     const oldCB = parseInt(curr.cantidadbolsas, 10) || 0;
     const oldFotoKey = curr.foto || null;
 
-    // Validaciones
+    
     if (precio_total != null && isNaN(parseFloat(precio_total))) {
       await conn.rollback();
       return res.status(400).json({ error: "precio_total debe ser numérico si se envía." });
@@ -224,22 +216,21 @@ export const updateVentaFuegoya = async (req, res) => {
     }
     if (id_cliente) {
       const [[cli]] = await conn.query(
-        `SELECT id_cliente FROM clientes WHERE id_cliente = ?`,
+        `SELECT id_cliente FROM clientes_fuegoya WHERE id_cliente = ?`,
         [id_cliente]
       );
       if (!cli) {
         await conn.rollback();
-        return res.status(400).json({ error: "El cliente especificado no existe." });
+        return res.status(400).json({ error: "El cliente (FuegoYa) especificado no existe." });
       }
     }
 
-    // Nuevos valores efectivos
+    
     const newFY = (id_fuego_ya !== undefined && id_fuego_ya !== null) ? parseInt(id_fuego_ya, 10) : oldFY;
     const newCB = (cantidadbolsas !== undefined && cantidadbolsas !== null) ? parseInt(cantidadbolsas, 10) : oldCB;
 
-    // Ajuste de stock si cambió id_fuego_ya o cantidad
+    
     if (newFY !== oldFY) {
-      // Lock ambos
       const [[fyOld]] = await conn.query(
         `SELECT id_fuego_ya, stock FROM fuego_ya WHERE id_fuego_ya = ? FOR UPDATE`,
         [oldFY]
@@ -252,18 +243,17 @@ export const updateVentaFuegoya = async (req, res) => {
         await conn.rollback();
         return res.status(400).json({ error: "El nuevo fuego_ya especificado no existe." });
       }
-      // devolver stock al viejo
+      
       if (oldCB > 0) {
         await conn.query(`UPDATE fuego_ya SET stock = stock + ? WHERE id_fuego_ya = ?`, [oldCB, oldFY]);
       }
-      // descontar del nuevo (validar)
+      
       if ((fyNew.stock ?? 0) < newCB) {
         await conn.rollback();
         return res.status(400).json({ error: "Stock insuficiente en el nuevo Fuego Ya." });
       }
       await conn.query(`UPDATE fuego_ya SET stock = stock - ? WHERE id_fuego_ya = ?`, [newCB, newFY]);
     } else if (newCB !== oldCB) {
-      // Misma FY, ajustar delta
       const delta = newCB - oldCB;
       if (delta !== 0) {
         const [[fy]] = await conn.query(
@@ -271,20 +261,17 @@ export const updateVentaFuegoya = async (req, res) => {
           [oldFY]
         );
         if (delta > 0) {
-          // necesito más stock
           if ((fy.stock ?? 0) < delta) {
             await conn.rollback();
             return res.status(400).json({ error: "Stock insuficiente de Fuego Ya." });
           }
           await conn.query(`UPDATE fuego_ya SET stock = stock - ? WHERE id_fuego_ya = ?`, [delta, oldFY]);
         } else {
-          // devuelvo stock
           await conn.query(`UPDATE fuego_ya SET stock = stock + ? WHERE id_fuego_ya = ?`, [-delta, oldFY]);
         }
       }
     }
 
-    // Armar UPDATE dinámico
     const sets = [];
     const vals = [];
 
@@ -296,7 +283,14 @@ export const updateVentaFuegoya = async (req, res) => {
     if (comentarios !== undefined)     { sets.push("comentarios = ?");     vals.push(comentarios || null); }
     if (estadopago !== undefined)      { sets.push("estadopago = ?");      vals.push(estadopago || null); }
     if (fechapago !== undefined)       { sets.push("fechapago = ?");       vals.push(toMySQLDateTime(fechapago)); }
-    if (newFotoKey !== null)           { sets.push("foto = COALESCE(?, foto)"); vals.push(newFotoKey); }
+
+    const wantDeletePhoto = String(borrar_foto || "") === "1";
+    if (newFotoKey !== null) {
+      sets.push("foto = COALESCE(?, foto)");
+      vals.push(newFotoKey);
+    } else if (wantDeletePhoto) {
+      sets.push("foto = NULL");
+    }
 
     if (sets.length === 0) {
       await conn.rollback();
@@ -310,15 +304,15 @@ export const updateVentaFuegoya = async (req, res) => {
 
     await conn.commit();
 
-    // borrar imagen vieja en R2 si se reemplazó
-    if (newFotoKey && oldFotoKey && newFotoKey !== oldFotoKey) {
+    if ((newFotoKey && oldFotoKey && newFotoKey !== oldFotoKey) || (wantDeletePhoto && oldFotoKey)) {
       try { await r2Delete(oldFotoKey); } catch {}
     }
 
+    const finalKey = wantDeletePhoto ? null : (newFotoKey || oldFotoKey || null);
     return res.status(200).json({
       message: "Venta Fuegoya actualizada correctamente!",
-      foto_key: newFotoKey || oldFotoKey || null,
-      foto_url: urlFromKey(newFotoKey || oldFotoKey),
+      foto_key: finalKey,
+      foto_url: urlFromKey(finalKey),
     });
   } catch (err) {
     await conn.rollback();
@@ -336,8 +330,6 @@ export const deleteVentaFuegoya = async (req, res) => {
     const { id } = req.params;
 
     await conn.beginTransaction();
-
-    // Leer venta (FOR UPDATE)
     const [[row]] = await conn.query(
       `SELECT id_fuego_ya, cantidadbolsas, foto FROM venta_fuegoya WHERE id_ventaFuegoya = ? FOR UPDATE`,
       [id]
@@ -348,7 +340,6 @@ export const deleteVentaFuegoya = async (req, res) => {
     }
     const addBack = parseInt(row.cantidadbolsas, 10) || 0;
 
-    // Devolver stock (opcional pero sano)
     if (row.id_fuego_ya && addBack > 0) {
       await conn.query(
         `UPDATE fuego_ya SET stock = stock + ? WHERE id_fuego_ya = ?`,
@@ -356,11 +347,9 @@ export const deleteVentaFuegoya = async (req, res) => {
       );
     }
 
-    // Borrar venta
     await conn.query(`DELETE FROM venta_fuegoya WHERE id_ventaFuegoya = ?`, [id]);
     await conn.commit();
 
-    // Borrar imagen en R2
     if (row.foto) {
       try { await r2Delete(row.foto); } catch {}
     }
@@ -390,22 +379,19 @@ export const listVentaFuegoya = async (req, res) => {
     }
     if (cliente && cliente.trim()) {
       const like = `%${cliente.trim()}%`;
-      where.push("(c.nombre_empresa LIKE ? OR c.nombre LIKE ? OR c.apellido LIKE ?)");
-      params.push(like, like, like);
+      where.push("(cf.nombre LIKE ?)");
+      params.push(like);
     }
 
     const sql = `
       SELECT
         v.*,
-        c.es_empresa,
-        c.nombre           AS nombre_cliente,
-        c.apellido         AS apellido_cliente,
-        c.nombre_empresa   AS empresa_cliente,
-        c.estado           AS cliente_activo,
-        fy.tipo            AS fuego_ya_tipo
+        cf.nombre  AS cf_nombre,
+        cf.estado  AS cf_activo,
+        fy.tipo    AS fuego_ya_tipo
       FROM venta_fuegoya v
-      LEFT JOIN clientes  c  ON c.id_cliente = v.id_cliente
-      LEFT JOIN fuego_ya  fy ON fy.id_fuego_ya = v.id_fuego_ya
+      LEFT JOIN clientes_fuegoya cf ON cf.id_cliente = v.id_cliente
+      LEFT JOIN fuego_ya        fy ON fy.id_fuego_ya = v.id_fuego_ya
       ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
       ORDER BY v.fecha_realizada DESC, v.id_ventaFuegoya DESC
     `;
@@ -413,12 +399,9 @@ export const listVentaFuegoya = async (req, res) => {
     const [rows] = await pool.query(sql, params);
 
     const mapped = rows.map((r) => {
-      const display = r?.es_empresa
-        ? (r?.empresa_cliente || (r.id_cliente ? `Empresa #${r.id_cliente}` : "Sin cliente"))
-        : [r?.nombre_cliente, r?.apellido_cliente].filter(Boolean).join(" ") || (r.id_cliente ? `Cliente #${r.id_cliente}` : "Sin cliente");
-
+      const display = r?.cf_nombre || (r.id_cliente ? `Cliente #${r.id_cliente}` : "Sin cliente");
       const cliente_eliminado = r?.id_cliente
-        ? (r?.cliente_activo === 0 || r?.cliente_activo === false)
+        ? (r?.cf_activo === 0 || r?.cf_activo === false)
         : true;
 
       return {
@@ -436,12 +419,12 @@ export const listVentaFuegoya = async (req, res) => {
   }
 };
 
-/* =========== CHANGE ESTADO PAGO (con fechapago auto) =========== */
+/* =========== CHANGE ESTADO PAGO  =========== */
 export const changeEstadoPagoVentaFuegoya = async (req, res) => {
   const conn = await pool.getConnection();
   try {
-    const { id } = req.params;        // id_ventaFuegoya
-    const { estadopago } = req.body;  // "credito" | "pago"
+    const { id } = req.params;        
+    const { estadopago } = req.body;  
 
     if (!isValidPagoEstado(estadopago)) {
       conn.release();
