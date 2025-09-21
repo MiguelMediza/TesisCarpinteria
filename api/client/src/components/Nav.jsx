@@ -373,6 +373,7 @@ const Nav = () => {
                 Pellets
               </Link>
             </li>
+            {currentUser?.tipo !== "encargado" && (
             <li>
               <Link
                 to="/clientesfuegoya/listar"
@@ -383,6 +384,8 @@ const Nav = () => {
                 Clientes Fuego Ya
               </Link>
             </li>
+            )}
+            {currentUser?.tipo !== "encargado" && (
             <li>
               <Link
                 to="/fuegoya/listar"
@@ -393,6 +396,8 @@ const Nav = () => {
                 Fuego Ya
               </Link>
             </li>
+            )}
+            {currentUser?.tipo !== "encargado" && (
             <li>
               <Link
                 to="/ventafuegoya/listar"
@@ -403,8 +408,7 @@ const Nav = () => {
                 Venta FuegoYa
               </Link>
             </li>
-
-
+            )}
             <li>
               {currentUser && (
                 <button

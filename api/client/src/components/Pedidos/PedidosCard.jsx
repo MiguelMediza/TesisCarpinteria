@@ -1,7 +1,7 @@
 import React, { useContext, useMemo, useState } from "react";
 import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
-
+import PedidosPDF from "./PedidosPDF";
 const ESTADOS = ["pendiente", "en_produccion", "listo", "entregado", "cancelado"];
 
 const badgeClassesByEstado = (estado) => {
@@ -21,7 +21,6 @@ const badgeClassesByEstado = (estado) => {
   }
 };
 
-// coloriza el SELECT según el estado
 const selectClassesByEstado = (estado) => {
   switch (estado) {
     case "pendiente":
@@ -62,7 +61,6 @@ const PedidosCard = ({ pedido, onEdit, onDelete, onEstadoChanged }) => {
     items = [],
   } = pedido;
 
-  // estado local para mostrar cambios y spinner
   const [estado, setEstado] = useState(pedido.estado || "pendiente");
   const [changing, setChanging] = useState(false);
   const estadoClasses = useMemo(() => badgeClassesByEstado(estado), [estado]);
@@ -71,7 +69,6 @@ const PedidosCard = ({ pedido, onEdit, onDelete, onEstadoChanged }) => {
     const nuevo = e.target.value;
     if (nuevo === estado) return;
 
-    // optimistic UI
     const anterior = estado;
     setEstado(nuevo);
     setChanging(true);
@@ -98,12 +95,21 @@ const PedidosCard = ({ pedido, onEdit, onDelete, onEstadoChanged }) => {
             <p className="text-lg font-semibold text-gray-800">Pedido #{id_pedido}</p>
             <p className="text-sm text-gray-600">{cliente_display || "Cliente sin nombre"}</p>
           </div>
-          <span
-            className={`text-xs px-2 py-1 rounded-full ${estadoClasses}`}
-            title={`Estado: ${estado || "sin estado"}`}
-          >
-            {estado.replace("_", " ")}
-          </span>
+
+          <div className="flex items-center gap-2">
+            <PedidosPDF
+              pedido={pedido}
+            >
+            </PedidosPDF>
+
+            {/* Badge de estado */}
+            <span
+              className={`text-xs px-2 py-1 rounded-full ${estadoClasses}`}
+              title={`Estado: ${estado || "sin estado"}`}
+            >
+              {estado.replace("_", " ")}
+            </span>
+          </div>
         </div>
 
         {/* Fechas */}
@@ -152,7 +158,6 @@ const PedidosCard = ({ pedido, onEdit, onDelete, onEstadoChanged }) => {
           </span>
         </div>
 
-        {/* Comentario debajo (muestra sólo si hay texto) */}
         {(it.comentarios ?? "").toString().trim() && (
           <p className="mt-1 ml-6 text-xs text-gray-600 italic">
             {it.comentarios}
@@ -166,7 +171,6 @@ const PedidosCard = ({ pedido, onEdit, onDelete, onEstadoChanged }) => {
 </ul>
 
 
-        {/* Precio solo admin */}
         {currentUser?.tipo === "admin" && (
           <div className="mt-3">
             <p className="text-sm text-gray-600">Precio total (materiales actuales):</p>
@@ -175,9 +179,7 @@ const PedidosCard = ({ pedido, onEdit, onDelete, onEstadoChanged }) => {
         )}
       </div>
 
-      {/* Acciones */}
       <div className="mt-4 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-end">
-        {/* Cambiar estado (auto-guardado) */}
         <div className="flex items-center gap-2 sm:mr-auto">
           <label className="text-sm text-gray-700">Estado:</label>
           <select

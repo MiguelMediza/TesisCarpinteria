@@ -94,7 +94,7 @@ const PrototipoPalletCard = ({ prototipo, onEdit, onDelete }) => {
             )}
             {(cliente_nombre || cliente_empresa) && (
               <p className="text-sm text-gray-600">
-                Cliente:&nbsp;
+                Cliente:
                 <span className="text-gray-800">
                   {cliente_empresa || `${cliente_nombre || ""} ${cliente_apellido || ""}`.trim()}
                 </span>
