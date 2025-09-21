@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { api } from "../../api";
 import { Link, useNavigate } from "react-router-dom";
-import PedidosCard from "./PedidosCard";           // <- el card que ya tienes/creaste
+import PedidosCard from "./PedidosCard";
 import DeleteConfirm from "../Modals/DeleteConfirm";
 
 const ESTADOS = ["pendiente","en_produccion","listo","entregado","cancelado"];
@@ -11,19 +11,16 @@ const PedidosList = () => {
   const [clientes, setClientes] = useState([]);
   const [error, setError] = useState("");
 
-  // Filtros UI
   const [q, setQ] = useState("");
   const [estado, setEstado] = useState("");
   const [idCliente, setIdCliente] = useState("");
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
 
-  // UI eliminar
   const [toDelete, setToDelete] = useState(null);
 
   const navigate = useNavigate();
 
-  // Cargar clientes para el filtro
   useEffect(() => {
     (async () => {
       try {
@@ -44,7 +41,7 @@ const PedidosList = () => {
       if (desde) params.append("desde", desde);
       if (hasta) params.append("hasta", hasta);
 
-      const url = `/pedidos/listar${params.toString() ? `?${params.toString()}` : ""}`;
+      const url = `/pedidos/listarfull${params.toString() ? `?${params.toString()}` : ""}`;
       const res = await api.get(url);
       setPedidos(res.data || []);
       setError("");
@@ -77,16 +74,14 @@ const PedidosList = () => {
     }
   };
 
-  // Cambiar estado (desde el Card)
+
   const handleChangeStatus = async (id_pedido, newStatus) => {
     try {
-      // Optimista
       setPedidos(curr => curr.map(p => p.id_pedido === id_pedido ? { ...p, estado: newStatus } : p));
       await api.put(`/pedidos/${id_pedido}/estado`, { estado: newStatus });
     } catch (e) {
       console.error(e);
       setError("No se pudo cambiar el estado del pedido.");
-      // recargar para volver a estado real del backend
       fetchPedidos();
     }
   };

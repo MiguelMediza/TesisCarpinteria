@@ -1,14 +1,28 @@
+
 import { Router } from "express";
-import { pool } from "../db.js";
 import { listStockBajo } from "../controllers/stockBajo.js";
 const router = Router();
 
-router.get('/ping', async (req, res) => {
-    const result = await pool.query('SELECT * from proveedores')
-    res.json(result[0])
-});
-
 router.get("/stockbajo", listStockBajo);
 
+// Proxy de imágenes para PDF
+router.get("/files/proxy", async (req, res) => {
+  try {
+    const { url } = req.query;
+    if (!url) return res.status(400).send("Missing url");
+    if (!/^https?:\/\//i.test(url)) return res.status(400).send("Invalid url");
+
+    const r = await fetch(url, { redirect: "follow" });
+    if (!r.ok) return res.status(r.status).send("Fetch failed");
+
+    res.setHeader("Content-Type", r.headers.get("content-type") || "application/octet-stream");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    const buf = Buffer.from(await r.arrayBuffer());
+    res.status(200).send(buf);
+  } catch (e) {
+    console.error("Image proxy error:", e);
+    res.status(500).send("Proxy error");
+  }
+});
 
 export default router;

@@ -61,7 +61,6 @@ const PrototipoPalletCard = ({ prototipo, onEdit, onDelete }) => {
     return () => { mounted = false; };
   }, [id_prototipo]);
 
-  // Agrupamos por categoría para mostrar prolijo
   const grouped = useMemo(() => {
     const acc = { tabla: [], taco: [], clavo: [], fibra: [], patin: [] };
     for (const item of bomDetalle) {

@@ -1,5 +1,5 @@
 import { createContext, useEffect, useState } from "react";
-import { api } from "../api"; // <- importa el cliente común
+import { api } from "../api"; 
 
 export const AuthContext = createContext();
 
@@ -16,7 +16,6 @@ export const AuthContextProvider = ({ children }) => {
   const login = async (inputs) => {
     const res = await api.post("/usuarios/login", inputs);
     setCurrentUser(res.data);
-    console.log("Usuario logueado:", res.data);
   };
 
   const logout = async () => {

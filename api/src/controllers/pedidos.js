@@ -1,6 +1,5 @@
 import { pool } from "../db.js";
 
-/* -------------------- Helpers & Validaciones -------------------- */
 const ESTADOS = new Set([
   "pendiente",
   "en_produccion",
@@ -12,15 +11,9 @@ const ESTADOS = new Set([
 const isValidEstado = (v) => ESTADOS.has(v);
 const isValidDate = (s) => !s || !Number.isNaN(new Date(s).getTime());
 
-/**
- * Recalcula y actualiza pedidos.precio_total en base a los ítems del pedido
- * usando la view vw_prototipo_costo_total (costos actuales de materiales).
- *
- * Fórmula:
- *   precio_total = SUM( cantidad_pallets * vw.costo_materiales ) por cada prototipo del pedido
- */
+
 const recalcPrecioTotal = async (conn, id_pedido) => {
-  // Sumatoria por ítem con costos vigentes del prototipo
+
   const [sumRows] = await conn.query(
     `
     SELECT
@@ -43,17 +36,6 @@ const recalcPrecioTotal = async (conn, id_pedido) => {
   return total;
 };
 
-/* ========================= CREATE ============================== */
-/**
- * POST /api/src/pedidos/agregar
- * Body:
- * {
- *   id_cliente, fecha_realizado, fecha_de_entrega?, estado?, comentarios?,
- *   items?: [
- *     { id_prototipo, cantidad_pallets, numero_lote?, numero_tratamiento?, comentarios? }, ...
- *   ]
- * }
- */
 export const createPedido = async (req, res) => {
   const conn = await pool.getConnection();
   try {
@@ -85,7 +67,6 @@ export const createPedido = async (req, res) => {
 
     await conn.beginTransaction();
 
-    // Insert cabecera
     const [ins] = await conn.query(
       `
       INSERT INTO pedidos
@@ -103,7 +84,6 @@ export const createPedido = async (req, res) => {
 
     const id_pedido = ins.insertId;
 
-    // Insert items (si vienen)
     if (Array.isArray(items) && items.length > 0) {
       const values = [];
       for (const it of items) {
@@ -143,7 +123,6 @@ export const createPedido = async (req, res) => {
       );
     }
 
-    // Recalcular total
     const total = await recalcPrecioTotal(conn, id_pedido);
 
     await conn.commit();
@@ -163,11 +142,6 @@ export const createPedido = async (req, res) => {
   }
 };
 
-/* ====================== GET BY ID ============================== */
-/**
- * GET /api/src/pedidos/:id
- * Devuelve cabecera, cliente y los ítems.
- */
 export const getPedidoById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -237,7 +211,6 @@ export const listPedidos = async (req, res) => {
     const isValidEstado = (v) => ESTADOS.has(v);
     const isValidDate   = (s) => !s || !Number.isNaN(new Date(s).getTime());
 
-    // 🔹 siempre ocultar eliminados
     where.push("p.eliminado = FALSE");
 
     if (estado && isValidEstado(estado)) {
@@ -258,7 +231,6 @@ export const listPedidos = async (req, res) => {
       params.push(like, like, like);
     }
 
-    //Cabeceras
     const [pedidos] = await pool.query(
       `
       SELECT
@@ -272,7 +244,6 @@ export const listPedidos = async (req, res) => {
       params
     );
 
-    //Por cada pedido, traer sus ítems (con costo actual y subtotal)
     for (const ped of pedidos) {
       const [items] = await pool.query(
         `
@@ -301,7 +272,6 @@ export const listPedidos = async (req, res) => {
         ? ped.nombre_empresa
         : [ped.nombre, ped.apellido].filter(Boolean).join(" ");
 
-      // Recalcular precio total si hay ítems
       ped.precio_total_calculado = items.reduce((acc, it) => acc + Number(it.subtotal || 0), 0);
     }
 
@@ -482,7 +452,6 @@ export const deletePedido = async (req, res) => {
 };
 
 
-// Cambiar estado de un pedido y reflejar en entregas_transporte
 export const changeEstadoPedido = async (req, res) => {
   const conn = await pool.getConnection();
   try {
@@ -494,7 +463,6 @@ export const changeEstadoPedido = async (req, res) => {
       return res.status(400).json("Estado inválido.");
     }
 
-    // Validar existencia y que NO esté eliminado
     const [ex] = await conn.query(
       `SELECT 1 FROM pedidos WHERE id_pedido = ? AND eliminado = FALSE`,
       [id]
@@ -506,7 +474,6 @@ export const changeEstadoPedido = async (req, res) => {
 
     await conn.beginTransaction();
 
-    // Actualizamos el estado del pedido (solo si no está eliminado)
     await conn.query(
       `UPDATE pedidos SET estado = ? WHERE id_pedido = ? AND eliminado = FALSE`,
       [estado, id]
@@ -541,6 +508,100 @@ export const changeEstadoPedido = async (req, res) => {
       .json({ error: "Internal server error", details: err.message });
   } finally {
     conn.release();
+  }
+};
+
+
+
+export const listPedidosFull = async (req, res) => {
+  try {
+    const { estado, desde, hasta, cliente } = req.query;
+
+    const ESTADOS = new Set(["pendiente","en_produccion","listo","entregado","cancelado"]);
+    const isValidEstado = (v) => ESTADOS.has(v);
+    const isValidDate   = (s) => !s || !Number.isNaN(new Date(s).getTime());
+
+    const where = ["p.eliminado = FALSE"];
+    const params = [];
+
+    if (estado && isValidEstado(estado)) { where.push("p.estado = ?"); params.push(estado); }
+    if (desde && isValidDate(desde))     { where.push("p.fecha_realizado >= ?"); params.push(desde); }
+    if (hasta && isValidDate(hasta))     { where.push("p.fecha_realizado <= ?"); params.push(hasta); }
+    if (cliente && cliente.trim()) {
+      const like = `%${cliente.trim()}%`;
+      where.push("(c.nombre_empresa LIKE ? OR c.nombre LIKE ? OR c.apellido LIKE ?)");
+      params.push(like, like, like);
+    }
+
+    const sql = `
+      SELECT
+        p.id_pedido, p.estado, p.fecha_realizado, p.fecha_de_entrega,
+        p.precio_total, p.comentarios, p.id_cliente,
+        c.es_empresa, c.nombre, c.apellido, c.nombre_empresa,
+
+        /* Agrupo ítems en JSON, evitando nulls de los LEFT JOIN */
+        JSON_ARRAYAGG(
+          IF(
+            ppp.id_prototipo IS NULL,
+            NULL,
+            JSON_OBJECT(
+              'id_prototipo',       ppp.id_prototipo,
+              'cantidad_pallets',   ppp.cantidad_pallets,
+              'numero_lote',        ppp.numero_lote,
+              'numero_tratamiento', ppp.numero_tratamiento,
+              'comentarios',        ppp.comentarios,
+              'prototipo_titulo',   pp.titulo,
+              'medidas',            pp.medidas,
+              'prototipo_foto',     pp.foto,
+              'costo_materiales',   COALESCE(v.costo_materiales, 0),
+              'subtotal',           ppp.cantidad_pallets * COALESCE(v.costo_materiales, 0)
+            )
+          )
+        ) AS items_json,
+
+        /* Total calculado con costos actuales */
+        SUM(ppp.cantidad_pallets * COALESCE(v.costo_materiales, 0)) AS precio_total_calculado
+      FROM pedidos p
+      LEFT JOIN clientes c ON c.id_cliente = p.id_cliente
+      LEFT JOIN pedido_prototipo_pallet ppp ON ppp.id_pedido = p.id_pedido
+      LEFT JOIN prototipo_pallet pp ON pp.id_prototipo = ppp.id_prototipo
+      LEFT JOIN vw_prototipo_costo_total v ON v.id_prototipo = ppp.id_prototipo
+      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
+      GROUP BY p.id_pedido
+      ORDER BY p.fecha_realizado DESC, p.id_pedido DESC
+    `;
+
+    const [rows] = await pool.query(sql, params);
+
+    const mapped = rows.map((r) => {
+      let items = [];
+      try {
+        items = Array.isArray(r.items_json)
+          ? r.items_json
+          : JSON.parse(r.items_json || "[]");
+      } catch { items = []; }
+      items = items.filter(Boolean); 
+
+      return {
+        id_pedido: r.id_pedido,
+        estado: r.estado,
+        fecha_realizado: r.fecha_realizado,
+        fecha_de_entrega: r.fecha_de_entrega,
+        precio_total: r.precio_total,
+        comentarios: r.comentarios,
+        id_cliente: r.id_cliente,
+        cliente_display: r.es_empresa
+          ? r.nombre_empresa
+          : [r.nombre, r.apellido].filter(Boolean).join(" "),
+        items,
+        precio_total_calculado: Number(r.precio_total_calculado || 0),
+      };
+    });
+
+    return res.status(200).json(mapped);
+  } catch (err) {
+    console.error("❌ listPedidosFull:", err);
+    return res.status(500).json({ error: "Internal server error", details: err.message });
   }
 };
 

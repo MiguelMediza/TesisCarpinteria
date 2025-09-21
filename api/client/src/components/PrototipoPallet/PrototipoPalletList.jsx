@@ -42,9 +42,17 @@ const PrototipoPalletList = () => {
     try {
       await api.delete(`/prototipos/${toDelete.id_prototipo}`);
       setPrototipos(prev => prev.filter(p => p.id_prototipo !== toDelete.id_prototipo));
+      setError("");
     } catch (err) {
       console.error(err);
-      setError("Error al eliminar el prototipo.");
+      const status = err?.response?.status;
+     const apiMsg = err?.response?.data?.message || err?.response?.data?.error;
+     const msg =
+      apiMsg ||
+       (status === 409
+         ? "No se pudo eliminar el prototipo porque está asociado a uno o más pedidos."
+         : "Error al eliminar el prototipo.");
+     setError(msg);
     } finally {
       setToDelete(null);
     }

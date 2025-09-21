@@ -1,8 +1,6 @@
-// controllers/prototipopallet.js
 import { pool } from "../db.js";
 import { r2Delete } from "../lib/r2.js";
 
-// helper: normalizar arrays que pueden llegar como JSON string o array
 const parseArray = (v) => {
   if (!v) return [];
   if (Array.isArray(v)) return v;
@@ -14,14 +12,13 @@ const parseArray = (v) => {
   }
 };
 
-// helper: armar URL pública desde la key almacenada
 function buildR2Url(key) {
   if (!key) return null;
   const base = (process.env.R2_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
   return base ? `${base}/${key}` : null;
 }
 
-// ---------- CREATE ----------
+
 export const createPrototipo = async (req, res) => {
   const conn = await pool.getConnection();
   try {
@@ -32,14 +29,12 @@ export const createPrototipo = async (req, res) => {
       cantidad_patines,
       comentarios,
       id_cliente,
-      // arrays
       tipo_tablas,
       tipo_tacos,
       clavos,
       fibras,
     } = req.body;
 
-    // Guardamos la KEY en DB (como en clavos)
     const fotoKey = req.fileR2?.key || null;
 
     const arrTablas = parseArray(tipo_tablas);
@@ -59,14 +54,13 @@ export const createPrototipo = async (req, res) => {
         id_tipo_patin || null,
         Number.isFinite(+cantidad_patines) ? +cantidad_patines : 0,
         comentarios || null,
-        fotoKey, // << KEY de R2
+        fotoKey, 
         id_cliente || null,
       ]
     );
 
     const id_prototipo = ins.insertId;
 
-    // Detalles
     for (const t of arrTablas) {
       await conn.query(
         `INSERT INTO prototipo_tipo_tablas (id_prototipo, id_tipo_tabla, cantidad_lleva, aclaraciones)
@@ -111,7 +105,6 @@ export const createPrototipo = async (req, res) => {
   }
 };
 
-// ---------- READ (by id) ----------
 export const getPrototipoById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -124,14 +117,12 @@ export const getPrototipoById = async (req, res) => {
 
     const row = p[0];
 
-    // costo total
     const [costos] = await pool.query(
       `SELECT COALESCE(costo_materiales,0) AS costo_materiales
        FROM vw_prototipo_costo_total WHERE id_prototipo = ?`,
       [id]
     );
 
-    // detalle BOM
     const [bom] = await pool.query(
       `SELECT * FROM vw_prototipo_bom_detalle WHERE id_prototipo = ? ORDER BY categoria, titulo`,
       [id]
@@ -140,7 +131,6 @@ export const getPrototipoById = async (req, res) => {
     const foto_url = buildR2Url(row.foto);
     return res.status(200).json({
       ...row,
-      // compat: el front puede usar 'foto' directamente como URL
       foto: foto_url,
       foto_url,
       costo_materiales: costos[0]?.costo_materiales ?? 0,
@@ -178,12 +168,11 @@ export const listPrototipos = async (req, res) => {
       `
     );
 
-    // mapear foto KEY -> URL pública
     const out = rows.map((r) => {
       const foto_url = buildR2Url(r.foto);
       return {
         ...r,
-        foto: foto_url, // compat
+        foto: foto_url, 
         foto_url,
       };
     });
@@ -213,15 +202,14 @@ export const updatePrototipo = async (req, res) => {
       fibras,
     } = req.body;
 
-    // Recuperar foto actual (KEY)
     const [exists] = await conn.query(
       `SELECT foto FROM prototipo_pallet WHERE id_prototipo = ?`,
       [id]
     );
     if (exists.length === 0) return res.status(404).json("Prototipo no encontrado");
 
-    const oldKey = exists[0].foto; // puede ser null
-    const newKey = req.fileR2?.key || null; // si viene foto nueva
+    const oldKey = exists[0].foto;
+    const newKey = req.fileR2?.key || null; 
 
     const arrTablas = parseArray(tipo_tablas);
     const arrTacos  = parseArray(tipo_tacos);
@@ -247,7 +235,7 @@ export const updatePrototipo = async (req, res) => {
         id_tipo_patin || null,
         Number.isFinite(+cantidad_patines) ? +cantidad_patines : 0,
         comentarios || null,
-        newKey, // si es null no reemplaza
+        newKey, 
         id_cliente || null,
         id,
       ]
@@ -290,7 +278,6 @@ export const updatePrototipo = async (req, res) => {
 
     await conn.commit();
 
-    // Si hubo foto nueva, borro la anterior en R2 (después del commit)
     if (newKey && oldKey && newKey !== oldKey) {
       try {
         await r2Delete(oldKey);
@@ -309,52 +296,38 @@ export const updatePrototipo = async (req, res) => {
   }
 };
 
-// ---------- DELETE (BORRADO REAL + borrar imagen en R2) ----------
+// ---------- DELETE (BORRADO LÓGICO) ----------
 export const deletePrototipo = async (req, res) => {
   const conn = await pool.getConnection();
   try {
     const { id } = req.params;
 
-    // Leer KEY de la foto antes de borrar
+    
     const [rows] = await conn.query(
-      `SELECT foto FROM prototipo_pallet WHERE id_prototipo = ?`,
+      `SELECT id_prototipo, estado FROM prototipo_pallet WHERE id_prototipo = ?`,
       [id]
     );
     if (rows.length === 0) return res.status(404).json("Prototipo no encontrado!");
-    const fotoKey = rows[0].foto; // puede ser null
+
+    const wasActive = !!rows[0].estado;
 
     await conn.beginTransaction();
 
-    // Borrar hijos
-    await conn.query(`DELETE FROM prototipo_tipo_tablas WHERE id_prototipo = ?`, [id]);
-    await conn.query(`DELETE FROM prototipo_tipo_tacos  WHERE id_prototipo = ?`, [id]);
-    await conn.query(`DELETE FROM prototipo_clavos      WHERE id_prototipo = ?`, [id]);
-    await conn.query(`DELETE FROM prototipo_fibras      WHERE id_prototipo = ?`, [id]);
-
-    // Borrar padre
-    const [delRes] = await conn.query(
-      `DELETE FROM prototipo_pallet WHERE id_prototipo = ?`,
+    // Borrado lógico: desactivar
+    await conn.query(
+      `UPDATE prototipo_pallet SET estado = FALSE WHERE id_prototipo = ?`,
       [id]
     );
-    if (delRes.affectedRows === 0) {
-      await conn.rollback();
-      return res.status(404).json("Prototipo no encontrado!");
-    }
 
     await conn.commit();
 
-    // Borrar imagen de R2 (si hay key)
-    if (fotoKey) {
-      try {
-        await r2Delete(fotoKey);
-      } catch (e) {
-        console.warn("No se pudo borrar la imagen en R2:", fotoKey, e?.message);
-      }
-    }
-
-    return res.status(200).json("Prototipo eliminado exitosamente!");
+    return res.status(200).json({
+      message: wasActive
+        ? "Prototipo desactivado exitosamente."
+        : "El prototipo ya estaba desactivado.",
+    });
   } catch (err) {
-    await conn.rollback();
+    try { await conn.rollback(); } catch {}
     console.error("❌ deletePrototipo:", err);
     return res.status(500).json({ error: "Internal server error", details: err.message });
   } finally {

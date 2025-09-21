@@ -1,21 +1,18 @@
-// PedidoPDFInline.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { Document, Text, Page, StyleSheet, Image, View } from "@react-pdf/renderer";
-import { PDFDownloadLink } from "@react-pdf/renderer";
-import { api } from "../../api";
+import {
+  Document, Text, Page, StyleSheet, Image, View, PDFDownloadLink,
+} from "@react-pdf/renderer";
+import logoImanod from "../../assets/logoImanod.png";
 
-// ======================== Estilos del PDF ========================
+
+import { normalizeCdnUrl, getProxyUrl, fetchAsJpegDataUrl } from "../../utils/pdfImage";
+
+const fmtDate = (s) => (s ? new Date(s).toLocaleDateString("es-UY") : "");
+
 const styles = StyleSheet.create({
-  page: {
-    padding: 28,
-    fontSize: 11,
-    fontFamily: "Helvetica",
-  },
-  header: {
-    borderBottom: "1px solid #ddd",
-    paddingBottom: 8,
-    marginBottom: 10,
-  },
+  page: { padding: 28, fontSize: 11, fontFamily: "Helvetica" },
+  headerTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
+  header: { borderBottom: "1px solid #ddd", paddingBottom: 8, marginBottom: 10 },
   h1: { fontSize: 18, fontWeight: 700 },
   h2: { fontSize: 13, marginTop: 10, marginBottom: 4, fontWeight: 700 },
   line: { borderBottom: "1px solid #eee", marginVertical: 8 },
@@ -28,25 +25,28 @@ const styles = StyleSheet.create({
   itemLeft: { flexDirection: "column" },
   itemTitle: { fontWeight: 700 },
   foot: { marginTop: 14, fontSize: 10, color: "#666" },
+  logo: { width: 80, objectFit: "contain" },
 });
-
 
 function PedidosPDF({ data }) {
   const p = data || {};
   const prot = p.prototipo || {};
-
-  const fmt = (n) => (n ?? "") + "";
+  const cantPallets = Number(p.cantidad_pallets || 0);
+  const fmt = (x) => (x ?? "") + "";
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Encabezado */}
-        <View style={styles.header}>
-          <Text style={styles.h1}>Pedido #{fmt(p.id_pedido) || "—"}</Text>
-          <Text>{p.fecha ? `Fecha: ${p.fecha}` : ""}</Text>
+        <View style={styles.headerTop}>
+          <Image src={logoImanod} style={styles.logo} />
         </View>
 
-        {/* Cliente + Cantidad */}
+        <View style={styles.header}>
+          <Text style={styles.h1}>Pedido #{fmt(p.id_pedido) || "—"}</Text>
+          <Text>Fecha realizado: {p.fecha_realizado_str || "—"}</Text>
+          {!!p.fecha_entrega_str && <Text>Fecha de entrega: {p.fecha_entrega_str}</Text>}
+        </View>
+
         <View style={styles.row}>
           <View style={styles.col}>
             <Text style={styles.label}>Cliente</Text>
@@ -58,97 +58,126 @@ function PedidosPDF({ data }) {
           </View>
         </View>
 
+        <View style={styles.row}>
+          <View style={styles.col}>
+            <Text style={styles.label}>Nº de tratamiento</Text>
+            <Text style={styles.value}>{p.numero_tratamiento || "sin especificar"}</Text>
+          </View>
+          <View style={styles.col}>
+            <Text style={styles.label}>Nº de lote</Text>
+            <Text style={styles.value}>{p.numero_lote || "sin especificar"}</Text>
+          </View>
+        </View>
+
         <View style={styles.line} />
 
-        {/* Prototipo */}
         <Text style={styles.h2}>Prototipo</Text>
         <Text style={styles.value}>{prot.nombre || "—"}</Text>
-        {prot.mesas_desc && <Text>{prot.mesas_desc}</Text>}
-
         {prot.foto_url ? <Image src={prot.foto_url} style={styles.foto} /> : null}
 
-        {/* Medidas */}
         {(prot.medidas?.largo || prot.medidas?.ancho || prot.medidas?.alto) && (
           <>
             <Text style={styles.h2}>Medidas</Text>
             <Text>
-              Largo: {prot.medidas?.largo ?? "—"} • Ancho: {prot.medidas?.ancho ?? "—"} • Alto:{" "}
-              {prot.medidas?.alto ?? "—"}
+              Largo: {prot.medidas?.largo ?? "—"} • Ancho: {prot.medidas?.ancho ?? "—"}
+              {prot.medidas?.alto ? ` • Alto: ${prot.medidas.alto}` : ""}
             </Text>
           </>
         )}
 
-        {/* Tablas */}
         {Array.isArray(prot.tablas) && prot.tablas.length > 0 && (
           <>
             <Text style={styles.h2}>Tablas</Text>
-            {prot.tablas.map((t, i) => (
-              <View key={`tab-${i}`} style={styles.itemRow}>
-                <View style={styles.itemLeft}>
-                  <Text style={styles.itemTitle}>{t.tipo}</Text>
+            {prot.tablas.map((t, i) => {
+              const porPallet = Number(t.cantidad || 0);
+              const total = cantPallets > 0 ? porPallet * cantPallets : null;
+              return (
+                <View key={`tab-${i}`} style={styles.itemRow}>
+                  <View style={styles.itemLeft}>
+                    <Text style={styles.itemTitle}>{t.tipo}</Text>
+                    <Text>
+                      {t.medidas?.largo ?? "—"}x{t.medidas?.ancho ?? "—"}x{t.medidas?.espesor ?? "—"}
+                    </Text>
+                  </View>
                   <Text>
-                    {t.medidas?.largo ?? "—"}x{t.medidas?.ancho ?? "—"}x{t.medidas?.espesor ?? "—"}
+                    Cant/pallet: {porPallet}
+                    {total !== null ? `  •  Total: ${porPallet} × ${cantPallets} = ${total}` : ""}
                   </Text>
                 </View>
-                <Text>Cant: {t.cantidad ?? 0}</Text>
-              </View>
-            ))}
+              );
+            })}
           </>
         )}
 
-        {/* Tacos */}
         {Array.isArray(prot.tacos) && prot.tacos.length > 0 && (
           <>
             <Text style={styles.h2}>Tacos</Text>
-            {prot.tacos.map((t, i) => (
-              <View key={`tac-${i}`} style={styles.itemRow}>
-                <View style={styles.itemLeft}>
-                  <Text style={styles.itemTitle}>{t.tipo}</Text>
+            {prot.tacos.map((t, i) => {
+              const porPallet = Number(t.cantidad || 0);
+              const total = cantPallets > 0 ? porPallet * cantPallets : null;
+              return (
+                <View key={`tac-${i}`} style={styles.itemRow}>
+                  <View style={styles.itemLeft}>
+                    <Text style={styles.itemTitle}>{t.tipo}</Text>
+                    <Text>
+                      {t.medidas?.l ?? "—"}x{t.medidas?.a ?? "—"}x{t.medidas?.h ?? "—"}
+                    </Text>
+                  </View>
                   <Text>
-                    {t.medidas?.l ?? "—"}x{t.medidas?.a ?? "—"}x{t.medidas?.h ?? "—"}
+                    Cant/pallet: {porPallet}
+                    {total !== null ? `  •  Total: ${porPallet} × ${cantPallets} = ${total}` : ""}
                   </Text>
                 </View>
-                <Text>Cant: {t.cantidad ?? 0}</Text>
-              </View>
-            ))}
+              );
+            })}
           </>
         )}
 
-        {/* Patines */}
         {Array.isArray(prot.patines) && prot.patines.length > 0 && (
           <>
             <Text style={styles.h2}>Patines</Text>
-            {prot.patines.map((p, i) => (
-              <View key={`pat-${i}`} style={styles.itemRow}>
-                <Text style={styles.itemTitle}>{p.tipo}</Text>
-                <Text>Cant: {p.cantidad ?? 0}</Text>
-              </View>
-            ))}
+            {prot.patines.map((pp, i) => {
+              const porPallet = Number(pp.cantidad || 0);
+              const total = cantPallets > 0 ? porPallet * cantPallets : null;
+              return (
+                <View key={`pat-${i}`} style={styles.itemRow}>
+                  <Text style={styles.itemTitle}>{pp.tipo}</Text>
+                  <Text>
+                    Cant/pallet: {porPallet}
+                    {total !== null ? `  •  Total: ${porPallet} × ${cantPallets} = ${total}` : ""}
+                  </Text>
+                </View>
+              );
+            })}
           </>
         )}
 
-        {/* Clavos */}
         {Array.isArray(prot.clavos) && prot.clavos.length > 0 && (
           <>
             <Text style={styles.h2}>Clavos</Text>
-            {prot.clavos.map((c, i) => (
-              <View key={`cla-${i}`} style={styles.itemRow}>
-                <Text style={styles.itemTitle}>{c.tipo}</Text>
-                <Text>
-                  {c.medida ? `Medida: ${c.medida} • ` : ""}Cant: {c.cantidad ?? 0}
-                </Text>
-              </View>
-            ))}
+            {prot.clavos.map((c, i) => {
+              const porPallet = Number(c.cantidad || 0);
+              const total = cantPallets > 0 ? porPallet * cantPallets : null;
+              return (
+                <View key={`cla-${i}`} style={styles.itemRow}>
+                  <Text style={styles.itemTitle}>{c.tipo}</Text>
+                  <Text>
+                    {c.medida ? `Medida: ${c.medida} • ` : ""}
+                    Cant/pallet: {porPallet}
+                    {total !== null ? `  •  Total: ${porPallet} × ${cantPallets} = ${total}` : ""}
+                  </Text>
+                </View>
+              );
+            })}
           </>
         )}
 
-        {/* Observaciones */}
-        {p.observaciones ? (
+        {!!p.observaciones && (
           <>
             <Text style={styles.h2}>Observaciones</Text>
             <Text>{p.observaciones}</Text>
           </>
-        ) : null}
+        )}
 
         <Text style={styles.foot}>Generado automáticamente • Imanod</Text>
       </Page>
@@ -156,102 +185,133 @@ function PedidosPDF({ data }) {
   );
 }
 
-// ================== Contenedor que arma todo y descarga ==================
 export default function PedidoPDFInline({ pedido }) {
-  const [loading, setLoading] = useState(false);
   const [proto, setProto] = useState(null);
+  const [protoFotoDataUrl, setProtoFotoDataUrl] = useState(null);
   const [err, setErr] = useState("");
 
-  const idPrototipo = pedido?.id_prototipo || pedido?.prototipo?.id_prototipo;
+  const firstItem = Array.isArray(pedido?.items) ? pedido.items[0] : null;
+
+  const idPrototipo =
+    pedido?.id_prototipo ||
+    pedido?.prototipo?.id_prototipo ||
+    firstItem?.id_prototipo ||
+    null;
 
   useEffect(() => {
     if (!idPrototipo) return;
     let alive = true;
-
     (async () => {
       try {
-        setLoading(true);
         setErr("");
-        const { data } = await api.get(`/prototipos/${idPrototipo}`);
+        const resp = await fetch(`/api/src/prototipos/${idPrototipo}`, { credentials: "include" });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const json = await resp.json();
         if (!alive) return;
-        setProto(data);
+        setProto(json);
       } catch (e) {
         if (!alive) return;
         setErr("No se pudo cargar el prototipo.");
-      } finally {
-        if (alive) setLoading(false);
       }
     })();
-
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, [idPrototipo]);
 
-  // Mapea el prototipo a lo que el PDF espera
+  const rawFoto = firstItem?.prototipo_foto || proto?.foto_url || proto?.foto || null;
+
+  const cdnAbs = useMemo(() => (rawFoto ? normalizeCdnUrl(rawFoto) : null), [rawFoto]);
+  const proxiedFoto = useMemo(() => (cdnAbs ? getProxyUrl(cdnAbs) : null), [cdnAbs]);
+
+  useEffect(() => {
+    let alive = true;
+    setProtoFotoDataUrl(null);
+    (async () => {
+      if (!proxiedFoto) return;
+      try {
+        const dataUrl = await fetchAsJpegDataUrl(proxiedFoto);
+        if (!alive) return;
+        setProtoFotoDataUrl(dataUrl);
+      } catch {
+        if (!alive) return;
+        setProtoFotoDataUrl(null);
+      }
+    })();
+    return () => { alive = false; };
+  }, [proxiedFoto]);
+
   const pdfData = useMemo(() => {
     if (!proto) return null;
 
     const bom = Array.isArray(proto.bom_detalle) ? proto.bom_detalle : [];
-    const porCat = (cat) => bom.filter((x) => x.categoria === cat);
+    const by = (cat) => bom.filter((x) => x.categoria === cat);
 
-    const tablas = porCat("tabla").map((t) => ({
+    const tablas = by("tabla").map((t) => ({
       tipo: t.titulo,
-      medidas: {
-        largo: t.largo ?? t.med_largo,
-        ancho: t.ancho ?? t.med_ancho,
-        espesor: t.espesor ?? t.med_espesor,
-      },
+      medidas: { largo: t.largo ?? t.med_largo, ancho: t.ancho ?? t.med_ancho, espesor: t.espesor ?? t.med_espesor },
       cantidad: t.cantidad ?? 0,
     }));
 
-    const tacos = porCat("taco").map((t) => ({
+    const tacos = by("taco").map((t) => ({
       tipo: t.titulo,
       medidas: { l: t.largo, a: t.ancho, h: t.alto },
       cantidad: t.cantidad ?? 0,
     }));
 
-    const patines = porCat("patin").map((p) => ({
-      tipo: p.titulo,
-      cantidad: p.cantidad ?? 0,
-      descripcion: p.aclaraciones || "",
-    }));
+    const patines = by("patin").map((p) => ({ tipo: p.titulo, cantidad: p.cantidad ?? 0 }));
 
-    const clavos = porCat("clavo").map((c) => ({
+    const clavos = by("clavo").map((c) => ({
       tipo: c.titulo,
       medida: c.medida || c.aclaraciones || "",
       cantidad: c.cantidad ?? 0,
     }));
 
+    const numeroTratamiento =
+      pedido?.numero_tratamiento ??
+      firstItem?.numero_tratamiento ??
+      "";
+
+  const numeroLote =
+    pedido?.numero_lote ??
+    firstItem?.numero_lote ??
+    "";
+    const fechaReal = fmtDate(pedido?.fecha_realizado);
+    const fechaEntrega = fmtDate(pedido?.fecha_de_entrega);
+
+    const cantidadPallets = pedido?.cantidad_pallets ?? firstItem?.cantidad_pallets ?? null;
+
+    const clienteNombre =
+      pedido?.cliente_display ||
+      pedido?.cliente_empresa ||
+      [pedido?.cliente_nombre, pedido?.cliente_apellido].filter(Boolean).join(" ") ||
+      "";
+    const medidas =
+      proto?.medidas && typeof proto.medidas === "string"
+        ? (() => {
+            const [l, a, h] = proto.medidas.split("x");
+            return { largo: l, ancho: a, alto: h };
+          })()
+        : { largo: proto?.largo, ancho: proto?.ancho, alto: proto?.alto };
+
     return {
       id_pedido: pedido?.id_pedido,
-      fecha: pedido?.fecha,
-      cantidad_pallets: pedido?.cantidad_pallets,
-      observaciones: pedido?.observaciones || "",
-      cliente: {
-        nombre:
-          pedido?.cliente_nombre ||
-          pedido?.cliente?.nombre ||
-          pedido?.cliente_empresa ||
-          "",
-      },
+      fecha_realizado_str: fechaReal,
+      fecha_entrega_str: fechaEntrega,
+      cantidad_pallets: cantidadPallets,
+      observaciones: (pedido?.comentarios || "").toString(),
+      numero_tratamiento: numeroTratamiento,
+      numero_lote: numeroLote,
+      cliente: { nombre: clienteNombre },
       prototipo: {
         nombre: proto?.titulo || proto?.nombre || `Prototipo #${proto?.id_prototipo}`,
-        foto_url: proto?.foto_url || proto?.foto || null,
-        medidas: proto?.medidas
-          ? {
-              largo: proto.medidas.split("x")[0],
-              ancho: proto.medidas.split("x")[1],
-              alto: proto.medidas.split("x")[2],
-            }
-          : { largo: proto?.largo, ancho: proto?.ancho, alto: proto?.alto },
+        foto_url: protoFotoDataUrl || null, 
+        medidas,
         tablas,
         tacos,
         patines,
         clavos,
       },
     };
-  }, [proto, pedido]);
+  }, [proto, pedido, firstItem, protoFotoDataUrl]);
 
   if (!idPrototipo) {
     return <button disabled className="px-3 py-2 bg-gray-300 rounded">Sin prototipo</button>;
@@ -260,11 +320,11 @@ export default function PedidoPDFInline({ pedido }) {
 
   return (
     <PDFDownloadLink
-    document={<PedidosPDF data={pdfData || {}} />}
-    fileName={`pedido_${pedido?.id_pedido || "sin-id"}.pdf`}
-    className="px-2 py-1 rounded text-xs bg-slate-700 hover:bg-slate-800 text-white"
+      document={<PedidosPDF data={pdfData || {}} />}
+      fileName={`pedido_${pedido?.id_pedido || "sin-id"}.pdf`}
+      className="px-2 py-1 rounded text-xs bg-slate-700 hover:bg-slate-800 text-white"
     >
-    {({ loading }) => (loading ? "Generando…" : "🧾 PDF")}
+      {({ loading }) => (loading ? "Generando…" : "🧾 PDF")}
     </PDFDownloadLink>
   );
 }

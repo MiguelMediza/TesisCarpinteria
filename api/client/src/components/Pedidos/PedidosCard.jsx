@@ -1,7 +1,7 @@
 import React, { useContext, useMemo, useState } from "react";
 import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
-import PedidosPDF from "./PedidosPDF";
+import PedidoPDFInline from "./PedidosPDF";
 const ESTADOS = ["pendiente", "en_produccion", "listo", "entregado", "cancelado"];
 
 const badgeClassesByEstado = (estado) => {
@@ -78,7 +78,6 @@ const PedidosCard = ({ pedido, onEdit, onDelete, onEstadoChanged }) => {
       if (onEstadoChanged) onEstadoChanged(id_pedido, nuevo);
     } catch (err) {
       console.error("Error actualizando estado:", err);
-      // rollback
       setEstado(anterior);
       alert("No se pudo actualizar el estado del pedido.");
     } finally {
@@ -96,20 +95,12 @@ const PedidosCard = ({ pedido, onEdit, onDelete, onEstadoChanged }) => {
             <p className="text-sm text-gray-600">{cliente_display || "Cliente sin nombre"}</p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <PedidosPDF
-              pedido={pedido}
-            >
-            </PedidosPDF>
-
-            {/* Badge de estado */}
-            <span
-              className={`text-xs px-2 py-1 rounded-full ${estadoClasses}`}
-              title={`Estado: ${estado || "sin estado"}`}
-            >
-              {estado.replace("_", " ")}
-            </span>
-          </div>
+        <div className="flex items-center gap-2">
+          <PedidoPDFInline pedido={pedido} />  
+          <span className={`text-xs px-2 py-1 rounded-full ${estadoClasses}`}>
+            {estado.replace("_", " ")}
+          </span>
+        </div>
         </div>
 
         {/* Fechas */}
@@ -143,7 +134,6 @@ const PedidosCard = ({ pedido, onEdit, onDelete, onEstadoChanged }) => {
             {it.prototipo_titulo || `Prototipo #${it.id_prototipo}`}
           </span>
           {it.medidas ? ` – ${it.medidas}` : ""} — {it.cantidad_pallets} u.
-          {/* Chips extra si hay datos */}
           <span className="ml-2 inline-flex gap-2 align-middle">
             {it.numero_lote?.trim() && (
               <span className="text-xs px-2 py-0.5 rounded-full border bg-gray-50 text-gray-700 border-gray-200">

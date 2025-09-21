@@ -5,8 +5,6 @@ export const register = async (req, res) =>{
        try {
         const { username, email, password, tipo, name } = req.body;
 
-        console.log("🔔 Register hit:", req.body);
-
         // Verificar si el usuario ya existe
         const [existingUsers] = await pool.query("SELECT * FROM usuarios WHERE username = ?", [username]);
 
@@ -22,7 +20,6 @@ export const register = async (req, res) =>{
         const insertQuery = "INSERT INTO usuarios (`username`, `email`, `password`, `tipo`, `name`) VALUES (?, ?, ?, ?, ?)";
         const [result] = await pool.query(insertQuery, [username, email, hashedPassword, tipo, name]);
 
-        console.log("✅ Usuario insertado:", result);
 
         return res.status(200).json("Usuario creado exitosamente!");
     } catch (err) {

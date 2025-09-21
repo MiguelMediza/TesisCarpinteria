@@ -6,7 +6,6 @@ import fs from "fs";
 import { fileURLToPath } from "url";
 
 import { PORT, CORS_ORIGIN } from "./config.js";
-import { pool } from "./db.js";
 
 import indexRoutes from "./routes/index.routes.js";
 import authRoutes from "./routes/usuarios.routes.js";
@@ -29,17 +28,15 @@ import pedidosRouter from "./routes/pedidos.routes.js";
 import ventafuegoyaRouter from "./routes/ventafuegoya.routes.js";
 import clientesfuegoyaRouter from "./routes/clientesfuegoya.routes.js";
 
-// ─── Paths ─
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const clientDist = path.resolve(__dirname, "../client/dist");
 const indexHtml = path.join(clientDist, "index.html");
 
-// ─── App ──
+
 const app = express();
 const isProd = process.env.NODE_ENV === "production";
 
-// Handlers globales para ver errores que tumben el proceso
 process.on("unhandledRejection", (err) => {
   console.error("UNHANDLED_REJECTION:", err);
 });
@@ -47,7 +44,6 @@ process.on("uncaughtException", (err) => {
   console.error("UNCAUGHT_EXCEPTION:", err);
 });
 
-// ─── Middlewares base 
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Credentials", true);
   next();
@@ -73,7 +69,6 @@ if (!isProd) {
   );
 }
 
-// ─ Static de imágenes (api/src/images/*) ─
 app.use("/images/tablas", express.static(path.join(__dirname, "images", "tablas")));
 app.use("/images/palos", express.static(path.join(__dirname, "images", "palos")));
 app.use("/images/clavos", express.static(path.join(__dirname, "images", "clavos")));
@@ -115,6 +110,7 @@ app.use("/api/src/materiaprima", materiaprimaRouter);
 app.use("/api/src/pedidos", pedidosRouter);
 app.use("/api/src/ventafuegoya", ventafuegoyaRouter);
 app.use("/api/src/clientesfuegoya", clientesfuegoyaRouter);
+
 
 app.use((req, res, next) => {
   const isGet = req.method === "GET";
