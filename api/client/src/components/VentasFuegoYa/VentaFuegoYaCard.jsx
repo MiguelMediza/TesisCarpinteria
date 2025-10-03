@@ -182,7 +182,7 @@ const VentaFuegoYaCard = ({ venta, onEdit, onDelete, onPagoChanged }) => {
 {/* Cantidad */}
   {typeof cantidadbolsas !== "undefined" && cantidadbolsas !== null && (
     <span className="inline-block text-sm px-3 py-1 rounded-full border bg-gray-50 text-gray-700 border-gray-200">
-      🧯 {cantidadbolsas} {Number(cantidadbolsas) === 1 ? "bolsa" : "bolsas"}
+      🔥 {cantidadbolsas} {Number(cantidadbolsas) === 1 ? "bolsa" : "bolsas"}
     </span>
   )}
 

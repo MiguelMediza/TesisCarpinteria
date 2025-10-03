@@ -8,7 +8,7 @@ const TablaCard = ({ tabla, onEdit, onDelete }) => {
     titulo,
     precio_unidad,
     stock,
-    foto_url,            // CAMBIO: usar foto_url del backend
+    foto_url,           
     comentarios,
     largo_cm,
     ancho_cm,

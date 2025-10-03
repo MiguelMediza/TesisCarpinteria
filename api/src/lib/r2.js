@@ -10,7 +10,7 @@ const {
   R2_PUBLIC_BASE_URL,
 } = process.env;
 
-// Validaciones tempranas y claras (evita “No value provided for input HTTP label: Bucket”)
+
 if (!R2_ACCOUNT_ID) throw new Error("R2_ACCOUNT_ID is not set");
 if (!R2_ACCESS_KEY_ID) throw new Error("R2_ACCESS_KEY_ID is not set");
 if (!R2_SECRET_ACCESS_KEY) throw new Error("R2_SECRET_ACCESS_KEY is not set");
@@ -21,7 +21,7 @@ const endpoint = `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
 export const r2 = new S3Client({
   region: "auto",
   endpoint,
-  forcePathStyle: true, // importante para R2 con endpoint de cuenta
+  forcePathStyle: true, 
   credentials: {
     accessKeyId: R2_ACCESS_KEY_ID,
     secretAccessKey: R2_SECRET_ACCESS_KEY,
@@ -38,7 +38,7 @@ export async function r2Put({ folder = "", file }) {
 
   await r2.send(
     new PutObjectCommand({
-      Bucket: R2_BUCKET,               // <- si esto fuera undefined, verías tu error
+      Bucket: R2_BUCKET,              
       Key: key,
       Body: file.buffer,
       ContentType: file.mimetype || "application/octet-stream",
@@ -47,9 +47,8 @@ export async function r2Put({ folder = "", file }) {
 
   const publicBase = (R2_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
   const url = publicBase
-    ? `${publicBase}/${key}`                             // p. ej. https://cdn.imanodstock.es/carpeta/archivo.jpg
-    : `${endpoint}/${R2_BUCKET}/${key}`;                // fallback
-
+    ? `${publicBase}/${key}`                             
+    : `${endpoint}/${R2_BUCKET}/${key}`;               
   return { key, url };
 }
 
