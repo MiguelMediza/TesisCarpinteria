@@ -9,10 +9,12 @@ const TipoPatinesList = () => {
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [toDelete, setToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const navigate = useNavigate();
 
   const R2 = import.meta.env.VITE_R2_PUBLIC_BASE;
-  const BASE = (R2 || "").replace(/\/+$/,"");
+  const BASE = (R2 || "").replace(/\/+$/, "");
 
   useEffect(() => {
     const fetchPatines = async () => {
@@ -31,29 +33,45 @@ const TipoPatinesList = () => {
   };
 
   const handleDeleteClick = (patin) => {
+    setDeleteError("");
     setToDelete(patin);
   };
 
   const confirmDelete = async () => {
+    if (!toDelete) return;
+    setDeleting(true);
+    setDeleteError("");
     try {
       await api.delete(`/tipopatines/${toDelete.id_tipo_patin}`);
-      setPatines(prev => prev.filter(p => p.id_tipo_patin !== toDelete.id_tipo_patin));
-    } catch (err) {
-      setError("Error al eliminar el tipo de patín.");
-    } finally {
+      setPatines((prev) =>
+        prev.filter((p) => p.id_tipo_patin !== toDelete.id_tipo_patin)
+      );
       setToDelete(null);
+    } catch (err) {
+      let msg = "No se pudo eliminar el patín.";
+      const data = err?.response?.data;
+      if (data) {
+        if (typeof data === "string") msg = data;
+        else if (data.message) msg = data.message;
+        if (Array.isArray(data.prototipos) && data.prototipos.length) {
+          msg += "\nUsado por:\n - " + data.prototipos.join("\n - ");
+        }
+      }
+      setDeleteError(msg);
+    } finally {
+      setDeleting(false);
     }
   };
 
   const cancelDelete = () => {
+    if (deleting) return;
+    setDeleteError("");
     setToDelete(null);
   };
 
-  const filteredPatines = patines.filter(p =>
+  const filteredPatines = patines.filter((p) =>
     p.titulo.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-
 
   return (
     <section className="p-4 bg-gray-50 min-h-screen">
@@ -74,7 +92,7 @@ const TipoPatinesList = () => {
           type="text"
           placeholder="Buscar patín por título..."
           value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
+          onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
@@ -98,9 +116,17 @@ const TipoPatinesList = () => {
       <DeleteConfirm
         isOpen={!!toDelete}
         title={toDelete?.titulo}
-        imageSrc={toDelete?.logo_url ? toDelete.logo_url : (toDelete?.logo ? `${BASE}/${String(toDelete.logo).replace(/^\/+/,"")}` : null)   }
+        imageSrc={
+          toDelete?.logo_url
+            ? toDelete.logo_url
+            : toDelete?.logo
+            ? `${BASE}/${String(toDelete.logo).replace(/^\/+/, "")}`
+            : null
+        }
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
+        error={deleteError}
+        loading={deleting}
       />
     </section>
   );

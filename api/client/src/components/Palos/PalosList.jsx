@@ -9,6 +9,8 @@ const PalosList = () => {
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [toDelete, setToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -18,7 +20,7 @@ const PalosList = () => {
         setPalos(res.data);
       } catch (err) {
         console.error(err);
-        setError("No se pudieron cargar los palos.");
+        setError("No se pudieron cargar los tirantes.");
       }
     };
     fetchPalos();
@@ -29,38 +31,56 @@ const PalosList = () => {
   };
 
   const handleDeleteClick = (palo) => {
+    setDeleteError("");
     setToDelete(palo);
   };
 
   const confirmDelete = async () => {
+    if (!toDelete) return;
+    setDeleting(true);
+    setDeleteError("");
+
     try {
       await api.delete(`/palos/${toDelete.id_materia_prima}`);
-      setPalos(prev => prev.filter(p => p.id_materia_prima !== toDelete.id_materia_prima));
+      setPalos((prev) =>
+        prev.filter((p) => p.id_materia_prima !== toDelete.id_materia_prima)
+      );
+      setToDelete(null);
     } catch (err) {
       console.error(err);
-      setError("Error al eliminar el palo.");
+      let msg = "No se pudo eliminar el tirante.";
+      const data = err?.response?.data;
+      if (data) {
+        if (typeof data === "string") msg = data;
+        else if (data.message) msg = data.message;
+        if (Array.isArray(data.tipos) && data.tipos.length) {
+          msg += "\nUsado por:\n - " + data.tipos.join("\n - ");
+        }
+      }
+      setDeleteError(msg); 
     } finally {
-      setToDelete(null);
+      setDeleting(false);
     }
   };
 
   const cancelDelete = () => {
+    setDeleteError("");
     setToDelete(null);
   };
 
-  const filteredPalos = palos.filter(p =>
+  const filteredPalos = palos.filter((p) =>
     (p.titulo || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
     <section className="p-4 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Palos</h1>
+        <h1 className="text-2xl font-bold">Tirantes</h1>
         <Link
           to="/palos"
           className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
         >
-          + Nuevo Palo
+          + Nuevo Tirante
         </Link>
       </div>
 
@@ -69,9 +89,9 @@ const PalosList = () => {
       <div className="mb-4">
         <input
           type="text"
-          placeholder="Buscar palo por título..."
+          placeholder="Buscar tirante por título..."
           value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
+          onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
@@ -87,7 +107,7 @@ const PalosList = () => {
         ))}
         {filteredPalos.length === 0 && (
           <p className="col-span-full text-center text-gray-500">
-            No se encontraron palos.
+            No se encontraron tirantes.
           </p>
         )}
       </div>
@@ -95,9 +115,11 @@ const PalosList = () => {
       <DeleteConfirm
         isOpen={!!toDelete}
         title={toDelete?.titulo}
-        imageSrc={toDelete?.foto_url || null} 
+        imageSrc={toDelete?.foto_url || null}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
+        error={deleteError}      
+        loading={deleting}       
       />
     </section>
   );

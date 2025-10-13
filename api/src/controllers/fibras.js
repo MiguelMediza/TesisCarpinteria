@@ -4,7 +4,6 @@ import { r2Delete } from "../lib/r2.js";
 
 const PUBLIC_BASE = (process.env.R2_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
 
-// helper: construye URL pública desde la key
 const urlFromKey = (key) => (key ? `${PUBLIC_BASE}/${key}` : null);
 
 // Crear una nueva fibra
@@ -19,7 +18,6 @@ export const createFibra = async (req, res) => {
       largo_cm,
     } = req.body;
 
-    // Si se subió archivo, req.fileR2 = { key, url }
     const fotoKey = req.fileR2?.key || null;
 
     // Inserción en materiaprima
@@ -275,3 +273,4 @@ export const listFibras = async (req, res) => {
       .json({ error: "Internal server error", details: err.message });
   }
 };
+ 

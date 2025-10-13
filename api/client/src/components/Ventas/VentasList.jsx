@@ -8,15 +8,14 @@ const VentasList = () => {
   const [ventas, setVentas] = useState([]);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [toDelete, setToDelete] = useState(null); // venta seleccionada para borrar
+  const [toDelete, setToDelete] = useState(null);
   const navigate = useNavigate();
 
-  // 🔹 Obtener todas las ventas
   useEffect(() => {
     const fetchVentas = async () => {
       try {
         const res = await api.get("/ventas/listar");
-        setVentas(res.data);
+        setVentas(res.data || []);
       } catch (err) {
         console.error("❌ Error cargando ventas:", err);
         setError("No se pudieron cargar las ventas.");
@@ -25,17 +24,9 @@ const VentasList = () => {
     fetchVentas();
   }, []);
 
-  // 🔹 Editar venta
-  const handleEdit = (id) => {
-    navigate(`/ventas/${id}`);
-  };
+  const handleEdit = (id) => navigate(`/ventas/${id}`);
+  const handleDeleteClick = (venta) => setToDelete(venta);
 
-  // 🔹 Abrir modal de confirmación
-  const handleDeleteClick = (venta) => {
-    setToDelete(venta);
-  };
-
-  // 🔹 Confirmar borrado
   const confirmDelete = async () => {
     try {
       await api.delete(`/ventas/${toDelete.id_venta}`);
@@ -48,19 +39,29 @@ const VentasList = () => {
     }
   };
 
-  // 🔹 Cancelar borrado
-  const cancelDelete = () => {
-    setToDelete(null);
-  };
+  const cancelDelete = () => setToDelete(null);
 
-  // 🔹 Filtro por cliente o comentarios
   const filteredVentas = ventas.filter((v) => {
-    const search = searchTerm.toLowerCase();
-    return (
-      (v.nombre_cliente && v.nombre_cliente.toLowerCase().includes(search)) ||
-      (v.comentarios && v.comentarios.toLowerCase().includes(search))
-    );
+    const search = searchTerm.trim().toLowerCase();
+    if (!search) return true;
+
+    const nombre = [
+      v.cliente_display,
+      v.nombre_cliente,
+      v.empresa_cliente,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    const comentarios = (v.comentarios || "").toLowerCase();
+    return nombre.includes(search) || comentarios.includes(search);
   });
+
+  const R2 = (import.meta.env.VITE_R2_PUBLIC_BASE || "").replace(/\/+$/, "");
+  const imgFromVenta = (venta) =>
+    venta?.foto_url ||
+    (venta?.foto ? `${R2}/${String(venta.foto).replace(/^\/+/, "")}` : null);
 
   return (
     <section className="p-4 bg-gray-50 min-h-screen">
@@ -76,7 +77,6 @@ const VentasList = () => {
 
       {error && <p className="mb-4 text-red-500">{error}</p>}
 
-      {/* 🔍 Buscador */}
       <div className="mb-4">
         <input
           type="text"
@@ -87,12 +87,14 @@ const VentasList = () => {
         />
       </div>
 
-      {/* 🔹 Grid de ventas */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {filteredVentas.map((venta) => (
           <VentasCard
             key={venta.id_venta}
-            venta={venta}
+            venta={{
+              ...venta,
+              foto_url: imgFromVenta(venta),
+            }}
             onEdit={handleEdit}
             onDelete={() => handleDeleteClick(venta)}
           />
@@ -105,11 +107,10 @@ const VentasList = () => {
         )}
       </div>
 
-      {/* 🔹 Modal de confirmación */}
       <DeleteConfirm
         isOpen={!!toDelete}
         title={`Venta #${toDelete?.id_venta}`}
-        imageSrc={toDelete?.foto ? `/images/ventas/${encodeURIComponent(toDelete.foto)}` : null}
+        imageSrc={imgFromVenta(toDelete)}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
       />

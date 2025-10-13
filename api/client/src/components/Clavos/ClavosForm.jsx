@@ -3,10 +3,10 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
 import tablasBackground from "../../assets/tablasBackground.jpg";
-
+import Alert from "../Modals/Alert";
 const ClavosForm = () => {
   const { currentUser } = useContext(AuthContext);
-  const { id } = useParams(); 
+  const { id } = useParams();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
@@ -29,36 +29,36 @@ const ClavosForm = () => {
   const [serverFotoUrl, setServerFotoUrl] = useState(null);
   const [fotoRemove, setFotoRemove] = useState(false);
 
-  // Cargar datos al editar 
-    useEffect(() => {
-      if (!id) return;
-      (async () => {
-        try {
-          const { data } = await api.get(`/clavos/${id}`);
-          setInputs({
-            titulo: data.titulo || "",
-            tipo: data.tipo || "",
-            medidas: data.medidas || "",
-            material: data.material || "",
-            precio_unidad: data.precio_unidad?.toString() || "",
-            stock: data.stock?.toString() || "",
-            comentarios: data.comentarios || "",
-          });
+  // Cargar datos al editar
+  useEffect(() => {
+    if (!id) return;
+    (async () => {
+      try {
+        const { data } = await api.get(`/clavos/${id}`);
+        setInputs({
+          titulo: data.titulo || "",
+          tipo: data.tipo || "",
+          medidas: data.medidas || "",
+          material: data.material || "",
+          precio_unidad: data.precio_unidad?.toString() || "",
+          stock: data.stock?.toString() || "",
+          comentarios: data.comentarios || "",
+        });
 
-          if (data.foto_url) {
-            setPreview(data.foto_url);
-            setServerFotoUrl(data.foto_url); 
-          } else {
-            setPreview(null);
-            setServerFotoUrl(null);
-          }
-          setFotoRemove(false); 
-        } catch {
-          setErr("No se pudo cargar el clavo.");
-          setMessageType("error");
+        if (data.foto_url) {
+          setPreview(data.foto_url);
+          setServerFotoUrl(data.foto_url);
+        } else {
+          setPreview(null);
+          setServerFotoUrl(null);
         }
-      })();
-    }, [id]);
+        setFotoRemove(false);
+      } catch {
+        setErr("No se pudo cargar el clavo.");
+        setMessageType("error");
+      }
+    })();
+  }, [id]);
 
   const validateInputs = () => {
     if (!inputs.titulo) return "El título es requerido.";
@@ -67,10 +67,12 @@ const ClavosForm = () => {
     if (!inputs.material) return "El material es requerido.";
     if (currentUser?.tipo !== "encargado") {
       if (!inputs.precio_unidad) return "El precio unitario es requerido.";
-      if (isNaN(inputs.precio_unidad) || Number(inputs.precio_unidad) <= 0) return "Ingresa un precio válido.";
+      if (isNaN(inputs.precio_unidad) || Number(inputs.precio_unidad) <= 0)
+        return "Ingresa un precio válido.";
     }
     if (!inputs.stock) return "El stock es requerido.";
-    if (!Number.isInteger(Number(inputs.stock)) || Number(inputs.stock) < 0) return "Ingresa un stock válido.";
+    if (!Number.isInteger(Number(inputs.stock)) || Number(inputs.stock) < 0)
+      return "Ingresa un stock válido.";
     return null;
   };
 
@@ -114,26 +116,24 @@ const ClavosForm = () => {
 
       if (fotoFile) formData.append("foto", fotoFile);
 
-      // ⬇️⬇️ IMPORTANTE: si estoy editando, no subí foto nueva y el user pidió borrar:
       if (id && !fotoFile && fotoRemove) {
         formData.append("foto_remove", "1");
       }
 
       if (id) {
         await api.put(`/clavos/${id}`, formData, {
-          headers: { "Content-Type": "multipart/form-data" }
+          headers: { "Content-Type": "multipart/form-data" },
         });
         setErr("Clavo actualizado correctamente.");
       } else {
         await api.post(`/clavos/agregar`, formData, {
-          headers: { "Content-Type": "multipart/form-data" }
+          headers: { "Content-Type": "multipart/form-data" },
         });
         setErr("Clavo creado exitosamente.");
       }
 
       setMessageType("success");
       setInputs(initialInputs);
-      // limpiar estados de foto
       setFotoFile(null);
       setPreview(null);
       setServerFotoUrl(null);
@@ -143,13 +143,15 @@ const ClavosForm = () => {
       setTimeout(() => navigate("/clavos/listar"), 500);
     } catch (error) {
       const payload = error?.response?.data;
-      const msg = typeof payload === "string" ? payload : payload?.message || "Error al guardar el clavo.";
+      const msg =
+        typeof payload === "string"
+          ? payload
+          : payload?.message || "Error al guardar el clavo.";
       setErr(msg);
       setMessageType("error");
       console.error(error);
     }
   };
-
 
   return (
     <section className="relative flex items-center justify-center min-h-screen bg-neutral-50">
@@ -158,17 +160,27 @@ const ClavosForm = () => {
         style={{ backgroundImage: `url(${tablasBackground})` }}
       />
       <div className="relative z-10 w-full sm:max-w-md p-6 bg-white bg-opacity-80 rounded-lg shadow-md">
-        <Link to="/clavos" className="block mb-6 text-2xl font-semibold text-neutral-800 text-center">
+        <Link
+          to="/clavos"
+          className="block mb-6 text-2xl font-semibold text-neutral-800 text-center"
+        >
           Imanod Control de Stock
         </Link>
         <h1 className="text-2xl font-bold text-neutral-900 text-center mb-4">
           {id ? "Editar Clavo" : "Nuevo Clavo"}
         </h1>
 
-        <form className="space-y-4 md:space-y-6" onSubmit={handleSubmit} encType="multipart/form-data">
+        <form
+          className="space-y-4 md:space-y-6"
+          onSubmit={handleSubmit}
+          encType="multipart/form-data"
+        >
           {/* Título */}
           <div>
-            <label htmlFor="titulo" className="block mb-1 text-sm font-medium text-neutral-800">
+            <label
+              htmlFor="titulo"
+              className="block mb-1 text-sm font-medium text-neutral-800"
+            >
               Título
             </label>
             <input
@@ -184,7 +196,10 @@ const ClavosForm = () => {
 
           {/* Tipo */}
           <div>
-            <label htmlFor="tipo" className="block mb-1 text-sm font-medium text-neutral-800">
+            <label
+              htmlFor="tipo"
+              className="block mb-1 text-sm font-medium text-neutral-800"
+            >
               Tipo
             </label>
             <select
@@ -202,7 +217,10 @@ const ClavosForm = () => {
 
           {/* Medidas */}
           <div>
-            <label htmlFor="medidas" className="block mb-1 text-sm font-medium text-neutral-800">
+            <label
+              htmlFor="medidas"
+              className="block mb-1 text-sm font-medium text-neutral-800"
+            >
               Medidas
             </label>
             <input
@@ -218,7 +236,10 @@ const ClavosForm = () => {
 
           {/* Material */}
           <div>
-            <label htmlFor="material" className="block mb-1 text-sm font-medium text-neutral-800">
+            <label
+              htmlFor="material"
+              className="block mb-1 text-sm font-medium text-neutral-800"
+            >
               Material
             </label>
             <input
@@ -235,7 +256,10 @@ const ClavosForm = () => {
           {/* Precio unitario */}
           {currentUser?.tipo !== "encargado" && (
             <div>
-              <label htmlFor="precio_unidad" className="block mb-1 text-sm font-medium text-neutral-800">
+              <label
+                htmlFor="precio_unidad"
+                className="block mb-1 text-sm font-medium text-neutral-800"
+              >
                 Precio Unitario
               </label>
               <input
@@ -253,7 +277,10 @@ const ClavosForm = () => {
 
           {/* Stock */}
           <div>
-            <label htmlFor="stock" className="block mb-1 text-sm font-medium text-neutral-800">
+            <label
+              htmlFor="stock"
+              className="block mb-1 text-sm font-medium text-neutral-800"
+            >
               Stock
             </label>
             <input
@@ -270,7 +297,10 @@ const ClavosForm = () => {
 
           {/* Foto */}
           <div>
-            <label htmlFor="foto" className="block mb-1 text-sm font-medium text-neutral-800">
+            <label
+              htmlFor="foto"
+              className="block mb-1 text-sm font-medium text-neutral-800"
+            >
               Foto
             </label>
             <input
@@ -284,7 +314,11 @@ const ClavosForm = () => {
             />
             {preview && (
               <div className="relative mt-2">
-                <img src={preview} alt="Preview" className="w-full h-auto rounded" />
+                <img
+                  src={preview}
+                  alt="Preview"
+                  className="w-full h-auto rounded"
+                />
                 <button
                   type="button"
                   onClick={() => {
@@ -302,12 +336,14 @@ const ClavosForm = () => {
                 </button>
               </div>
             )}
-
           </div>
 
           {/* Comentarios */}
           <div>
-            <label htmlFor="comentarios" className="block mb-1 text-sm font-medium text-neutral-800">
+            <label
+              htmlFor="comentarios"
+              className="block mb-1 text-sm font-medium text-neutral-800"
+            >
               Comentarios
             </label>
             <textarea
@@ -321,11 +357,18 @@ const ClavosForm = () => {
             />
           </div>
 
-          {/* Mensaje */}
           {err && (
-            <span className={messageType === "error" ? "text-red-500" : "text-green-500"}>
-              {err}
-            </span>
+            <div className="mb-3">
+              <Alert
+                type={messageType === "error" ? "error" : "success"}
+                onClose={() => {
+                  setErr("");
+                  setMessageType("");
+                }}
+              >
+                {err}
+              </Alert>
+            </div>
           )}
 
           {/* Submit new */}

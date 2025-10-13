@@ -1,52 +1,148 @@
+// PelletsCard.jsx
 import React, { useContext } from "react";
+import { Image } from "antd";
 import { AuthContext } from "../../context/authContext";
+
+const chipBase =
+  "inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[12px] ring-1";
+
+const formatMoney = (n) =>
+  Number(n ?? 0).toLocaleString("es-UY", {
+    style: "currency",
+    currency: "UYU",
+    maximumFractionDigits: 2,
+  });
 
 const PelletsCard = ({ pellet, onEdit, onDelete }) => {
   const { currentUser } = useContext(AuthContext);
-  const { id_pellet, titulo, bolsa_kilogramos, precio_unidad, stock, foto_url } = pellet;
+  const isAdmin = currentUser?.tipo === "admin";
+
+  const {
+    id_pellet,
+    titulo,
+    bolsa_kilogramos,
+    precio_unidad,
+    stock,
+    foto_url,
+  } = pellet || {};
+
+  const imgSrc = foto_url || null;
 
   return (
-    <div className="border rounded-lg p-4 flex flex-col justify-between bg-white shadow-sm">
-      <div>
-        {foto_url && (
-          <img
-            src={foto_url}
-            alt={titulo}
-            loading="lazy"
-            className="w-full h-32 object-cover mb-4 rounded"
-            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-          />
-        )}
+    <div
+      className="
+        group relative overflow-hidden rounded-2xl bg-white
+        shadow-sm ring-1 ring-slate-900/5 transition
+        hover:-translate-y-0.5 hover:shadow-lg flex flex-col
+      "
+    >
+      {/* Header con degradado y título centrado */}
+      <div className="relative h-20 w-full bg-gradient-to-r from-sky-50 to-indigo-50">
+        <h3
+          className="
+            absolute inset-0 flex items-center justify-center
+            px-4 text-center text-base font-semibold text-slate-900
+            leading-tight line-clamp-2
+          "
+        >
+          {titulo || "Pellet"}
+        </h3>
 
-        <p className="text-lg font-semibold text-gray-800 mb-2">{titulo}</p>
-
-        <p className="text-sm text-gray-600">Bolsa (kg):</p>
-        <p className="mb-2 text-gray-800">{bolsa_kilogramos}</p>
-
-        {currentUser?.tipo === "admin" && (
-          <>
-            <p className="text-sm text-gray-600">Precio Unitario:</p>
-            <p className="mb-2 text-gray-800">{precio_unidad}</p>
-          </>
-        )}
-
-        <p className="text-sm text-gray-600">Stock:</p>
-        <p className="mb-2 text-gray-800">{stock}</p>
+        <span
+          className="
+            absolute top-3 right-3 px-2 py-0.5 text-[11px] font-medium
+            rounded-full ring-1 shadow-sm bg-sky-50 text-sky-700 ring-sky-200
+          "
+        >
+          Pellets
+        </span>
       </div>
 
-      <div className="mt-4 flex space-x-2">
+      {/* Contenido */}
+      <div className="p-4">
+        {/* Imagen (antd) */}
+        {imgSrc ? (
+          <div className="w-full h-44 rounded-xl overflow-hidden bg-slate-50 ring-1 ring-slate-200">
+            <Image
+              src={imgSrc}
+              alt={titulo || "Pellet"}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+                display: "block",
+              }}
+              loading="lazy"
+              fallback="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'/>"
+              preview={{
+                mask: <span style={{ fontSize: 12 }}>Click para ampliar</span>,
+              }}
+            />
+          </div>
+        ) : (
+          <div className="w-full h-44 rounded-xl bg-slate-50 ring-1 ring-slate-200 grid place-items-center text-slate-400 text-sm select-none">
+            Sin imagen
+          </div>
+        )}
+
+        {/* Chips info */}
+        <div className="mt-3 flex flex-wrap gap-2">
+          <span
+            className={`${chipBase} bg-amber-50 text-amber-700 ring-amber-200`}
+            title="Peso por bolsa"
+          >
+            <span className="inline-block size-2.5 rounded-full bg-amber-400" />
+            {Number(bolsa_kilogramos ?? 0)} kg
+          </span>
+
+          <span
+            className={`${chipBase} bg-emerald-50 text-emerald-700 ring-emerald-200`}
+            title="Stock disponible"
+          >
+            <span className="inline-block size-2.5 rounded-full bg-emerald-400" />
+            Stock: {Number(stock ?? 0)}
+          </span>
+
+          {isAdmin && precio_unidad != null && (
+            <span
+              className={`${chipBase} bg-blue-50 text-blue-700 ring-blue-200`}
+              title="Precio unitario"
+            >
+              <span className="inline-block size-2.5 rounded-full bg-blue-400" />
+              {formatMoney(precio_unidad)} / bolsa
+            </span>
+          )}
+        </div>
+
+        {/* Acciones */}
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            onClick={() => onEdit?.(id_pellet)}
+            className="
+              flex-1 inline-flex items-center justify-center rounded-lg
+              bg-blue-600 text-white px-3 py-2 text-sm font-medium
+              shadow-sm hover:bg-blue-700 focus:outline-none
+              focus-visible:ring-2 focus-visible:ring-blue-400
+            "
+          >
+            Editar
+          </button>
+
         <button
-          onClick={() => onEdit(id_pellet)}
-          className="flex-1 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-        >
-          Editar
-        </button>
-        <button
-          onClick={() => onDelete(id_pellet)}
-          className="flex-1 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
+          type="button"
+          onClick={() => onDelete?.(id_pellet)}
+          className="
+            flex-1 inline-flex items-center justify-center rounded-lg
+            bg-red-50 text-red-700 ring-1 ring-red-200
+            px-3 py-2 text-sm font-medium hover:bg-red-100
+            focus:outline-none focus-visible:ring-2
+            focus-visible:ring-red-300
+          "
         >
           Eliminar
         </button>
+        </div>
       </div>
     </div>
   );

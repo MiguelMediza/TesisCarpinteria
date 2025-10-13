@@ -34,7 +34,7 @@ import Clientes from "./pages/clientes/Clientes";
 import ClientesList from "./pages/clientes/ClientesList";
 import Ventas from "./pages/ventas/Ventas";
 import VentasList from "./pages/ventas/VentasList";
-import { useContext } from "react";
+import { useContext, useState, useEffect } from "react";
 import { DarkModeContext } from "./context/darkModeContext";
 import { AuthContext } from "./context/authContext";
 import Encargos from "./pages/encargos/Encargos";
@@ -57,16 +57,36 @@ function App() {
 
   const { darkMode } = useContext(DarkModeContext);
 
-  const Layout = () => {
-    return (
-      <div className={`theme-${darkMode ? "dark" : "light"}`}>
-        <Nav /> 
-        <main className="pt-25 min-h-screen">
-          <Outlet />
-        </main>
-      </div>
-    );
-  };
+const Layout = ({ darkMode }) => {
+  const [navH, setNavH] = useState(72); // fallback razonable
+
+  useEffect(() => {
+    const el = document.getElementById("app-navbar");
+    if (!el) return;
+
+    const update = () => setNavH(el.offsetHeight || 72);
+
+    update(); // inicial
+    // Recalcula si cambia el tamaño (colapso mobile, etc.)
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    window.addEventListener("resize", update);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
+  return (
+    <div className={`theme-${darkMode ? "dark" : "light"}`}>
+      <Nav />
+      <main className="min-h-screen" style={{ paddingTop: navH }}>
+        <Outlet />
+      </main>
+    </div>
+  );
+};
 
   const ProtectedRoute = ({ children }) => {
     if (!currentUser) {
@@ -81,7 +101,7 @@ function App() {
     return <Navigate to="/login" />;
   }
   if (currentUser.tipo !== "admin") {
-    return <Navigate to="/" />; // Redirige al home si no es admin
+    return <Navigate to="/" />; 
   }
   return children;
 };
@@ -269,6 +289,18 @@ function App() {
           element: <Pedidos/>,
          },
          {
+          path: "/encargos",
+          element: <Encargos/>,
+         },
+         {
+          path: "/encargos/listar",
+          element: <EncargosList/>,
+         },
+         {
+          path: "/encargos/:id",
+          element: <Encargos/>,
+         },
+         {
           path: "/ventas",
           element: (
             <AdminRoute>
@@ -289,30 +321,6 @@ function App() {
           element: (
             <AdminRoute>
               <Ventas/>
-            </AdminRoute>
-          ),
-        },
-        {
-          path: "/encargos",
-          element: (
-            <AdminRoute>
-              <Encargos/>
-            </AdminRoute>
-          ),
-        },
-        {
-          path: "/encargos/:id",
-          element: (
-            <AdminRoute>
-              <Encargos/>
-            </AdminRoute>
-          ),
-        },
-        {
-          path: "/encargos/listar",
-          element: (
-            <AdminRoute>
-              <EncargosList/>
             </AdminRoute>
           ),
         },

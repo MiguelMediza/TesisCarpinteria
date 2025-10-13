@@ -2,11 +2,17 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { api } from "../../api";
 import pedidosBg from "../../assets/tablasBackground.jpg";
-
-const ESTADOS = ["pendiente","en_produccion","listo","entregado","cancelado"];
+import Alert from "../Modals/Alert";
+const ESTADOS = [
+  "pendiente",
+  "en_produccion",
+  "listo",
+  "entregado",
+  "cancelado",
+];
 
 const PedidosForm = () => {
-  const { id } = useParams(); // id_pedido si se edita
+  const { id } = useParams();
   const navigate = useNavigate();
 
   const [inputs, setInputs] = useState({
@@ -14,13 +20,19 @@ const PedidosForm = () => {
     estado: "pendiente",
     fecha_realizado: "",
     fecha_de_entrega: "",
-    comentarios: ""
+    comentarios: "",
   });
 
   const [clientes, setClientes] = useState([]);
   const [prototipos, setPrototipos] = useState([]);
   const [items, setItems] = useState([
-    { id_prototipo: "", cantidad_pallets: "", numero_lote: "", numero_tratamiento: "", comentarios: "" }
+    {
+      id_prototipo: "",
+      cantidad_pallets: "",
+      numero_lote: "",
+      numero_tratamiento: "",
+      comentarios: "",
+    },
   ]);
 
   const [err, setErr] = useState("");
@@ -42,7 +54,7 @@ const PedidosForm = () => {
       try {
         const [cliRes, protRes] = await Promise.all([
           api.get("/clientes/listar"),
-          api.get("/prototipos/listar") 
+          api.get("/prototipos/listar"),
         ]);
         setClientes(cliRes.data || []);
         setPrototipos(protRes.data || []);
@@ -65,17 +77,29 @@ const PedidosForm = () => {
           estado: data.estado || "pendiente",
           fecha_realizado: formatDateFromISO(data.fecha_realizado),
           fecha_de_entrega: formatDateFromISO(data.fecha_de_entrega),
-          comentarios: data.comentarios || ""
+          comentarios: data.comentarios || "",
         });
 
-        const its = (data.items || []).map(x => ({
+        const its = (data.items || []).map((x) => ({
           id_prototipo: x.id_prototipo?.toString() || "",
           cantidad_pallets: x.cantidad_pallets?.toString() || "",
           numero_lote: x.numero_lote || "",
           numero_tratamiento: x.numero_tratamiento || "",
-          comentarios: x.comentarios || ""
+          comentarios: x.comentarios || "",
         }));
-        setItems(its.length ? its : [{ id_prototipo:"", cantidad_pallets:"", numero_lote:"", numero_tratamiento:"", comentarios:"" }]);
+        setItems(
+          its.length
+            ? its
+            : [
+                {
+                  id_prototipo: "",
+                  cantidad_pallets: "",
+                  numero_lote: "",
+                  numero_tratamiento: "",
+                  comentarios: "",
+                },
+              ]
+        );
       } catch (e) {
         console.error(e);
         setErr("No se pudo cargar el pedido.");
@@ -87,23 +111,22 @@ const PedidosForm = () => {
   // Handlers
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setInputs(prev => {
+    setInputs((prev) => {
       const next = { ...prev, [name]: value };
-      // si cambian realizado y entrega ya existe, forzar que entrega sea posterior
       if (name === "fecha_realizado" && next.fecha_de_entrega) {
         const fReal = new Date(value);
-        const fEnt  = new Date(next.fecha_de_entrega);
-        if (fEnt <= fReal) next.fecha_de_entrega = ""; 
+        const fEnt = new Date(next.fecha_de_entrega);
+        if (fEnt <= fReal) next.fecha_de_entrega = "";
       }
       return next;
     });
   };
 
   const handleItemChange = (idx, field, value) => {
-    setItems(prev => {
-      const next = [...prev];  
+    setItems((prev) => {
+      const next = [...prev];
       if (field === "cantidad_pallets") {
-        const v = value.replace(/[^\d]/g, ""); 
+        const v = value.replace(/[^\d]/g, "");
         next[idx][field] = v;
       } else {
         next[idx][field] = value;
@@ -113,10 +136,21 @@ const PedidosForm = () => {
   };
 
   const addItem = () =>
-    setItems(prev => [...prev, { id_prototipo: "", cantidad_pallets: "", numero_lote: "", numero_tratamiento: "", comentarios: "" }]);
+    setItems((prev) => [
+      ...prev,
+      {
+        id_prototipo: "",
+        cantidad_pallets: "",
+        numero_lote: "",
+        numero_tratamiento: "",
+        comentarios: "",
+      },
+    ]);
 
   const delItem = (idx) =>
-    setItems(prev => (prev.length === 1 ? prev : prev.filter((_, i) => i !== idx)));
+    setItems((prev) =>
+      prev.length === 1 ? prev : prev.filter((_, i) => i !== idx)
+    );
 
   // Validación
   const validar = () => {
@@ -125,12 +159,16 @@ const PedidosForm = () => {
     if (!inputs.fecha_de_entrega) return "La fecha de entrega es obligatoria.";
 
     const fReal = new Date(inputs.fecha_realizado);
-    const fEnt  = new Date(inputs.fecha_de_entrega);
-    if (fEnt <= fReal) return "La fecha de entrega debe ser estrictamente posterior a la fecha realizado.";
+    const fEnt = new Date(inputs.fecha_de_entrega);
+    if (fEnt <= fReal)
+      return "La fecha de entrega debe ser estrictamente posterior a la fecha realizado.";
 
     const isValidQty = (v) => /^[1-9]\d*$/.test(String(v).trim());
-    const validItems = items.filter(it => it.id_prototipo && isValidQty(it.cantidad_pallets));
-    if (validItems.length === 0) return "Debe agregar al menos un prototipo con cantidad > 0.";
+    const validItems = items.filter(
+      (it) => it.id_prototipo && isValidQty(it.cantidad_pallets)
+    );
+    if (validItems.length === 0)
+      return "Debe agregar al menos un prototipo con cantidad > 0.";
 
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
@@ -154,16 +192,15 @@ const PedidosForm = () => {
     const payload = {
       ...inputs,
       id_cliente: inputs.id_cliente ? parseInt(inputs.id_cliente, 10) : null,
-      // el backend calculará el precio_total
       items: items
-        .filter(it => it.id_prototipo && it.cantidad_pallets)
-        .map(it => ({
+        .filter((it) => it.id_prototipo && it.cantidad_pallets)
+        .map((it) => ({
           id_prototipo: parseInt(it.id_prototipo, 10),
           cantidad_pallets: parseInt(it.cantidad_pallets, 10),
           numero_lote: it.numero_lote?.trim() || null,
           numero_tratamiento: it.numero_tratamiento?.trim() || null,
-          comentarios: it.comentarios?.trim() || null
-        }))
+          comentarios: it.comentarios?.trim() || null,
+        })),
     };
 
     try {
@@ -183,6 +220,25 @@ const PedidosForm = () => {
     }
   };
 
+  const selectedIdsExcept = (idx) =>
+    new Set(
+      items
+        .map((it, i) => (i !== idx ? String(it.id_prototipo || "") : ""))
+        .filter(Boolean)
+    );
+
+  const optionsForIndex = (idx) =>
+    prototipos.filter(
+      (p) => !selectedIdsExcept(idx).has(String(p.id_prototipo))
+    );
+
+  const remainingForNewItem = prototipos.filter((p) => {
+    const chosen = new Set(
+      items.map((it) => String(it.id_prototipo || "")).filter(Boolean)
+    );
+    return !chosen.has(String(p.id_prototipo));
+  }).length;
+
   return (
     <section className="relative flex items-center justify-center min-h-screen bg-neutral-50">
       <div
@@ -190,7 +246,10 @@ const PedidosForm = () => {
         style={{ backgroundImage: `url(${pedidosBg})` }}
       />
       <div className="relative z-10 w-full sm:max-w-2xl p-6 bg-white bg-opacity-80 rounded-lg shadow-md">
-        <Link to="/pedidos/listar" className="block mb-6 text-2xl font-semibold text-neutral-800 text-center">
+        <Link
+          to="/pedidos/listar"
+          className="block mb-6 text-2xl font-semibold text-neutral-800 text-center"
+        >
           Imanod Pedidos
         </Link>
 
@@ -209,9 +268,11 @@ const PedidosForm = () => {
               className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
             >
               <option value="">Seleccionar cliente</option>
-              {clientes.map(c => (
+              {clientes.map((c) => (
                 <option key={c.id_cliente} value={c.id_cliente}>
-                  {c.es_empresa ? c.nombre_empresa : `${c.nombre} ${c.apellido || ""}`}
+                  {c.es_empresa
+                    ? c.nombre_empresa
+                    : `${c.nombre} ${c.apellido || ""}`}
                 </option>
               ))}
             </select>
@@ -226,8 +287,10 @@ const PedidosForm = () => {
               onChange={handleChange}
               className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
             >
-              {ESTADOS.map(e => (
-                <option key={e} value={e}>{e.replace("_"," ")}</option>
+              {ESTADOS.map((e) => (
+                <option key={e} value={e}>
+                  {e.replace("_", " ")}
+                </option>
               ))}
             </select>
           </div>
@@ -235,7 +298,9 @@ const PedidosForm = () => {
           {/* Fechas */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block mb-1 text-sm font-medium">Fecha realizado *</label>
+              <label className="block mb-1 text-sm font-medium">
+                Fecha realizado *
+              </label>
               <input
                 type="date"
                 name="fecha_realizado"
@@ -245,14 +310,19 @@ const PedidosForm = () => {
               />
             </div>
             <div>
-              <label className="block mb-1 text-sm font-medium">Fecha de entrega *</label>
+              <label className="block mb-1 text-sm font-medium">
+                Fecha de entrega *
+              </label>
               <input
                 type="date"
                 name="fecha_de_entrega"
                 value={inputs.fecha_de_entrega}
                 onChange={handleChange}
-                // opcional: ayuda visual (mínimo día siguiente)
-                min={inputs.fecha_realizado ? nextDayISO(inputs.fecha_realizado) : undefined}
+                min={
+                  inputs.fecha_realizado
+                    ? nextDayISO(inputs.fecha_realizado)
+                    : undefined
+                }
                 className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
               />
             </div>
@@ -260,7 +330,9 @@ const PedidosForm = () => {
 
           {/* Comentarios */}
           <div>
-            <label className="block mb-1 text-sm font-medium">Comentarios</label>
+            <label className="block mb-1 text-sm font-medium">
+              Comentarios
+            </label>
             <textarea
               name="comentarios"
               value={inputs.comentarios}
@@ -275,18 +347,33 @@ const PedidosForm = () => {
           <div>
             <p className="text-sm font-semibold mb-2">Ítems del pedido *</p>
             {items.map((it, i) => (
-              <div key={`it-${i}`} className="grid grid-cols-1 md:grid-cols-12 gap-2 mb-2">
+              <div
+                key={`it-${i}`}
+                className="grid grid-cols-1 md:grid-cols-12 gap-2 mb-2"
+              >
                 <select
                   value={it.id_prototipo}
-                  onChange={(e) => handleItemChange(i, "id_prototipo", e.target.value)}
+                  onChange={(e) =>
+                    handleItemChange(i, "id_prototipo", e.target.value)
+                  }
                   className="md:col-span-5 p-2 border rounded bg-neutral-100"
                 >
                   <option value="">Seleccionar prototipo</option>
-                  {prototipos.map(p => (
-                    <option key={p.id_prototipo} value={p.id_prototipo}>
-                      {p.titulo} {p.medidas ? `(${p.medidas})` : ""}
-                    </option>
-                  ))}
+                  {prototipos.map((p) => {
+                    const yaElegido = selectedIdsExcept(i).has(
+                      String(p.id_prototipo)
+                    );
+                    return (
+                      <option
+                        key={p.id_prototipo}
+                        value={p.id_prototipo}
+                        disabled={yaElegido}
+                      >
+                        {p.titulo} {p.medidas ? `(${p.medidas})` : ""}
+                        {yaElegido ? " — (ya seleccionado)" : ""}
+                      </option>
+                    );
+                  })}
                 </select>
 
                 <input
@@ -295,21 +382,27 @@ const PedidosForm = () => {
                   pattern="[0-9]*"
                   placeholder="Cantidad"
                   value={it.cantidad_pallets}
-                  onChange={(e) => handleItemChange(i, "cantidad_pallets", e.target.value)}
+                  onChange={(e) =>
+                    handleItemChange(i, "cantidad_pallets", e.target.value)
+                  }
                   className="md:col-span-2 p-2 border rounded bg-neutral-100"
                 />
 
                 <input
                   type="text"
                   value={it.numero_lote}
-                  onChange={(e) => handleItemChange(i, "numero_lote", e.target.value)}
+                  onChange={(e) =>
+                    handleItemChange(i, "numero_lote", e.target.value)
+                  }
                   placeholder="Lote (opcional)"
                   className="md:col-span-2 p-2 border rounded bg-neutral-100"
                 />
                 <input
                   type="text"
                   value={it.numero_tratamiento}
-                  onChange={(e) => handleItemChange(i, "numero_tratamiento", e.target.value)}
+                  onChange={(e) =>
+                    handleItemChange(i, "numero_tratamiento", e.target.value)
+                  }
                   placeholder="Tratamiento (opcional)"
                   className="md:col-span-2 p-2 border rounded bg-neutral-100"
                 />
@@ -325,32 +418,62 @@ const PedidosForm = () => {
                 <input
                   type="text"
                   value={it.comentarios}
-                  onChange={(e) => handleItemChange(i, "comentarios", e.target.value)}
+                  onChange={(e) =>
+                    handleItemChange(i, "comentarios", e.target.value)
+                  }
                   placeholder="Comentarios del ítem (opcional)"
                   className="md:col-span-12 p-2 border rounded bg-neutral-100"
                 />
               </div>
             ))}
 
-            <button type="button" onClick={addItem} className="mt-1 text-sm text-blue-600 font-medium">
+            <button
+              type="button"
+              onClick={addItem}
+              className="mt-1 text-sm text-blue-600 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={remainingForNewItem === 0}
+              title={
+                remainingForNewItem === 0
+                  ? "No quedan prototipos disponibles"
+                  : "Agregar ítem"
+              }
+            >
               + Agregar ítem
             </button>
+            {remainingForNewItem === 0 && (
+              <p className="text-xs text-gray-500 mt-1">
+                No quedan prototipos disponibles para agregar.
+              </p>
+            )}
           </div>
 
           {/* Mensajes */}
           {err && (
-            <div className={`text-sm ${messageType === "error" ? "text-red-600" : "text-green-600"}`}>
-              {err}
+            <div className="mb-3">
+              <Alert
+                type={messageType === "error" ? "error" : "success"}
+                onClose={() => {
+                  setErr("");
+                  setMessageType("");
+                }}
+              >
+                {err}
+              </Alert>
             </div>
           )}
 
           {/* Botón */}
-          <button type="submit" className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+          <button
+            type="submit"
+            className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+          >
             {id ? "Guardar Cambios" : "Crear Pedido"}
           </button>
 
           <p className="mt-4 text-sm text-neutral-700 text-center">
-            <Link to="/pedidos/listar" className="font-medium underline">Volver al listado de pedidos</Link>
+            <Link to="/pedidos/listar" className="font-medium underline">
+              Volver al listado de pedidos
+            </Link>
           </p>
         </form>
       </div>

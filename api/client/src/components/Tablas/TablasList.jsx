@@ -9,6 +9,8 @@ const TablasList = () => {
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [toDelete, setToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -29,28 +31,43 @@ const TablasList = () => {
   };
 
   const handleDeleteClick = (tabla) => {
+    setDeleteError("");
     setToDelete(tabla);
   };
 
   const confirmDelete = async () => {
+    if (!toDelete) return;
+    setDeleting(true);
+    setDeleteError("");
+
     try {
       await api.delete(`/tablas/${toDelete.id_materia_prima}`);
-      setTablas(prev =>
-        prev.filter(t => t.id_materia_prima !== toDelete.id_materia_prima)
+      setTablas((prev) =>
+        prev.filter((t) => t.id_materia_prima !== toDelete.id_materia_prima)
       );
-    } catch (err) {
-      console.error(err);
-      setError("Error al eliminar la tabla.");
-    } finally {
       setToDelete(null);
+    } catch (err) {
+      let msg = "No se pudo eliminar la tabla.";
+      const data = err?.response?.data;
+      if (data) {
+        if (typeof data === "string") msg = data;
+        else if (data.message) msg = data.message;
+        if (Array.isArray(data.tipos) && data.tipos.length) {
+          msg += "\nUsado por:\n - " + data.tipos.join("\n - ");
+        }
+      }
+      setDeleteError(msg);
+    } finally {
+      setDeleting(false);
     }
   };
 
   const cancelDelete = () => {
+    setDeleteError("");
     setToDelete(null);
   };
 
-  const filteredTablas = tablas.filter(t =>
+  const filteredTablas = tablas.filter((t) =>
     t.titulo.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -73,7 +90,7 @@ const TablasList = () => {
           type="text"
           placeholder="Buscar tabla por título..."
           value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
+          onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
@@ -97,9 +114,11 @@ const TablasList = () => {
       <DeleteConfirm
         isOpen={!!toDelete}
         title={toDelete?.titulo}
-        imageSrc={toDelete?.foto_url || null}    /* CAMBIO: usar URL completa */
+        imageSrc={toDelete?.foto_url || null}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
+        error={deleteError}
+        loading={deleting}
       />
     </section>
   );

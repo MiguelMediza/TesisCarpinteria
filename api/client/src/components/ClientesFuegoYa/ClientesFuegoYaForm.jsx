@@ -2,15 +2,15 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { api } from "../../api";
 import bgImg from "../../assets/tablasBackground.jpg";
-
+import Alert from "../Modals/Alert";
 const ClientesFuegoYaForm = () => {
-  const { id } = useParams(); 
+  const { id } = useParams();
   const navigate = useNavigate();
 
   const initialInputs = {
     nombre: "",
     telefono: "",
-    email: ""
+    email: "",
   };
 
   const [inputs, setInputs] = useState(initialInputs);
@@ -57,7 +57,7 @@ const ClientesFuegoYaForm = () => {
     const payload = {
       nombre: inputs.nombre.trim(),
       telefono: inputs.telefono?.trim() || null,
-      email: inputs.email?.trim() || null
+      email: inputs.email?.trim() || null,
     };
 
     try {
@@ -141,15 +141,18 @@ const ClientesFuegoYaForm = () => {
             />
           </div>
 
-
           {err && (
-            <span
-              className={
-                messageType === "error" ? "text-red-500" : "text-green-500"
-              }
-            >
-              {err}
-            </span>
+            <div className="mb-3">
+              <Alert
+                type={messageType === "error" ? "error" : "success"}
+                onClose={() => {
+                  setErr("");
+                  setMessageType("");
+                }}
+              >
+                {err}
+              </Alert>
+            </div>
           )}
 
           <button
@@ -160,7 +163,10 @@ const ClientesFuegoYaForm = () => {
           </button>
 
           <p className="mt-4 text-sm text-neutral-700 text-center">
-            <Link to="/clientesfuegoya/listar" className="font-medium underline">
+            <Link
+              to="/clientesfuegoya/listar"
+              className="font-medium underline"
+            >
               Volver al listado
             </Link>
           </p>

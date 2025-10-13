@@ -16,7 +16,7 @@ export const createEncargo = async (req, res) => {
 
     await connection.beginTransaction();
 
-    //Insertar en encargos
+    //Insertar en encargo
     const [encargoResult] = await connection.query(
       `INSERT INTO encargos (fecha_realizado, fecha_prevista_llegada, comentarios, id_proveedor)
        VALUES (?, ?, ?, ?)`,

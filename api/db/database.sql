@@ -274,6 +274,53 @@ CREATE TABLE pellets (
     foto VARCHAR(255)
 );
 
+CREATE TABLE fuegoya_pagos (
+  id_pago       INT AUTO_INCREMENT PRIMARY KEY,
+  id_cliente    INT NOT NULL,
+  monto         DECIMAL(10,2) NOT NULL CHECK (monto > 0),
+  fecha_hora    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  medio         ENUM('efectivo','transferencia','otro') NULL,
+  nota          VARCHAR(255) NULL,
+  creado_por    INT NULL,
+  FOREIGN KEY (id_cliente) REFERENCES clientes_fuegoya(id_cliente),
+  FOREIGN KEY (creado_por) REFERENCES usuarios(idUser),
+  INDEX ix_pagos_cliente_fecha (id_cliente, fecha_hora)
+);
+
+-- 2) Aplicaciones de cada pago a ventas específicas (permite repartir un pago entre varias ventas)
+CREATE TABLE fuegoya_pago_aplicaciones (
+  id_aplicacion     INT AUTO_INCREMENT PRIMARY KEY,
+  id_pago           INT NOT NULL,
+  id_ventaFuegoya   INT NOT NULL,
+  monto             DECIMAL(10,2) NOT NULL CHECK (monto > 0),
+  aplicado_en       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_pago)         REFERENCES fuegoya_pagos(id_pago) ON DELETE CASCADE,
+  FOREIGN KEY (id_ventaFuegoya) REFERENCES venta_fuegoya(id_ventaFuegoya),
+  UNIQUE KEY uq_pago_venta (id_pago, id_ventaFuegoya),
+  INDEX ix_aplicaciones_venta (id_ventaFuegoya)
+);
+
+-- (Opcional pero útil) Vista de pendiente por venta
+DROP VIEW IF EXISTS vw_vfy_pendiente;
+CREATE VIEW vw_vfy_pendiente AS
+SELECT
+  v.id_ventaFuegoya,
+  v.id_cliente,
+  v.fecha_realizada,
+  v.precio_total,
+  COALESCE(SUM(a.monto),0) AS total_aplicado,
+  (v.precio_total - COALESCE(SUM(a.monto),0)) AS pendiente,
+  v.estadopago,
+  v.fechapago
+FROM venta_fuegoya v
+LEFT JOIN fuegoya_pago_aplicaciones a
+  ON a.id_ventaFuegoya = v.id_ventaFuegoya
+GROUP BY v.id_ventaFuegoya, v.id_cliente, v.fecha_realizada, v.precio_total, v.estadopago, v.fechapago;
+
+-- (Opcional) Índice para buscar rápido las ventas “a crédito” más antiguas
+CREATE INDEX ix_vfy_cliente_estado_fecha
+ON venta_fuegoya (id_cliente, estadopago, fecha_realizada, id_ventaFuegoya);
+
 /* VIEW para listar las materias primas con stock bajo 'menor a 100' */
 CREATE VIEW stock_bajo AS
 SELECT 'materiaprima' AS origen, id_materia_prima AS id, titulo, stock
@@ -289,10 +336,11 @@ SELECT 'fuego_ya', id_fuego_ya, tipo, stock FROM fuego_ya WHERE stock < 500
 UNION ALL
 SELECT 'pellets', id_pellet, titulo, stock FROM pellets WHERE stock < 500;
 
-SELECT * FROM stock_bajo;
-
-
-
+CREATE INDEX ix_tipo_tablas_parent ON tipo_tablas (id_materia_prima);
+CREATE INDEX ix_prototipo_clavos_parent ON prototipo_clavos (id_materia_prima);
+CREATE INDEX ix_ptt_taco ON prototipo_tipo_tacos (id_tipo_taco);
+CREATE INDEX ix_patines_taco ON tipo_patines (id_tipo_taco);
+CREATE INDEX ix_pp_patin ON prototipo_pallet (id_tipo_patin);
 -- 1) BOM detallado (incluye PATÍN con cantidad)
 
 DROP VIEW IF EXISTS vw_prototipo_bom_detalle;

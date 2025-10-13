@@ -27,6 +27,7 @@ import materiaprimaRouter from "./routes/materiaprima.routes.js";
 import pedidosRouter from "./routes/pedidos.routes.js";
 import ventafuegoyaRouter from "./routes/ventafuegoya.routes.js";
 import clientesfuegoyaRouter from "./routes/clientesfuegoya.routes.js";
+import estadisticasRouter from "./routes/estadisticas.routes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -110,7 +111,7 @@ app.use("/api/src/materiaprima", materiaprimaRouter);
 app.use("/api/src/pedidos", pedidosRouter);
 app.use("/api/src/ventafuegoya", ventafuegoyaRouter);
 app.use("/api/src/clientesfuegoya", clientesfuegoyaRouter);
-
+app.use("/api/src/estadisticas", estadisticasRouter);
 
 app.use((req, res, next) => {
   const isGet = req.method === "GET";

@@ -1,4 +1,3 @@
-// src/components/Clavos/ClavosList.jsx
 import React, { useEffect, useState } from "react";
 import { api } from "../../api";
 import { Link, useNavigate } from "react-router-dom";
@@ -10,6 +9,8 @@ const ClavosList = () => {
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [toDelete, setToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -26,23 +27,46 @@ const ClavosList = () => {
   }, []);
 
   const handleEdit = (id) => navigate(`/clavos/${id}`);
-  const handleDeleteClick = (clavo) => setToDelete(clavo);
+  const handleDeleteClick = (clavo) => {
+    setDeleteError("");
+    setToDelete(clavo);
+  };
 
   const confirmDelete = async () => {
+    if (!toDelete) return;
+    setDeleting(true);
+    setDeleteError("");
     try {
       await api.delete(`/clavos/${toDelete.id_materia_prima}`);
       setClavos((prev) =>
         prev.filter((c) => c.id_materia_prima !== toDelete.id_materia_prima)
       );
-    } catch (err) {
-      console.error(err);
-      setError("Error al eliminar el clavo.");
-    } finally {
       setToDelete(null);
+    } catch (err) {
+      let msg = "No se pudo eliminar el clavo.";
+      const data = err?.response?.data;
+      if (data) {
+        if (typeof data === "string") msg = data;
+        else if (data.message) msg = data.message;
+
+        const lista = Array.isArray(data.prototipos)
+          ? data.prototipos
+          : Array.isArray(data.tipos)
+          ? data.tipos
+          : null;
+        if (lista && lista.length) {
+          msg += "\nUsado por:\n - " + lista.join("\n - ");
+        }
+      }
+      setDeleteError(msg);
+    } finally {
+      setDeleting(false);
     }
   };
-
-  const cancelDelete = () => setToDelete(null);
+  const cancelDelete = () => {
+    setDeleteError("");
+    setToDelete(null);
+  };
 
   const filteredClavos = clavos.filter((c) =>
     (c.titulo || "").toLowerCase().includes(searchTerm.toLowerCase())
@@ -91,9 +115,11 @@ const ClavosList = () => {
       <DeleteConfirm
         isOpen={!!toDelete}
         title={toDelete?.titulo}
-        imageSrc={toDelete?.foto_url || null}  // ⬅️ usa la URL pública del CDN
+        imageSrc={toDelete?.foto_url || null}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
+        error={deleteError}
+        loading={deleting}
       />
     </section>
   );

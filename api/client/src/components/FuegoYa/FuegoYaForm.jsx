@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useContext } from "react";
 import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
 import tablasBackground from "../../assets/tablasBackground.jpg";
-
+import Alert from "../Modals/Alert";
 const FuegoYaForm = () => {
   const { currentUser } = useContext(AuthContext);
   const { id } = useParams();
@@ -28,7 +28,7 @@ const FuegoYaForm = () => {
           precio_unidad: data.precio_unidad?.toString() || "",
           stock: data.stock?.toString() || "",
         });
-        const img = data.foto_url || data.foto || null; 
+        const img = data.foto_url || data.foto || null;
         if (img) setPreview(img);
       })
       .catch(() => {
@@ -225,7 +225,11 @@ const FuegoYaForm = () => {
             />
             {preview && (
               <div className="relative mt-2">
-                <img src={preview} alt="Preview" className="w-full h-auto rounded" />
+                <img
+                  src={preview}
+                  alt="Preview"
+                  className="w-full h-auto rounded"
+                />
                 <button
                   type="button"
                   onClick={clearImage}
@@ -239,11 +243,17 @@ const FuegoYaForm = () => {
 
           {/* Mensaje */}
           {err && (
-            <span
-              className={messageType === "error" ? "text-red-500" : "text-green-500"}
-            >
-              {err}
-            </span>
+            <div className="mb-3">
+              <Alert
+                type={messageType === "error" ? "error" : "success"}
+                onClose={() => {
+                  setErr("");
+                  setMessageType("");
+                }}
+              >
+                {err}
+              </Alert>
+            </div>
           )}
 
           {/* Submit */}

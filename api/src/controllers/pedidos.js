@@ -456,33 +456,135 @@ export const changeEstadoPedido = async (req, res) => {
   const conn = await pool.getConnection();
   try {
     const { id } = req.params;
-    const { estado } = req.body;
+    const { estado: nuevoEstado } = req.body;
 
-    if (!isValidEstado(estado)) {
-      conn.release();
-      return res.status(400).json("Estado inválido.");
+    const isValidEstado = (st) => ["pendiente","en_produccion","listo","entregado","cancelado"].includes(st);
+    if (!isValidEstado(nuevoEstado)) {
+      return res.status(400).json({ message: "Estado inválido." });
     }
 
-    const [ex] = await conn.query(
-      `SELECT 1 FROM pedidos WHERE id_pedido = ? AND eliminado = FALSE`,
+    // 1) Verifico que exista y leo estado actual
+    const [[pedido]] = await conn.query(
+      `SELECT id_pedido, estado, eliminado FROM pedidos WHERE id_pedido = ?`,
       [id]
     );
-    if (ex.length === 0) {
-      conn.release();
-      return res.status(404).json("Pedido no encontrado o eliminado.");
+    if (!pedido || pedido.eliminado) {
+      return res.status(404).json({ message: "Pedido no encontrado o eliminado." });
     }
+
+    const estadoActual = pedido.estado;
+
+    // Si va a 'cancelado' -> no verifico stock ni descuesto
+    const requiereStock = (estadoActual === "pendiente") && (nuevoEstado !== "pendiente") && (nuevoEstado !== "cancelado");
 
     await conn.beginTransaction();
 
+    if (requiereStock) {
+      // 2) Calcular requerimientos del pedido (cantidad por ítem * pallets)
+      //    Usamos tu vista vw_prototipo_bom_detalle
+      const [reqs] = await conn.query(
+        `
+        SELECT
+          bom.categoria,
+          bom.id_item,
+          SUM(bom.cantidad * ppp.cantidad_pallets) AS req
+        FROM pedido_prototipo_pallet ppp
+        JOIN vw_prototipo_bom_detalle bom
+          ON bom.id_prototipo = ppp.id_prototipo
+        WHERE ppp.id_pedido = ?
+        GROUP BY bom.categoria, bom.id_item
+        `,
+        [id]
+      );
+
+      // Si el pedido no tiene items, no hay nada que reservar/descontar
+      // (permitimos cambio de estado sin stock si literalmente no requiere insumos)
+      // pero es raro; si querés bloquear, podés chequear reqs.length === 0 y devolver 409.
+
+      // 3) Chequear stock (con locks para evitar carreras)
+      const faltantes = [];
+
+      // Función auxiliar para obtener stock actual bloqueando la fil
+      async function getStockBloqueado(cat, itemId) {
+        if (cat === "tabla") {
+          const [[r]] = await conn.query(`SELECT stock FROM tipo_tablas WHERE id_tipo_tabla = ? FOR UPDATE`, [itemId]);
+          return r?.stock ?? null;
+        } else if (cat === "taco") {
+          const [[r]] = await conn.query(`SELECT stock FROM tipo_tacos WHERE id_tipo_taco = ? FOR UPDATE`, [itemId]);
+          return r?.stock ?? null;
+        } else if (cat === "patin") {
+          const [[r]] = await conn.query(`SELECT stock FROM tipo_patines WHERE id_tipo_patin = ? FOR UPDATE`, [itemId]);
+          return r?.stock ?? null;
+        } else if (cat === "clavo" || cat === "fibra") {
+          const [[r]] = await conn.query(`SELECT stock FROM materiaprima WHERE id_materia_prima = ? FOR UPDATE`, [itemId]);
+          return r?.stock ?? null;
+        } else {
+          return null;
+        }
+      }
+
+      for (const row of reqs) {
+        const { categoria, id_item, req } = row;
+        const stockActual = await getStockBloqueado(categoria, id_item);
+
+        if (stockActual === null) {
+          faltantes.push({ categoria, id_item, requerido: Number(req), disponible: 0, motivo: "ítem inexistente" });
+        } else if (Number(stockActual) < Number(req)) {
+          faltantes.push({ categoria, id_item, requerido: Number(req), disponible: Number(stockActual) });
+        }
+      }
+
+      if (faltantes.length > 0) {
+        await conn.rollback();
+        return res.status(409).json({
+          message: "Stock insuficiente para iniciar el pedido.",
+          faltantes
+        });
+      }
+
+      // 4) Descontar stock (seguro: todavía dentro de la transacción y con filas bloqueadas)
+      async function descontar(cat, itemId, cant) {
+        if (cat === "tabla") {
+          const [r] = await conn.query(
+            `UPDATE tipo_tablas SET stock = stock - ? WHERE id_tipo_tabla = ? AND stock >= ?`,
+            [cant, itemId, cant]
+          );
+          if (r.affectedRows !== 1) throw new Error(`No se pudo descontar stock de tipo_tablas ${itemId}`);
+        } else if (cat === "taco") {
+          const [r] = await conn.query(
+            `UPDATE tipo_tacos SET stock = stock - ? WHERE id_tipo_taco = ? AND stock >= ?`,
+            [cant, itemId, cant]
+          );
+          if (r.affectedRows !== 1) throw new Error(`No se pudo descontar stock de tipo_tacos ${itemId}`);
+        } else if (cat === "patin") {
+          const [r] = await conn.query(
+            `UPDATE tipo_patines SET stock = stock - ? WHERE id_tipo_patin = ? AND stock >= ?`,
+            [cant, itemId, cant]
+          );
+          if (r.affectedRows !== 1) throw new Error(`No se pudo descontar stock de tipo_patines ${itemId}`);
+        } else if (cat === "clavo" || cat === "fibra") {
+          const [r] = await conn.query(
+            `UPDATE materiaprima SET stock = stock - ? WHERE id_materia_prima = ? AND stock >= ?`,
+            [cant, itemId, cant]
+          );
+          if (r.affectedRows !== 1) throw new Error(`No se pudo descontar stock de materiaprima ${itemId}`);
+        }
+      }
+
+      for (const row of reqs) {
+        await descontar(row.categoria, row.id_item, Number(row.req));
+      }
+    }
+
+    // 5) Actualizar estado (y registrar entrega si corresponde)
     await conn.query(
       `UPDATE pedidos SET estado = ? WHERE id_pedido = ? AND eliminado = FALSE`,
-      [estado, id]
+      [nuevoEstado, id]
     );
 
-    if (estado === "entregado") {
+    if (nuevoEstado === "entregado") {
       const now = new Date();
       const fechaHora = now.toISOString().slice(0, 19).replace("T", " ");
-
       await conn.query(
         `
         INSERT INTO entregas_transporte (id_pedido, fecha_entrega)
@@ -492,20 +594,15 @@ export const changeEstadoPedido = async (req, res) => {
         [id, fechaHora]
       );
     } else {
-      await conn.query(
-        `DELETE FROM entregas_transporte WHERE id_pedido = ?`,
-        [id]
-      );
+      await conn.query(`DELETE FROM entregas_transporte WHERE id_pedido = ?`, [id]);
     }
 
     await conn.commit();
-    return res.status(200).json("Estado actualizado.");
+    return res.status(200).json({ message: "Estado actualizado." });
   } catch (err) {
-    await conn.rollback();
+    try { await conn.rollback(); } catch {}
     console.error("❌ Error en changeEstadoPedido:", err);
-    return res
-      .status(500)
-      .json({ error: "Internal server error", details: err.message });
+    return res.status(500).json({ error: "Internal server error", details: err.message });
   } finally {
     conn.release();
   }

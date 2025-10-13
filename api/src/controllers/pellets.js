@@ -26,7 +26,7 @@ export const createPellet = async (req, res) => {
     return res.status(500).json({ error: "Internal server error", details: err.message });
   }
 };
-
+ 
 export const getPelletById = async (req, res) => {
   try {
     const { id } = req.params;

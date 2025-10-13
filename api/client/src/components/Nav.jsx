@@ -68,6 +68,7 @@ const Nav = () => {
       }
     }
 
+    // Solo registramos el dropdown principal de Materia Prima
     const registerDD = (menuId, triggerId, opts = {}) => {
       if (dropdownsRef.current[menuId]) return;
       const trigger = document.getElementById(triggerId);
@@ -81,20 +82,6 @@ const Nav = () => {
     };
 
     registerDD("dropdownMateriaPrimaMenu", "dropdownMateriaPrimaButton");
-
-    [
-      "tablas",
-      "palos",
-      "clavos",
-      "fibras",
-      "tipostablas",
-      "tipostacos",
-      "tipospatines",
-    ].forEach((key) =>
-      registerDD(`dropdown-${key}-menu`, `dropdown-${key}-button`, {
-        placement: "right-start",
-      })
-    );
 
     return () => {
       closeAllMenus();
@@ -110,16 +97,24 @@ const Nav = () => {
 
   const handleNavClick = (e) => {
     if (e.target.closest("[data-dropdown-toggle]")) return;
-
     const link = e.target.closest("a[href], a[role='menuitem']");
     if (link) handleNavigate();
   };
 
+  // Ítems de Materia Prima -> van directo al listado
+  const MP_ITEMS = [
+    { label: "Tablas",       list: "/tablas/listar" },
+    { label: "Tirantes",        list: "/palos/listar" },
+    { label: "Clavos",       list: "/clavos/listar" },
+    { label: "Fibras",       list: "/fibras/listar" },
+    { label: "Tipos de tablas", list: "/tipotablas/listar" },
+    { label: "Tipos de tacos",  list: "/tipotacos/listar" },
+    { label: "Tipos de patines", list: "/tipopatines/listar" },
+  ];
+
   return (
-    <nav
-      ref={navRootRef}
-      className="bg-white border-gray-200 dark:bg-gray-900 fixed top-0 left-0 right-0 z-50"
-    >
+
+    <nav id="app-navbar" ref={navRootRef} className="bg-white border-gray-200 dark:bg-gray-900 fixed top-0 left-0 right-0 z-50">
       <div className="max-w-screen-s flex flex-wrap items-center justify-between mx-auto p-4">
         <Link
           to="/"
@@ -176,7 +171,7 @@ const Nav = () => {
               </Link>
             </li>
 
-           
+            {/* Materia Prima (dropdown simple con links directos al listado) */}
             <li className="relative">
               <button
                 id="dropdownMateriaPrimaButton"
@@ -203,103 +198,18 @@ const Nav = () => {
 
               <div
                 id="dropdownMateriaPrimaMenu"
-                className="z-10 hidden font-normal bg-white divide-y divide-gray-100 rounded-lg shadow w-44 dark:bg-gray-700 dark:divide-gray-600"
+                className="z-10 hidden font-normal bg-white divide-y divide-gray-100 rounded-lg shadow w-56 dark:bg-gray-700 dark:divide-gray-600"
               >
                 <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
-                  {[
-                    {
-                      key: "tablas",
-                      add: "/tablas",
-                      list: "/tablas/listar",
-                      label: "Tablas",
-                    },
-                    {
-                      key: "palos",
-                      add: "/palos",
-                      list: "/palos/listar",
-                      label: "Palos",
-                    },
-                    {
-                      key: "clavos",
-                      add: "/clavos",
-                      list: "/clavos/listar",
-                      label: "Clavos",
-                    },
-                    {
-                      key: "fibras",
-                      add: "/fibras",
-                      list: "/fibras/listar",
-                      label: "Fibras",
-                    },
-                    {
-                      key: "tipostablas",
-                      add: "/tipotablas",
-                      list: "/tipotablas/listar",
-                      label: "Tipos de tablas",
-                    },
-                    {
-                      key: "tipostacos",
-                      add: "/tipotacos",
-                      list: "/tipotacos/listar",
-                      label: "Tipos de tacos",
-                    },
-                    {
-                      key: "tipospatines",
-                      add: "/tipopatines",
-                      list: "/tipopatines/listar",
-                      label: "Tipos de patines",
-                    },
-                  ].map((m) => (
-                    <li className="relative" key={m.key}>
-                      <button
-                        id={`dropdown-${m.key}-button`}
-                        data-dropdown-toggle={`dropdown-${m.key}-menu`}
-                        data-dropdown-placement="right-start"
-                        type="button"
-                        className="flex items-center justify-between w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                  {MP_ITEMS.map((item) => (
+                    <li key={item.list}>
+                      <Link
+                        to={item.list}
+                        onClick={handleNavigate}
+                        className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
                       >
-                        {m.label}
-                        <svg
-                          className="w-2.5 h-2.5 ms-2.5"
-                          aria-hidden="true"
-                          fill="none"
-                          viewBox="0 0 10 6"
-                        >
-                          <path
-                            stroke="currentColor"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="m1 1 4 4 4-4"
-                          />
-                        </svg>
-                      </button>
-
-                      <div
-                        id={`dropdown-${m.key}-menu`}
-                        className="z-20 hidden bg-white divide-y divide-gray-100 rounded-lg shadow w-40 dark:bg-gray-700"
-                      >
-                        <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
-                          <li>
-                            <Link
-                              to={m.add}
-                              onClick={handleNavigate}
-                              className="block py-2 px-1 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
-                            >
-                              Agregar
-                            </Link>
-                          </li>
-                          <li>
-                            <Link
-                              to={m.list}
-                              onClick={handleNavigate}
-                              className="block py-2 px-1 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
-                            >
-                              Listar
-                            </Link>
-                          </li>
-                        </ul>
-                      </div>
+                        {item.label}
+                      </Link>
                     </li>
                   ))}
                 </ul>
@@ -309,7 +219,7 @@ const Nav = () => {
             {/* Otros menús */}
             <li>
               <Link
-                to="/proveedores"
+                to="/proveedores/listar"
                 onClick={handleNavigate}
                 className="block py-2 px-3 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
               >
@@ -318,7 +228,7 @@ const Nav = () => {
             </li>
             <li>
               <Link
-                to="/encargos"
+                to="/encargos/listar"
                 onClick={handleNavigate}
                 className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
               >
@@ -327,7 +237,7 @@ const Nav = () => {
             </li>
             <li>
               <Link
-                to="/prototipos"
+                to="/prototipos/listar"
                 onClick={handleNavigate}
                 className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
               >
@@ -336,7 +246,7 @@ const Nav = () => {
             </li>
             <li>
               <Link
-                to="/pedidos"
+                to="/pedidos/listar"
                 onClick={handleNavigate}
                 className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
               >
@@ -345,7 +255,7 @@ const Nav = () => {
             </li>
             <li>
               <Link
-                to="/clientes"
+                to="/clientes/listar"
                 onClick={handleNavigate}
                 className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
               >
@@ -356,7 +266,7 @@ const Nav = () => {
             {currentUser?.tipo !== "encargado" && (
               <li>
                 <Link
-                  to="/ventas"
+                  to="/ventas/listar"
                   onClick={handleNavigate}
                   className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
                 >
@@ -366,7 +276,7 @@ const Nav = () => {
             )}
             <li>
               <Link
-                to="/pellets"
+                to="/pellets/listar"
                 onClick={handleNavigate}
                 className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
               >
@@ -374,58 +284,57 @@ const Nav = () => {
               </Link>
             </li>
             {currentUser?.tipo !== "encargado" && (
-            <li>
-              <Link
-                to="/clientesfuegoya/listar"
-                onClick={handleNavigate}
-                className="block px-3 py-1 rounded border border-green-600 text-green-700 hover:bg-green-50 hover:text-green-800 transition
+              <li>
+                <Link
+                  to="/clientesfuegoya/listar"
+                  onClick={handleNavigate}
+                  className="block px-3 py-1 rounded border border-green-600 text-green-700 hover:bg-green-50 hover:text-green-800 transition
                dark:text-green-300 dark:border-green-400 dark:hover:bg-green-900/30 dark:hover:text-green-200"
-              >
-                Clientes Fuego Ya
-              </Link>
-            </li>
+                >
+                  Clientes Fuego Ya
+                </Link>
+              </li>
             )}
             {currentUser?.tipo !== "encargado" && (
-            <li>
-              <Link
-                to="/fuegoya/listar"
-                onClick={handleNavigate}
-                className="block px-3 py-1 rounded border border-green-600 text-green-700 hover:bg-green-50 hover:text-green-800 transition
+              <li>
+                <Link
+                  to="/fuegoya/listar"
+                  onClick={handleNavigate}
+                  className="block px-3 py-1 rounded border border-green-600 text-green-700 hover:bg-green-50 hover:text-green-800 transition
                dark:text-green-300 dark:border-green-400 dark:hover:bg-green-900/30 dark:hover:text-green-200"
-              >
-                Fuego Ya
-              </Link>
-            </li>
+                >
+                  Fuego Ya
+                </Link>
+              </li>
             )}
             {currentUser?.tipo !== "encargado" && (
-            <li>
-              <Link
-                to="/ventafuegoya/listar"
-                onClick={handleNavigate}
-                className="block px-3 py-1 rounded border border-green-600 text-green-700 hover:bg-green-50 hover:text-green-800 transition
+              <li>
+                <Link
+                  to="/ventafuegoya/listar"
+                  onClick={handleNavigate}
+                  className="block px-3 py-1 rounded border border-green-600 text-green-700 hover:bg-green-50 hover:text-green-800 transition
                dark:text-green-300 dark:border-green-400 dark:hover:bg-green-900/30 dark:hover:text-green-200"
-              >
-                Venta FuegoYa
-              </Link>
-            </li>
+                >
+                  Venta FuegoYa
+                </Link>
+              </li>
             )}
             <li>
               {currentUser && (
                 <button
                   type="button"
                   onClick={async (e) => {
-                    e.stopPropagation();        
+                    e.stopPropagation();
                     try {
-                      await logout();           
+                      await logout();
                     } finally {
-                      handleNavigate();         
+                      handleNavigate();
                     }
                   }}
                   className="py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded transition font-semibold shadow-sm focus:outline-none focus:ring-2 md:ml-10 focus:ring-red-400 focus:ring-opacity-50"
                 >
                   Cerrar sesión
                 </button>
-
               )}
             </li>
           </ul>

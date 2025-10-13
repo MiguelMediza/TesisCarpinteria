@@ -2,8 +2,20 @@ import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { api } from "../../api";
 import bgImg from "../../assets/tablasBackground.jpg";
+import Alert from "../Modals/Alert";
 
 const PAGO_OPCIONES = ["credito", "pago"];
+const ADD_SENTINEL = "__add_client__";
+
+// 🔧 Siempre devolvemos string legible para mostrar en <Alert>
+const normalizeError = (error, fallback = "Ocurrió un error.") => {
+  const data = error?.response?.data;
+  if (typeof data === "string") return data;
+  if (data && typeof data === "object") {
+    return data.message || data.error || fallback;
+  }
+  return fallback;
+};
 
 const VentaFuegoYaForm = () => {
   const { id } = useParams();
@@ -23,7 +35,7 @@ const VentaFuegoYaForm = () => {
 
   const [fotoFile, setFotoFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
-  const [borrarFoto, setBorrarFoto] = useState(false); 
+  const [borrarFoto, setBorrarFoto] = useState(false);
 
   const [clientes, setClientes] = useState([]);
   const [fuegos, setFuegos] = useState([]);
@@ -31,6 +43,27 @@ const VentaFuegoYaForm = () => {
   const [precioTouched, setPrecioTouched] = useState(false);
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
+
+  // Modal "Agregar cliente"
+  const [showAddCliente, setShowAddCliente] = useState(false);
+  const [newCliente, setNewCliente] = useState({
+    nombre: "",
+    telefono: "",
+    email: "",
+  });
+  const [savingCliente, setSavingCliente] = useState(false);
+  const [clientErr, setClientErr] = useState("");
+
+  // Emails ya existentes (para prevenir duplicados en front)
+  const emailsEnUso = useMemo(
+    () =>
+      new Set(
+        (clientes || [])
+          .map((c) => (c.email || "").trim().toLowerCase())
+          .filter(Boolean)
+      ),
+    [clientes]
+  );
 
   const formatDateFromISO = (iso) => (iso ? iso.split("T")[0] : "");
   const formatDateTime = (iso) => {
@@ -56,12 +89,8 @@ const VentaFuegoYaForm = () => {
   }, [fuegos]);
 
   const getAxiosMessage = (error, fallback = "Error al guardar la venta.") => {
-    if (error?.response?.data) {
-      const data = error.response.data;
-      if (typeof data === "string") return data;
-      return data.error || data.message || fallback;
-    }
-    return fallback;
+    // También normalizamos aquí para garantizar string
+    return normalizeError(error, fallback);
   };
 
   useEffect(() => {
@@ -88,17 +117,19 @@ const VentaFuegoYaForm = () => {
         const { data } = await api.get(`/ventafuegoya/${id}`);
         setInputs({
           fecha_realizada: formatDateFromISO(data.fecha_realizada),
-          precio_total: data.precio_total != null ? String(data.precio_total) : "",
+          precio_total:
+            data.precio_total != null ? String(data.precio_total) : "",
           id_cliente: data.id_cliente?.toString() || "",
           id_fuego_ya: data.id_fuego_ya?.toString() || "",
-          cantidadbolsas: data.cantidadbolsas != null ? String(data.cantidadbolsas) : "",
+          cantidadbolsas:
+            data.cantidadbolsas != null ? String(data.cantidadbolsas) : "",
           comentarios: data.comentarios || "",
           estadopago: data.estadopago || "credito",
           fechapago: formatDateFromISO(data.fechapago),
         });
         setFechapagoView(data.fechapago || "");
         setPreviewUrl(data.foto_url || null);
-        setBorrarFoto(false);         
+        setBorrarFoto(false);
         setPrecioTouched(true);
       } catch (e) {
         console.error(e);
@@ -119,11 +150,15 @@ const VentaFuegoYaForm = () => {
   }, [inputs.id_fuego_ya, inputs.cantidadbolsas, getUnitPrice, precioTouched]);
 
   useEffect(() => {
-    const fySel = fuegos.find((f) => String(f.id_fuego_ya) === String(inputs.id_fuego_ya));
+    const fySel = fuegos.find(
+      (f) => String(f.id_fuego_ya) === String(inputs.id_fuego_ya)
+    );
     const qty = parseInt(inputs.cantidadbolsas || "0", 10) || 0;
 
     if (fySel && Number.isFinite(fySel.stock) && qty > fySel.stock) {
-      setErr(`Stock insuficiente. Disponible: ${fySel.stock}, solicitado: ${qty}.`);
+      setErr(
+        `Stock insuficiente. Disponible: ${fySel.stock}, solicitado: ${qty}.`
+      );
       setMessageType("error");
     } else {
       if (/Stock insuficiente/.test(err)) {
@@ -142,7 +177,8 @@ const VentaFuegoYaForm = () => {
       if (name === "precio_total") {
         const raw = value.replace(/[^0-9.]/g, "");
         const parts = raw.split(".");
-        const sane = parts.length > 2 ? `${parts[0]}.${parts.slice(1).join("")}` : raw;
+        const sane =
+          parts.length > 2 ? `${parts[0]}.${parts.slice(1).join("")}` : raw;
         next.precio_total = sane;
         setPrecioTouched(true);
       }
@@ -155,12 +191,97 @@ const VentaFuegoYaForm = () => {
     });
   };
 
+  const handleClienteSelect = (e) => {
+    const v = e.target.value;
+    if (v === ADD_SENTINEL) {
+      e.target.value = inputs.id_cliente || "";
+      setShowAddCliente(true);
+      return;
+    }
+    handleChange(e);
+  };
+
+  const handleNewClienteChange = (e) => {
+    const { name, value } = e.target;
+    setNewCliente((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const saveNewCliente = async () => {
+    setClientErr("");
+
+    const nombre = newCliente.nombre.trim();
+    const email = (newCliente.email || "").trim().toLowerCase();
+
+    if (!nombre) {
+      setClientErr("El nombre es obligatorio.");
+      return;
+    }
+    if (email && emailsEnUso.has(email)) {
+      setClientErr("Ya existe un cliente con ese correo.");
+      return;
+    }
+
+    setSavingCliente(true);
+    try {
+      const payload = {
+        nombre,
+        telefono: newCliente.telefono?.trim() || null,
+        email: email || null,
+      };
+      const res = await api.post("/clientesfuegoya/agregar", payload);
+
+      let created = (res && res.data) || null;
+      let newId = created?.id_cliente ?? created?.insertId ?? null;
+
+      if (!newId) {
+        const list = await api.get("/clientesfuegoya/listar");
+        const data = list.data || [];
+        const candidatos = data.filter(
+          (c) =>
+            (c.nombre || "").trim() === nombre &&
+            (!email || (c.email || "").trim().toLowerCase() === email)
+        );
+        created =
+          candidatos.sort((a, b) => b.id_cliente - a.id_cliente)[0] ||
+          data.sort((a, b) => b.id_cliente - a.id_cliente)[0];
+
+        newId = created?.id_cliente;
+      }
+
+      if (newId) {
+        setClientes((prev) => {
+          if (prev.some((c) => String(c.id_cliente) === String(newId)))
+            return prev;
+
+          const toAdd = {
+            id_cliente: newId,
+            nombre: (created && created.nombre) || nombre,
+            telefono:
+              (created && created.telefono) ?? (newCliente.telefono || null),
+            email: (created && created.email) ?? (email || null),
+          };
+
+          return [...prev, toAdd];
+        });
+
+        setInputs((prev) => ({ ...prev, id_cliente: String(newId) }));
+      }
+
+      setShowAddCliente(false);
+      setNewCliente({ nombre: "", telefono: "", email: "" });
+    } catch (e) {
+      setClientErr(normalizeError(e, "No se pudo crear el cliente."));
+    } finally {
+      setSavingCliente(false);
+    }
+  };
+
   const handleFile = (e) => {
     const file = e.target.files?.[0] || null;
     setFotoFile(file);
     if (file) {
       setPreviewUrl(URL.createObjectURL(file));
-      setBorrarFoto(false); 
+      setBorrarFoto(false);
     }
   };
 
@@ -168,7 +289,7 @@ const VentaFuegoYaForm = () => {
     setFotoFile(null);
     setPreviewUrl(null);
     setPrecioTouched(false);
-    setBorrarFoto(!!id); 
+    setBorrarFoto(!!id);
   };
 
   const recalcPrecio = () => {
@@ -182,6 +303,7 @@ const VentaFuegoYaForm = () => {
 
   const validar = () => {
     if (!inputs.id_fuego_ya) return "Debe seleccionar un FuegoYa.";
+    if (!inputs.id_cliente) return "Debe seleccionar un cliente FuegoYa.";
     if (!inputs.fecha_realizada) return "La fecha de la venta es obligatoria.";
     if (inputs.cantidadbolsas !== "" && !/^\d+$/.test(inputs.cantidadbolsas)) {
       return "La cantidad de bolsas debe ser un entero mayor o igual a 0.";
@@ -198,10 +320,14 @@ const VentaFuegoYaForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const fySel = fuegos.find((f) => String(f.id_fuego_ya) === String(inputs.id_fuego_ya));
+    const fySel = fuegos.find(
+      (f) => String(f.id_fuego_ya) === String(inputs.id_fuego_ya)
+    );
     const qty = parseInt(inputs.cantidadbolsas || "0", 10) || 0;
     if (fySel && Number.isFinite(fySel.stock) && qty > fySel.stock) {
-      setErr(`Stock insuficiente. Disponible: ${fySel.stock}, solicitado: ${qty}.`);
+      setErr(
+        `Stock insuficiente. Disponible: ${fySel.stock}, solicitado: ${qty}.`
+      );
       setMessageType("error");
       return;
     }
@@ -216,9 +342,10 @@ const VentaFuegoYaForm = () => {
     const fd = new FormData();
     fd.append("fecha_realizada", inputs.fecha_realizada);
     if (inputs.precio_total) fd.append("precio_total", inputs.precio_total);
-    if (inputs.id_cliente) fd.append("id_cliente", inputs.id_cliente);
+    fd.append("id_cliente", inputs.id_cliente);
     fd.append("id_fuego_ya", inputs.id_fuego_ya);
-    if (inputs.cantidadbolsas !== "") fd.append("cantidadbolsas", inputs.cantidadbolsas);
+    if (inputs.cantidadbolsas !== "")
+      fd.append("cantidadbolsas", inputs.cantidadbolsas);
     if (inputs.comentarios) fd.append("comentarios", inputs.comentarios);
     if (inputs.estadopago) fd.append("estadopago", inputs.estadopago);
 
@@ -252,7 +379,10 @@ const VentaFuegoYaForm = () => {
         style={{ backgroundImage: `url(${bgImg})` }}
       />
       <div className="relative z-10 w-full sm:max-w-2xl p-6 bg-white bg-opacity-80 rounded-lg shadow-md">
-        <Link to="/ventafuegoya/listar" className="block mb-6 text-2xl font-semibold text-neutral-800 text-center">
+        <Link
+          to="/ventafuegoya/listar"
+          className="block mb-6 text-2xl font-semibold text-neutral-800 text-center"
+        >
           Imanod — Venta Fuegoya
         </Link>
 
@@ -282,32 +412,43 @@ const VentaFuegoYaForm = () => {
                 Precio unitario:{" "}
                 {(() => {
                   const u = getUnitPrice(inputs.id_fuego_ya);
-                  return u != null ? u.toLocaleString("es-UY", { style: "currency", currency: "UYU" }) : "—";
+                  return u != null
+                    ? u.toLocaleString("es-UY", {
+                        style: "currency",
+                        currency: "UYU",
+                      })
+                    : "—";
                 })()}
               </p>
             )}
           </div>
 
+          {/* Cliente con opción Agregar */}
           <div>
-            <label className="block mb-1 text-sm font-medium">Cliente</label>
+            <label className="block mb-1 text-sm font-medium">Cliente *</label>
             <select
               name="id_cliente"
               value={inputs.id_cliente}
-              onChange={handleChange}
+              onChange={handleClienteSelect}
               className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
             >
-              <option value="">Sin cliente</option>
+              <option value="" disabled>
+                Seleccionar cliente
+              </option>
               {clientes.map((c) => (
-                <option key={c.id_cliente} value={c.id_cliente}>
-                  {c.nombre}
+                <option key={c.id_cliente} value={String(c.id_cliente)}>
+                  {c.nombre || `Cliente #${c.id_cliente}`}
                 </option>
               ))}
+              <option value={ADD_SENTINEL}>➕ Agregar cliente…</option>
             </select>
           </div>
 
           {/* Fecha realizada */}
           <div>
-            <label className="block mb-1 text-sm font-medium">Fecha realizada *</label>
+            <label className="block mb-1 text-sm font-medium">
+              Fecha realizada *
+            </label>
             <input
               type="date"
               name="fecha_realizada"
@@ -319,7 +460,9 @@ const VentaFuegoYaForm = () => {
 
           {/* Cantidad de bolsas */}
           <div>
-            <label className="block mb-1 text-sm font-medium">Cantidad de bolsas</label>
+            <label className="block mb-1 text-sm font-medium">
+              Cantidad de bolsas
+            </label>
             <input
               type="text"
               inputMode="numeric"
@@ -333,7 +476,9 @@ const VentaFuegoYaForm = () => {
 
           {/* Estado de pago */}
           <div>
-            <label className="block mb-1 text-sm font-medium">Estado de pago</label>
+            <label className="block mb-1 text-sm font-medium">
+              Estado de pago
+            </label>
             <select
               name="estadopago"
               value={inputs.estadopago}
@@ -351,7 +496,9 @@ const VentaFuegoYaForm = () => {
                 {fechapagoView ? (
                   <>
                     Fecha de pago registrada:{" "}
-                    <span className="font-medium">{formatDateTime(fechapagoView)}</span>
+                    <span className="font-medium">
+                      {formatDateTime(fechapagoView)}
+                    </span>
                   </>
                 ) : (
                   "Aún en crédito / sin pagar"
@@ -362,7 +509,9 @@ const VentaFuegoYaForm = () => {
 
           {/* Precio total */}
           <div>
-            <label className="block mb-1 text-sm font-medium">Precio total</label>
+            <label className="block mb-1 text-sm font-medium">
+              Precio total
+            </label>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -382,16 +531,20 @@ const VentaFuegoYaForm = () => {
                 Recalcular
               </button>
             </div>
-            {!precioTouched && inputs.id_fuego_ya && inputs.cantidadbolsas !== "" && (
-              <p className="text-xs text-neutral-600 mt-1">
-                (Se calcula automáticamente por cantidad × precio unitario)
-              </p>
-            )}
+            {!precioTouched &&
+              inputs.id_fuego_ya &&
+              inputs.cantidadbolsas !== "" && (
+                <p className="text-xs text-neutral-600 mt-1">
+                  (Se calcula automáticamente por cantidad × precio unitario)
+                </p>
+              )}
           </div>
 
           {/* Foto */}
           <div>
-            <label className="block mb-1 text-sm font-medium">Foto (opcional)</label>
+            <label className="block mb-1 text-sm font-medium">
+              Foto (opcional)
+            </label>
             <input
               type="file"
               accept="image/*"
@@ -401,8 +554,11 @@ const VentaFuegoYaForm = () => {
 
             {previewUrl && (
               <div className="relative mt-2 inline-block">
-                <img src={previewUrl} alt="Foto" className="max-h-48 rounded border" />
-                {/* Botón quitar foto */}
+                <img
+                  src={previewUrl}
+                  alt="Foto"
+                  className="max-h-48 rounded border"
+                />
                 <button
                   type="button"
                   onClick={clearPhoto}
@@ -418,13 +574,24 @@ const VentaFuegoYaForm = () => {
 
           {/* Mensajes */}
           {err && (
-            <div className={`text-sm ${messageType === "error" ? "text-red-600" : "text-green-600"}`}>
-              {err}
+            <div className="mb-3">
+              <Alert
+                type={messageType === "error" ? "error" : "success"}
+                onClose={() => {
+                  setErr("");
+                  setMessageType("");
+                }}
+              >
+                {String(err)}
+              </Alert>
             </div>
           )}
 
           {/* Botón */}
-          <button type="submit" className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+          <button
+            type="submit"
+            className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+          >
             {id ? "Guardar Cambios" : "Crear Venta"}
           </button>
 
@@ -435,6 +602,104 @@ const VentaFuegoYaForm = () => {
           </p>
         </form>
       </div>
+
+      {/* Modal Agregar Cliente (inline) */}
+      {showAddCliente && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* overlay */}
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => !savingCliente && setShowAddCliente(false)}
+          />
+          <div className="relative z-10 w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
+            <h3 className="text-lg font-semibold mb-3">
+              Nuevo cliente FuegoYa
+            </h3>
+
+            {clientErr && (
+              <div className="mb-3">
+                <Alert type="error" onClose={() => setClientErr("")}>
+                  {String(clientErr)}
+                </Alert>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Nombre *
+                </label>
+                <input
+                  type="text"
+                  name="nombre"
+                  value={newCliente.nombre}
+                  onChange={handleNewClienteChange}
+                  className="w-full p-2 rounded border border-neutral-300"
+                  placeholder="Nombre"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Teléfono
+                </label>
+                <input
+                  type="text"
+                  name="telefono"
+                  value={newCliente.telefono}
+                  onChange={handleNewClienteChange}
+                  className="w-full p-2 rounded border border-neutral-300"
+                  placeholder="099 000 000"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Email</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={newCliente.email}
+                  onChange={handleNewClienteChange}
+                  className="w-full p-2 rounded border border-neutral-300"
+                  placeholder="cliente@correo.com"
+                />
+                {newCliente.email &&
+                  emailsEnUso.has(
+                    (newCliente.email || "").trim().toLowerCase()
+                  ) && (
+                    <p className="mt-1 text-xs text-red-600">
+                      Ya existe un cliente con ese correo.
+                    </p>
+                  )}
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!savingCliente) {
+                    setShowAddCliente(false);
+                    setClientErr("");
+                  }
+                }}
+                className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-60"
+                disabled={savingCliente}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={saveNewCliente}
+                className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+                disabled={savingCliente}
+              >
+                {savingCliente ? "Guardando…" : "Guardar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 };

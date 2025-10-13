@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { api } from "../../api";
 import { Link, useNavigate } from "react-router-dom";
 import PedidosCard from "./PedidosCard";
@@ -11,12 +11,13 @@ const PedidosList = () => {
   const [clientes, setClientes] = useState([]);
   const [error, setError] = useState("");
 
-  const [q, setQ] = useState("");
+  // filtros
   const [estado, setEstado] = useState("");
-  const [idCliente, setIdCliente] = useState("");
+  const [idCliente, setIdCliente] = useState(""); // string desde el <select>
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
 
+  // delete modal
   const [toDelete, setToDelete] = useState(null);
 
   const navigate = useNavigate();
@@ -25,7 +26,7 @@ const PedidosList = () => {
     (async () => {
       try {
         const { data } = await api.get("/clientes/listar");
-        setClientes(data || []);
+        setClientes(Array.isArray(data) ? data : []);
       } catch (e) {
         console.error(e);
       }
@@ -34,30 +35,29 @@ const PedidosList = () => {
 
   const fetchPedidos = useCallback(async () => {
     try {
-      const params = new URLSearchParams();
-      if (q) params.append("q", q);
-      if (estado) params.append("estado", estado);
-      if (idCliente) params.append("id_cliente", idCliente);
-      if (desde) params.append("desde", desde);
-      if (hasta) params.append("hasta", hasta);
+      // armamos params con axios (más robusto)
+      const params = {
+        // si querés seguir soportando q, agregalo acá cuando tengas input
+        estado: estado || undefined,
+        id_cliente: idCliente ? Number(idCliente) : undefined,
+        desde: desde || undefined,
+        hasta: hasta || undefined,
+      };
 
-      const url = `/pedidos/listarfull${params.toString() ? `?${params.toString()}` : ""}`;
-      const res = await api.get(url);
-      setPedidos(res.data || []);
+      const { data } = await api.get("/pedidos/listarfull", { params });
+      setPedidos(Array.isArray(data) ? data : []);
       setError("");
     } catch (err) {
       console.error(err);
       setError("No se pudieron cargar los pedidos.");
     }
-  }, [q, estado, idCliente, desde, hasta]);
+  }, [estado, idCliente, desde, hasta]);
 
   useEffect(() => {
     fetchPedidos();
   }, [fetchPedidos]);
 
-  const handleEdit = (id) => {
-    navigate(`/pedidos/${id}`);
-  };
+  const handleEdit = (id) => navigate(`/pedidos/${id}`);
 
   const handleDeleteClick = (pedido) => setToDelete(pedido);
   const cancelDelete = () => setToDelete(null);
@@ -74,25 +74,51 @@ const PedidosList = () => {
     }
   };
 
-
-  const handleChangeStatus = async (id_pedido, newStatus) => {
+  // nombre correcto que espera PedidosCard: onEstadoChanged
+  const handleEstadoChanged = async (id_pedido, newStatus) => {
     try {
-      setPedidos(curr => curr.map(p => p.id_pedido === id_pedido ? { ...p, estado: newStatus } : p));
+      setPedidos(curr =>
+        curr.map(p =>
+          p.id_pedido === id_pedido ? { ...p, estado: newStatus } : p
+        )
+      );
       await api.put(`/pedidos/${id_pedido}/estado`, { estado: newStatus });
     } catch (e) {
       console.error(e);
       setError("No se pudo cambiar el estado del pedido.");
-      fetchPedidos();
+      fetchPedidos(); // rollback
     }
   };
 
   const resetFiltros = () => {
-    setQ("");
     setEstado("");
     setIdCliente("");
     setDesde("");
     setHasta("");
   };
+
+  // 🛡️ Filtro en el cliente como red de seguridad por si el backend ignora algo
+  const pedidosFiltrados = useMemo(() => {
+    let arr = [...pedidos];
+
+    if (idCliente) {
+      arr = arr.filter(p => String(p.id_cliente ?? p.cliente_id ?? "") === String(idCliente));
+    }
+    if (estado) {
+      arr = arr.filter(p => (p.estado || "").toLowerCase() === estado.toLowerCase());
+    }
+    if (desde) {
+      arr = arr.filter(p => (p.fecha_realizado || p.fecha_realizada || "") >= desde);
+    }
+    if (hasta) {
+      arr = arr.filter(p => (p.fecha_realizado || p.fecha_realizada || "") <= hasta);
+    }
+
+    // opcional: ordená por fecha más reciente primero
+    arr.sort((a, b) => String(b.fecha_realizado || b.fecha_realizada || "").localeCompare(String(a.fecha_realizado || a.fecha_realizada || "")));
+
+    return arr;
+  }, [pedidos, idCliente, estado, desde, hasta]);
 
   return (
     <section className="p-4 bg-gray-50 min-h-screen">
@@ -108,14 +134,17 @@ const PedidosList = () => {
 
       {/* Filtros */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-4">
-
         <select
           value={estado}
           onChange={(e) => setEstado(e.target.value)}
           className="md:col-span-2 p-2 border border-gray-300 rounded"
         >
           <option value="">Estado (todos)</option>
-          {ESTADOS.map(es => <option key={es} value={es}>{es.replace("_"," ")}</option>)}
+          {ESTADOS.map(es => (
+            <option key={es} value={es}>
+              {es.replace("_", " ")}
+            </option>
+          ))}
         </select>
 
         <select
@@ -147,9 +176,12 @@ const PedidosList = () => {
         />
 
         <div className="md:col-span-12 flex gap-2">
-
           <button
-            onClick={() => { resetFiltros(); setTimeout(fetchPedidos, 0); }}
+            onClick={() => {
+              resetFiltros();
+              // refresco desde servidor con filtros limpios
+              setTimeout(fetchPedidos, 0);
+            }}
             className="px-4 py-2 bg-neutral-200 text-neutral-800 rounded hover:bg-neutral-300 transition"
           >
             Limpiar
@@ -161,16 +193,16 @@ const PedidosList = () => {
 
       {/* Grid */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        {pedidos.map((p) => (
+        {pedidosFiltrados.map((p) => (
           <PedidosCard
             key={p.id_pedido}
             pedido={p}
             onEdit={handleEdit}
             onDelete={() => handleDeleteClick(p)}
-            onChangeStatus={handleChangeStatus}
+            onEstadoChanged={handleEstadoChanged}  // <- nombre correcto
           />
         ))}
-        {pedidos.length === 0 && (
+        {pedidosFiltrados.length === 0 && (
           <p className="col-span-full text-center text-gray-500">
             No se encontraron pedidos.
           </p>

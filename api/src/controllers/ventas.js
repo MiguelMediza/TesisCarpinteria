@@ -156,10 +156,12 @@ export const deleteVenta = async (req, res) => {
   }
 };
 
+const R2_BASE = (process.env.R2_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
+const urlFromKey = (k) => (k && R2_BASE ? `${R2_BASE}/${String(k).replace(/^\/+/, "")}` : null);
+
 export const listVentas = async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      `
+    const [rows] = await pool.query(`
       SELECT
         v.id_venta,
         v.fecha_realizada,
@@ -171,28 +173,25 @@ export const listVentas = async (req, res) => {
         c.nombre           AS nombre_cliente,
         c.apellido         AS apellido_cliente,
         c.nombre_empresa   AS empresa_cliente,
-        c.estado           AS cliente_activo  
+        c.estado           AS cliente_activo
       FROM ventas v
       LEFT JOIN clientes c ON c.id_cliente = v.id_cliente
       ORDER BY v.fecha_realizada DESC, v.id_venta DESC
-      `
-    );
+    `);
 
-    const ventas = rows.map(r => {
-      const display = r?.es_empresa
-        ? (r?.empresa_cliente || `Empresa #${r.id_cliente}`)
-        : [r?.nombre_cliente, r?.apellido_cliente].filter(Boolean).join(" ") || `Cliente #${r.id_cliente}`;
-
-      // si hay id_cliente pero estado=0 => eliminado lógico
-      // si no hay registro de cliente (null) => tratar como eliminado/no disponible
-      const eliminado = r?.id_cliente
-        ? (r?.cliente_activo === 0 || r?.cliente_activo === false)
-        : true;
+    const ventas = rows.map((r) => {
+      let display = "Sin cliente";
+      if (r.id_cliente) {
+        display = r.es_empresa
+          ? (r.empresa_cliente || `Empresa #${r.id_cliente}`)
+          : [r.nombre_cliente, r.apellido_cliente].filter(Boolean).join(" ") || `Cliente #${r.id_cliente}`;
+      }
 
       return {
         ...r,
         cliente_display: display,
-        cliente_eliminado: eliminado,
+        cliente_eliminado: r.id_cliente ? (r.cliente_activo === 0 || r.cliente_activo === false) : false,
+        foto_url: urlFromKey(r.foto) 
       };
     });
 
@@ -202,4 +201,3 @@ export const listVentas = async (req, res) => {
     res.status(500).json({ error: "Error interno del servidor", details: err.message });
   }
 };
-

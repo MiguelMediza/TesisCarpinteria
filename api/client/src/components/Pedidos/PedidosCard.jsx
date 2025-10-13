@@ -1,23 +1,25 @@
+// PedidosCard.jsx
 import React, { useContext, useMemo, useState } from "react";
 import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
 import PedidoPDFInline from "./PedidosPDF";
+
 const ESTADOS = ["pendiente", "en_produccion", "listo", "entregado", "cancelado"];
 
-const badgeClassesByEstado = (estado) => {
+const pillByEstado = (estado) => {
   switch (estado) {
     case "pendiente":
-      return "bg-yellow-100 text-yellow-800 border border-yellow-200";
+      return "bg-yellow-50 text-yellow-800 ring-yellow-200";
     case "en_produccion":
-      return "bg-blue-100 text-blue-800 border border-blue-200";
+      return "bg-blue-50 text-blue-800 ring-blue-200";
     case "listo":
-      return "bg-indigo-100 text-indigo-800 border border-indigo-200";
+      return "bg-indigo-50 text-indigo-800 ring-indigo-200";
     case "entregado":
-      return "bg-green-100 text-green-800 border border-green-200";
+      return "bg-emerald-50 text-emerald-700 ring-emerald-200";
     case "cancelado":
-      return "bg-red-100 text-red-700 border border-red-200";
+      return "bg-red-50 text-red-700 ring-red-200";
     default:
-      return "bg-gray-100 text-gray-700 border border-gray-200";
+      return "bg-slate-50 text-slate-700 ring-slate-200";
   }
 };
 
@@ -30,7 +32,7 @@ const selectClassesByEstado = (estado) => {
     case "listo":
       return "bg-indigo-50 text-indigo-900 border-indigo-200";
     case "entregado":
-      return "bg-green-50 text-green-900 border-green-200";
+      return "bg-emerald-50 text-emerald-900 border-emerald-200";
     case "cancelado":
       return "bg-red-50 text-red-900 border-red-200";
     default:
@@ -38,16 +40,21 @@ const selectClassesByEstado = (estado) => {
   }
 };
 
+const chipBase =
+  "inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[12px] ring-1";
+
 const formatDate = (dateString) => {
   if (!dateString) return "";
   const d = new Date(dateString);
   return d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
 };
 
-const formatMoney = (n) => {
-  const num = Number(n ?? 0);
-  return num.toLocaleString("es-UY", { style: "currency", currency: "UYU", maximumFractionDigits: 2 });
-};
+const formatMoney = (n) =>
+  Number(n ?? 0).toLocaleString("es-UY", {
+    style: "currency",
+    currency: "UYU",
+    maximumFractionDigits: 2,
+  });
 
 const PedidosCard = ({ pedido, onEdit, onDelete, onEstadoChanged }) => {
   const { currentUser } = useContext(AuthContext);
@@ -59,11 +66,11 @@ const PedidosCard = ({ pedido, onEdit, onDelete, onEstadoChanged }) => {
     precio_total,
     cliente_display,
     items = [],
-  } = pedido;
+  } = pedido || {};
 
-  const [estado, setEstado] = useState(pedido.estado || "pendiente");
+  const [estado, setEstado] = useState(pedido?.estado || "pendiente");
   const [changing, setChanging] = useState(false);
-  const estadoClasses = useMemo(() => badgeClassesByEstado(estado), [estado]);
+  const estadoPill = useMemo(() => pillByEstado(estado), [estado]);
 
   const handleEstadoChange = async (e) => {
     const nuevo = e.target.value;
@@ -75,141 +82,217 @@ const PedidosCard = ({ pedido, onEdit, onDelete, onEstadoChanged }) => {
 
     try {
       await api.put(`/pedidos/${id_pedido}/estado`, { estado: nuevo });
-      if (onEstadoChanged) onEstadoChanged(id_pedido, nuevo);
+      onEstadoChanged?.(id_pedido, nuevo);
     } catch (err) {
       console.error("Error actualizando estado:", err);
       setEstado(anterior);
-      alert("No se pudo actualizar el estado del pedido.");
+
+      const msg = err?.response?.data?.message || "No se pudo actualizar el estado del pedido.";
+      const falt = err?.response?.data?.faltantes;
+      if (err?.response?.status === 409 && Array.isArray(falt) && falt.length) {
+        const detalle = falt
+          .map(
+            (f) =>
+              `• ${f.categoria} #${f.id_item}: requiere ${f.requerido}, disponible ${f.disponible}${
+                f.motivo ? ` (${f.motivo})` : ""
+              }`
+          )
+          .join("\n");
+        alert(`${msg}\n\n${detalle}`);
+      } else {
+        alert(msg);
+      }
     } finally {
       setChanging(false);
     }
   };
 
   return (
-    <div className="border rounded-lg p-4 bg-white shadow-sm flex flex-col justify-between w-full h-full">
-      <div>
-        {/* Header */}
-        <div className="flex items-start justify-between mb-3">
-          <div>
-            <p className="text-lg font-semibold text-gray-800">Pedido #{id_pedido}</p>
-            <p className="text-sm text-gray-600">{cliente_display || "Cliente sin nombre"}</p>
-          </div>
+    <div
+      className="
+        group relative overflow-hidden rounded-2xl bg-white
+        shadow-sm ring-1 ring-slate-900/5 transition
+        hover:-translate-y-0.5 hover:shadow-lg flex flex-col
+      "
+    >
+      {/* Header con degradado y título centrado */}
+      <div className="relative h-20 w-full bg-gradient-to-r from-sky-50 to-indigo-50">
+        <h3
+          className="
+            absolute inset-0 flex items-center justify-center
+            px-4 text-center text-base font-semibold text-slate-900
+            leading-tight line-clamp-2
+          "
+        >
+          Pedido #{id_pedido}
+        </h3>
 
-        <div className="flex items-center gap-2">
-          <PedidoPDFInline pedido={pedido} />  
-          <span className={`text-xs px-2 py-1 rounded-full ${estadoClasses}`}>
+        {/* Acciones del header (PDF + estado) */}
+        <div className="absolute top-3 right-3 flex items-center gap-2">
+          {/* Botón/acción PDF inline (tu componente) */}
+          <PedidoPDFInline pedido={pedido} />
+
+          <span
+            className={`px-2 py-0.5 text-[11px] font-medium rounded-full ring-1 shadow-sm ${estadoPill}`}
+            title={`Estado: ${estado.replace("_", " ")}`}
+          >
             {estado.replace("_", " ")}
           </span>
         </div>
+      </div>
+
+      {/* Contenido */}
+      <div className="p-4">
+        {/* Chip de cliente */}
+        <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+          <span
+            className={`${chipBase} bg-amber-50 text-amber-700 ring-amber-200`}
+            title={cliente_display || "Cliente sin nombre"}
+          >
+            <span className="inline-block size-2.5 rounded-full bg-amber-400" />
+            {cliente_display || "Cliente sin nombre"}
+          </span>
         </div>
 
-        {/* Fechas */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
-          <div>
-            <p className="text-sm text-gray-600">Fecha realizado:</p>
-            <p className="text-gray-800">{fecha_realizado ? formatDate(fecha_realizado) : "No especificada"}</p>
+        {/* Fechas en cards suaves */}
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+            <p className="text-[12px] text-slate-500">Fecha realizado</p>
+            <p className="text-sm font-medium text-slate-800">
+              {fecha_realizado ? formatDate(fecha_realizado) : "No especificada"}
+            </p>
           </div>
-          <div>
-            <p className="text-sm text-gray-600">Fecha de entrega fijada:</p>
-            <p className="text-gray-800">{fecha_de_entrega ? formatDate(fecha_de_entrega) : "No especificada"}</p>
+          <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+            <p className="text-[12px] text-slate-500">Fecha de entrega fijada</p>
+            <p className="text-sm font-medium text-slate-800">
+              {fecha_de_entrega ? formatDate(fecha_de_entrega) : "No especificada"}
+            </p>
           </div>
         </div>
 
         {/* Comentarios */}
-        {comentarios && (
-          <>
-            <p className="text-sm text-gray-600">Comentarios:</p>
-            <p className="mb-2 text-gray-800">{comentarios}</p>
-          </>
-        )}
-
-{/* Ítems */}
-<p className="text-sm font-semibold text-gray-700 mt-3">🧱 Ítems del pedido:</p>
-<ul className="list-disc pl-5 text-gray-800">
-  {items.length > 0 ? (
-    items.map((it, idx) => (
-      <li key={idx} className="mt-1">
-        <div>
-          <span className="font-medium">
-            {it.prototipo_titulo || `Prototipo #${it.id_prototipo}`}
-          </span>
-          {it.medidas ? ` – ${it.medidas}` : ""} — {it.cantidad_pallets} u.
-          <span className="ml-2 inline-flex gap-2 align-middle">
-            {it.numero_lote?.trim() && (
-              <span className="text-xs px-2 py-0.5 rounded-full border bg-gray-50 text-gray-700 border-gray-200">
-                Lote: {it.numero_lote}
-              </span>
-            )}
-            {it.numero_tratamiento?.trim() && (
-              <span className="text-xs px-2 py-0.5 rounded-full border bg-gray-50 text-gray-700 border-gray-200">
-                Trat.: {it.numero_tratamiento}
-              </span>
-            )}
-          </span>
-        </div>
-
-        {(it.comentarios ?? "").toString().trim() && (
-          <p className="mt-1 ml-6 text-xs text-gray-600 italic">
-            {it.comentarios}
-          </p>
-        )}
-      </li>
-    ))
-  ) : (
-    <li>No hay ítems cargados</li>
-  )}
-</ul>
-
-
-        {currentUser?.tipo === "admin" && (
-          <div className="mt-3">
-            <p className="text-sm text-gray-600">Precio total (materiales actuales):</p>
-            <p className="text-gray-900 font-semibold">{formatMoney(precio_total)}</p>
+        {comentarios?.toString().trim() && (
+          <div className="mt-3 rounded-xl border border-slate-100 bg-white p-3">
+            <p className="text-[12px] text-slate-500 mb-1">Comentarios</p>
+            <p className="text-sm text-slate-800">{comentarios}</p>
           </div>
         )}
-      </div>
 
-      <div className="mt-4 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-end">
-        <div className="flex items-center gap-2 sm:mr-auto">
-          <label className="text-sm text-gray-700">Estado:</label>
-          <select
-            className={`text-sm border rounded px-2 py-1 transition ${selectClassesByEstado(estado)}`}
-            value={estado}
-            onChange={handleEstadoChange}
-            disabled={changing}
-            title="Cambiar estado"
-          >
-            {ESTADOS.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt === "pendiente" ? "⏳" :
-                 opt === "en_produccion" ? "🛠️" :
-                 opt === "listo" ? "📦" :
-                 opt === "entregado" ? "✅" :
-                 opt === "cancelado" ? "❌" : "•"}{" "}
-                {opt.replace("_", " ")}
-              </option>
-            ))}
-          </select>
-          {changing && <span className="text-xs text-gray-500">Guardando…</span>}
+        {/* Ítems */}
+        <div className="mt-3 rounded-xl border border-slate-100 bg-white p-3">
+          <p className="text-[12px] text-slate-500 mb-2">🧱 Ítems del pedido</p>
+          <ul className="list-disc pl-5 text-sm text-slate-800 space-y-2">
+            {items.length > 0 ? (
+              items.map((it, idx) => (
+                <li key={idx}>
+                  <div className="flex flex-col">
+                    <div>
+                      <span className="font-medium">
+                        {it.prototipo_titulo || `Prototipo #${it.id_prototipo}`}
+                      </span>
+                      {it.medidas ? ` — ${it.medidas}` : ""} — {it.cantidad_pallets} u.
+                    </div>
+                    {(it.numero_lote?.trim() || it.numero_tratamiento?.trim()) && (
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {it.numero_lote?.trim() && (
+                          <span
+                            className={`${chipBase} bg-slate-50 text-slate-700 ring-slate-200`}
+                            title={`Lote: ${it.numero_lote}`}
+                          >
+                            <span className="inline-block size-2.5 rounded-full bg-slate-400" />
+                            Lote: {it.numero_lote}
+                          </span>
+                        )}
+                        {it.numero_tratamiento?.trim() && (
+                          <span
+                            className={`${chipBase} bg-slate-50 text-slate-700 ring-slate-200`}
+                            title={`Tratamiento: ${it.numero_tratamiento}`}
+                          >
+                            <span className="inline-block size-2.5 rounded-full bg-slate-400" />
+                            Trat.: {it.numero_tratamiento}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {(it.comentarios ?? "").toString().trim() && (
+                      <p className="mt-1 text-xs text-slate-600 italic">{it.comentarios}</p>
+                    )}
+                  </div>
+                </li>
+              ))
+            ) : (
+              <li className="text-slate-600">No hay ítems cargados</li>
+            )}
+          </ul>
         </div>
 
-        <button
-          onClick={() => onEdit?.(id_pedido)}
-          className="px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:opacity-60"
-          title="Editar"
-          disabled={changing}
-        >
-          Editar
-        </button>
+        {/* Precio (solo admin) */}
+        {currentUser?.tipo === "admin" && (
+          <div className="mt-3 flex items-center justify-between">
+            <p className="text-sm text-slate-600">Precio total (materiales actuales)</p>
+            <p className="text-base font-semibold text-slate-900">{formatMoney(precio_total)}</p>
+          </div>
+        )}
 
-        <button
-          onClick={() => onDelete?.(id_pedido)}
-          className="px-3 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition disabled:opacity-60"
-          title="Eliminar"
-          disabled={changing}
-        >
-          Eliminar
-        </button>
+        {/* Footer: selector de estado + acciones */}
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-slate-700">Estado:</label>
+            <select
+              className={`text-sm border rounded px-2 py-1 transition ${selectClassesByEstado(
+                estado
+              )}`}
+              value={estado}
+              onChange={handleEstadoChange}
+              disabled={changing}
+              title="Cambiar estado"
+            >
+              {ESTADOS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt === "pendiente"
+                    ? "⏳"
+                    : opt === "en_produccion"
+                    ? "🛠️"
+                    : opt === "listo"
+                    ? "📦"
+                    : opt === "entregado"
+                    ? "✅"
+                    : opt === "cancelado"
+                    ? "❌"
+                    : "•"}{" "}
+                  {opt.replace("_", " ")}
+                </option>
+              ))}
+            </select>
+            {changing && <span className="text-xs text-slate-500">Guardando…</span>}
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => onEdit?.(id_pedido)}
+              className="
+                px-3 py-2 text-sm bg-blue-600 text-white rounded
+                hover:bg-blue-700 transition disabled:opacity-60
+              "
+              title="Editar"
+              disabled={changing}
+            >
+              Editar
+            </button>
+
+            <button
+              onClick={() => onDelete?.(id_pedido)}
+              className="
+                px-3 py-2 text-sm bg-red-50 text-red-700 ring-1 ring-red-200 rounded
+                hover:bg-red-100 transition disabled:opacity-60
+              "
+              title="Eliminar"
+              disabled={changing}
+            >
+              Eliminar
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

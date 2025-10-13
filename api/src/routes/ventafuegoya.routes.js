@@ -1,6 +1,6 @@
 import { Router } from "express";
 import multer from "multer";
-import { createVentaFuegoya, updateVentaFuegoya, deleteVentaFuegoya, listVentaFuegoya, getVentaFuegoyaById, changeEstadoPagoVentaFuegoya } from "../controllers/ventafuegoya.js";
+import { createVentaFuegoya, updateVentaFuegoya, deleteVentaFuegoya, listVentaFuegoya, getVentaFuegoyaById, changeEstadoPagoVentaFuegoya, statsVentasFYMensual, topClientesFuegoYa, marcarPagoManual } from "../controllers/ventafuegoya.js";
 
 import { r2Put } from "../lib/r2.js";
 
@@ -45,5 +45,11 @@ router.delete("/:id", deleteVentaFuegoya);
 
 // Cambiar estado de pago
 router.put("/:id/estadopago", changeEstadoPagoVentaFuegoya);
+
+router.get("/stats/mensual", statsVentasFYMensual);
+router.get("/stats/topclientes", topClientesFuegoYa);
+
+router.post("/:id/marcarpago", marcarPagoManual);
+
 
 export default router;

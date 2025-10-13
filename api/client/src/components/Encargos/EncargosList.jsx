@@ -49,9 +49,8 @@ const EncargosList = () => {
 
   const cancelDelete = () => setToDelete(null);
 
-  // Marcar como recibido 
+
   const markReceived = async (id) => {
-    // estado previo para posible rollback
     const prev = encargos;
 
     

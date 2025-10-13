@@ -3,7 +3,7 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
 import tablasBackground from "../../assets/tablasBackground.jpg";
-
+import Alert from "../Modals/Alert";
 const TABLES_PER_PATIN = 1;
 const TACOS_PER_PATIN = 3;
 
@@ -19,7 +19,7 @@ const TipoPatinesForm = () => {
     titulo: "",
     medidas: "",
     stock: "",
-    comentarios: ""
+    comentarios: "",
   };
 
   const [inputs, setInputs] = useState(initialInputs);
@@ -33,13 +33,20 @@ const TipoPatinesForm = () => {
   const [messageType, setMessageType] = useState("");
 
   useEffect(() => {
-    api.get("/tipotablas/listar").then(({ data }) => setTablas(data)).catch(() => {});
-    api.get("/tipotacos/listar").then(({ data }) => setTacos(data)).catch(() => {});
+    api
+      .get("/tipotablas/listar")
+      .then(({ data }) => setTablas(data))
+      .catch(() => {});
+    api
+      .get("/tipotacos/listar")
+      .then(({ data }) => setTacos(data))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
     if (!id) return;
-    api.get(`/tipopatines/${id}`)
+    api
+      .get(`/tipopatines/${id}`)
       .then(({ data }) => {
         setInputs({
           id_tipo_tabla: data.id_tipo_tabla.toString(),
@@ -47,13 +54,15 @@ const TipoPatinesForm = () => {
           titulo: data.titulo || "",
           medidas: data.medidas || "",
           stock: data.stock?.toString() || "",
-          comentarios: data.comentarios || ""
+          comentarios: data.comentarios || "",
         });
-        const tabla = tablas.find(t => t.id_tipo_tabla === data.id_tipo_tabla);
-        const taco = tacos.find(t => t.id_tipo_taco === data.id_tipo_taco);
+        const tabla = tablas.find(
+          (t) => t.id_tipo_tabla === data.id_tipo_tabla
+        );
+        const taco = tacos.find((t) => t.id_tipo_taco === data.id_tipo_taco);
         if (tabla) setSelectedTabla(tabla);
         if (taco) setSelectedTaco(taco);
-     
+
         const img = data.logo_url || null;
         if (img) setPreview(img);
       })
@@ -68,29 +77,34 @@ const TipoPatinesForm = () => {
     if (!inputs.id_tipo_taco) return "Selecciona un taco.";
     if (!inputs.titulo) return "El título es requerido.";
     if (!inputs.medidas) return "Las medidas son requeridas.";
-    if (!inputs.stock || !Number.isInteger(+inputs.stock) || +inputs.stock < 0) return "Stock inválido.";
+    if (!inputs.stock || !Number.isInteger(+inputs.stock) || +inputs.stock < 0)
+      return "Stock inválido.";
     return null;
   };
 
-  const handleChange = e => {
+  const handleChange = (e) => {
     const { name, value } = e.target;
     if (name === "stock" && !/^\d*$/.test(value)) return;
-    setInputs(prev => ({ ...prev, [name]: value }));
+    setInputs((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleParentTabla = e => {
-    const tabla = tablas.find(t => t.id_tipo_tabla.toString() === e.target.value);
-    setInputs(prev => ({ ...prev, id_tipo_tabla: e.target.value }));
+  const handleParentTabla = (e) => {
+    const tabla = tablas.find(
+      (t) => t.id_tipo_tabla.toString() === e.target.value
+    );
+    setInputs((prev) => ({ ...prev, id_tipo_tabla: e.target.value }));
     setSelectedTabla(tabla || null);
   };
 
-  const handleParentTaco = e => {
-    const taco = tacos.find(t => t.id_tipo_taco.toString() === e.target.value);
-    setInputs(prev => ({ ...prev, id_tipo_taco: e.target.value }));
+  const handleParentTaco = (e) => {
+    const taco = tacos.find(
+      (t) => t.id_tipo_taco.toString() === e.target.value
+    );
+    setInputs((prev) => ({ ...prev, id_tipo_taco: e.target.value }));
     setSelectedTaco(taco || null);
   };
 
-  const handleLogoChange = e => {
+  const handleLogoChange = (e) => {
     const f = e.target.files[0];
     if (!f) return;
     setLogoFile(f);
@@ -103,21 +117,23 @@ const TipoPatinesForm = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const stockMax = selectedTabla && selectedTaco
-    ? Math.min(
-        Math.floor((selectedTabla.stock ?? 0) / TABLES_PER_PATIN),
-        Math.floor((selectedTaco.stock ?? 0) / TACOS_PER_PATIN)
-      )
-    : 0;
+  const stockMax =
+    selectedTabla && selectedTaco
+      ? Math.min(
+          Math.floor((selectedTabla.stock ?? 0) / TABLES_PER_PATIN),
+          Math.floor((selectedTaco.stock ?? 0) / TACOS_PER_PATIN)
+        )
+      : 0;
 
-  const precioPreview = (selectedTabla && selectedTaco)
-    ? (
-        (Number(selectedTabla?.precio_unidad || 0) * TABLES_PER_PATIN) +
-        (Number(selectedTaco?.precio_unidad || 0) * TACOS_PER_PATIN)
-      ).toFixed(2)
-    : null;
+  const precioPreview =
+    selectedTabla && selectedTaco
+      ? (
+          Number(selectedTabla?.precio_unidad || 0) * TABLES_PER_PATIN +
+          Number(selectedTaco?.precio_unidad || 0) * TACOS_PER_PATIN
+        ).toFixed(2)
+      : null;
 
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const v = validate();
     if (v) {
@@ -136,10 +152,14 @@ const TipoPatinesForm = () => {
       if (logoFile) fd.append("logo", logoFile);
 
       if (id) {
-        await api.put(`/tipopatines/${id}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+        await api.put(`/tipopatines/${id}`, fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
         setErr("Tipo de patín actualizado.");
       } else {
-        await api.post("/tipopatines/agregar", fd, { headers: { "Content-Type": "multipart/form-data" } });
+        await api.post("/tipopatines/agregar", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
         setErr("Tipo de patín creado.");
       }
       setMessageType("success");
@@ -147,9 +167,11 @@ const TipoPatinesForm = () => {
     } catch (error) {
       let mensaje = "Error al guardar.";
       if (error.response && error.response.data) {
-        if (typeof error.response.data === "string") mensaje = error.response.data;
+        if (typeof error.response.data === "string")
+          mensaje = error.response.data;
         else if (error.response.data.error) mensaje = error.response.data.error;
-        else if (error.response.data.message) mensaje = error.response.data.message;
+        else if (error.response.data.message)
+          mensaje = error.response.data.message;
       }
       setErr(mensaje);
       setMessageType("error");
@@ -163,18 +185,33 @@ const TipoPatinesForm = () => {
         style={{ backgroundImage: `url(${tablasBackground})` }}
       />
       <div className="relative z-10 w-full sm:max-w-md p-6 bg-white bg-opacity-80 rounded-lg shadow-md">
-        <Link to="/tipopatines/listar" className="block mb-6 text-2xl font-semibold text-neutral-800 text-center">
+        <Link
+          to="/tipopatines/listar"
+          className="block mb-6 text-2xl font-semibold text-neutral-800 text-center"
+        >
           Imanod Control de Stock
         </Link>
         <h1 className="text-2xl font-bold text-neutral-900 text-center mb-4">
           {id ? "Editar Tipo de Patín" : "Nuevo Tipo de Patín"}
         </h1>
-        <form className="space-y-4" onSubmit={handleSubmit} encType="multipart/form-data">
+        <form
+          className="space-y-4"
+          onSubmit={handleSubmit}
+          encType="multipart/form-data"
+        >
           <div>
-            <label className="block mb-1 text-sm font-medium">Tabla utilizada</label>
-            <select value={inputs.id_tipo_tabla} onChange={handleParentTabla} className="w-full p-2 border rounded">
-              <option value="" disabled>Selecciona tabla</option>
-              {tablas.map(t => (
+            <label className="block mb-1 text-sm font-medium">
+              Tabla utilizada
+            </label>
+            <select
+              value={inputs.id_tipo_tabla}
+              onChange={handleParentTabla}
+              className="w-full p-2 border rounded"
+            >
+              <option value="" disabled>
+                Selecciona tabla
+              </option>
+              {tablas.map((t) => (
                 <option key={t.id_tipo_tabla} value={t.id_tipo_tabla}>
                   {t.titulo}
                 </option>
@@ -182,10 +219,18 @@ const TipoPatinesForm = () => {
             </select>
           </div>
           <div>
-            <label className="block mb-1 text-sm font-medium">Taco utilizado</label>
-            <select value={inputs.id_tipo_taco} onChange={handleParentTaco} className="w-full p-2 border rounded">
-              <option value="" disabled>Selecciona taco</option>
-              {tacos.map(tc => (
+            <label className="block mb-1 text-sm font-medium">
+              Taco utilizado
+            </label>
+            <select
+              value={inputs.id_tipo_taco}
+              onChange={handleParentTaco}
+              className="w-full p-2 border rounded"
+            >
+              <option value="" disabled>
+                Selecciona taco
+              </option>
+              {tacos.map((tc) => (
                 <option key={tc.id_tipo_taco} value={tc.id_tipo_taco}>
                   {tc.titulo}
                 </option>
@@ -194,9 +239,15 @@ const TipoPatinesForm = () => {
           </div>
           {selectedTabla && selectedTaco && (
             <div className="text-sm text-gray-700">
-              <p><strong>Stock Tabla:</strong> {selectedTabla.stock}</p>
-              <p><strong>Stock Tacos:</strong> {selectedTaco.stock}</p>
-              <p><strong>Máximo patines posible:</strong> {stockMax}</p>
+              <p>
+                <strong>Stock Tabla:</strong> {selectedTabla.stock}
+              </p>
+              <p>
+                <strong>Stock Tacos:</strong> {selectedTaco.stock}
+              </p>
+              <p>
+                <strong>Máximo patines posible:</strong> {stockMax}
+              </p>
             </div>
           )}
           {currentUser?.tipo === "admin" && (
@@ -206,7 +257,8 @@ const TipoPatinesForm = () => {
                 {precioPreview !== null ? `$ ${precioPreview}` : "—"}
               </p>
               <p className="text-xs text-gray-500">
-                Se calcula como: precio tabla × {TABLES_PER_PATIN} + precio taco × {TACOS_PER_PATIN}.
+                Se calcula como: precio tabla × {TABLES_PER_PATIN} + precio taco
+                × {TACOS_PER_PATIN}.
               </p>
             </div>
           )}
@@ -261,11 +313,22 @@ const TipoPatinesForm = () => {
             )}
           </div>
           {err && (
-            <p className={messageType === "error" ? "text-red-500" : "text-green-500"}>
-              {err}
-            </p>
+            <div className="mb-3">
+              <Alert
+                type={messageType === "error" ? "error" : "success"}
+                onClose={() => {
+                  setErr("");
+                  setMessageType("");
+                }}
+              >
+                {err}
+              </Alert>
+            </div>
           )}
-          <button type="submit" className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+          <button
+            type="submit"
+            className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
             {id ? "Guardar Cambios" : "Crear Tipo de Patín"}
           </button>
           <p className="mt-4 text-center text-sm">

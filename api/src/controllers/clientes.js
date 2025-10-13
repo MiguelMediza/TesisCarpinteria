@@ -153,7 +153,7 @@ export const listClientes = async (req, res) => {
 
 export const listarClientesSelect = async (req, res) => {
   try {
-    const { incluir_id } = req.query; // e.g. ?incluir_id=123
+    const { incluir_id } = req.query; 
 
     // Activos
     const [activos] = await pool.query(
@@ -163,7 +163,7 @@ export const listarClientesSelect = async (req, res) => {
        ORDER BY nombre_empresa, nombre, apellido`
     );
 
-    // Si me pasaron incluir_id y no está en activos, lo traigo aparte
+    // Si me pasaron incluir_id y no está en activos, lo traigo apart
     let extra = [];
     if (incluir_id) {
       const yaEsta = activos.some(c => String(c.id_cliente) === String(incluir_id));
@@ -184,11 +184,11 @@ export const listarClientesSelect = async (req, res) => {
       display: c.es_empresa
         ? (c.nombre_empresa || `Empresa #${c.id_cliente}`)
         : [c.nombre, c.apellido].filter(Boolean).join(" ") || `Cliente #${c.id_cliente}`,
-      eliminado: c.estado === 0 || c.estado === false, // por si viene desactivado
+      eliminado: c.estado === 0 || c.estado === false, 
     });
 
     const data = [
-      ...extra.map(mapDisplay),  // primero el “incluido”, para que quede arriba
+      ...extra.map(mapDisplay),  
       ...activos.map(mapDisplay)
     ];
 

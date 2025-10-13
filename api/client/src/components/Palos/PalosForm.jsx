@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useContext } from "react";
 import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
 import tablasBackground from "../../assets/tablasBackground.jpg";
-
+import Alert from "../Modals/Alert";
 const PalosForm = () => {
   const { currentUser } = useContext(AuthContext);
   const { id } = useParams();
@@ -41,11 +41,11 @@ const PalosForm = () => {
           comentarios: data.comentarios_mp || "",
         });
         if (data.foto_url) {
-          setPreview(data.foto_url); 
+          setPreview(data.foto_url);
         }
       })
       .catch(() => {
-        setErr("No se pudo cargar el palo.");
+        setErr("No se pudo cargar el tirante.");
         setMessageType("error");
       });
   }, [id]);
@@ -61,10 +61,7 @@ const PalosForm = () => {
     if (!inputs.tipo_madera) return "El tipo de madera es requerido.";
     if (currentUser?.tipo !== "encargado") {
       if (!inputs.precio_unidad) return "El precio unitario es requerido.";
-      if (
-        isNaN(inputs.precio_unidad) ||
-        Number(inputs.precio_unidad) <= 0
-      )
+      if (isNaN(inputs.precio_unidad) || Number(inputs.precio_unidad) <= 0)
         return "Ingresa un precio válido.";
     }
     if (!inputs.stock) return "El stock es requerido.";
@@ -109,9 +106,8 @@ const PalosForm = () => {
       const formData = new FormData();
       Object.entries(inputs).forEach(([key, value]) => {
         if (key === "precio_unidad") {
-          const precio =
-            currentUser?.tipo === "encargado" ? "0" : value;
-        formData.append(key, precio);
+          const precio = currentUser?.tipo === "encargado" ? "0" : value;
+          formData.append(key, precio);
         } else {
           formData.append(key, value);
         }
@@ -119,32 +115,25 @@ const PalosForm = () => {
       if (fotoFile) formData.append("foto", fotoFile);
 
       if (id) {
-        await api.put(
-          `/palos/${id}`,
-          formData,
-          { headers: { "Content-Type": "multipart/form-data" } }
-        );
-        setErr("Palo actualizado correctamente.");
+        await api.put(`/palos/${id}`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        setErr("Tirante actualizado correctamente.");
       } else {
-        await api.post(
-          "/palos/agregar",
-          formData,
-          { headers: { "Content-Type": "multipart/form-data" } }
-        );
-        setErr("Palo creado exitosamente.");
+        await api.post("/palos/agregar", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        setErr("Tirante creado exitosamente.");
       }
       setMessageType("success");
       setInputs(initialInputs);
       clearImage();
       setTimeout(() => navigate("/palos/listar"), 500);
     } catch (error) {
-      let msg = "Error al guardar el palo.";
+      let msg = "Error al guardar el tirante.";
       if (error.response) {
         const payload = error.response.data;
-        msg =
-          typeof payload === "string"
-            ? payload
-            : payload.message || msg;
+        msg = typeof payload === "string" ? payload : payload.message || msg;
       }
       setErr(msg);
       setMessageType("error");
@@ -166,7 +155,7 @@ const PalosForm = () => {
           Imanod Control de Stock
         </Link>
         <h1 className="text-2xl font-bold text-neutral-900 text-center mb-4">
-          {id ? "Editar Palo" : "Nuevo Palo"}
+          {id ? "Editar Tirante" : "Nuevo Tirante"}
         </h1>
         <form
           className="space-y-4 md:space-y-6"
@@ -186,7 +175,7 @@ const PalosForm = () => {
               id="titulo"
               value={inputs.titulo}
               onChange={handleChange}
-              placeholder="Descripción del palo"
+              placeholder="Descripción del tirante"
               className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
             />
           </div>
@@ -314,7 +303,9 @@ const PalosForm = () => {
                   src={preview}
                   alt="Preview"
                   className="w-full h-auto rounded"
-                  onError={(e) => { e.currentTarget.style.display = "none"; }}
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
                 />
                 <button
                   type="button"
@@ -346,27 +337,29 @@ const PalosForm = () => {
           </div>
 
           {err && (
-            <span
-              className={
-                messageType === "error"
-                  ? "text-red-500"
-                  : "text-green-500"
-              }
-            >
-              {err}
-            </span>
+            <div className="mb-3">
+              <Alert
+                type={messageType === "error" ? "error" : "success"}
+                onClose={() => {
+                  setErr("");
+                  setMessageType("");
+                }}
+              >
+                {err}
+              </Alert>
+            </div>
           )}
 
           <button
             type="submit"
             className="w-full py-2.5 text-white bg-neutral-700 hover:bg-neutral-800 rounded transition"
           >
-            {id ? "Guardar Cambios" : "Crear Palo"}
+            {id ? "Guardar Cambios" : "Crear Tirante"}
           </button>
 
           <p className="mt-4 text-sm text-neutral-700 text-center">
             <Link to="/palos/listar" className="font-medium underline">
-              Volver al listado de palos
+              Volver al listado de tirantes
             </Link>
           </p>
         </form>

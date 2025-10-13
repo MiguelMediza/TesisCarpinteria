@@ -9,16 +9,21 @@ const ClientesFuegoYaList = () => {
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [toDelete, setToDelete] = useState(null);
-  const [creditMap, setCreditMap] = useState(new Map()); 
-  const [loadingCredit, setLoadingCredit] = useState(false);
 
+  const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  const [creditMap, setCreditMap] = useState(new Map());
+  const [loadingCredit, setLoadingCredit] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const { data } = await api.get("/clientesfuegoya/listar");
+        const { data } = await api.get("/clientesfuegoya/listar", {
+          params: { estado: 1 }, 
+        });
         if (!alive) return;
         setClientes(Array.isArray(data) ? data : []);
       } catch (err) {
@@ -60,8 +65,6 @@ const ClientesFuegoYaList = () => {
         setCreditMap(map);
       } catch (e) {
         console.error("⚠️ Error cargando crédito (resumen):", e);
-        if (alive) {
-        }
       } finally {
         if (alive) setLoadingCredit(false);
       }
@@ -69,13 +72,17 @@ const ClientesFuegoYaList = () => {
     return () => { alive = false; };
   }, [filtered]);
 
-  const handleEdit = (id) => {
-    navigate(`/clientesfuegoya/${id}`);
+  const handleEdit = (id) => navigate(`/clientesfuegoya/${id}`);
+
+  const handleDeleteClick = (cliente) => {
+    setDeleteError("");      
+    setToDelete(cliente);
   };
 
-  const handleDeleteClick = (cliente) => setToDelete(cliente);
-
   const confirmDelete = async () => {
+    if (!toDelete) return;
+    setDeleting(true);
+    setDeleteError("");
     try {
       await api.delete(`/clientesfuegoya/${toDelete.id_cliente}`);
       setClientes((prev) =>
@@ -86,15 +93,25 @@ const ClientesFuegoYaList = () => {
         next.delete(toDelete.id_cliente);
         return next;
       });
+      setToDelete(null); 
     } catch (err) {
       console.error("❌ Error al eliminar cliente FuegoYa:", err);
-      setError("Error al eliminar el cliente.");
+      let msg = "No se pudo deshabilitar el cliente.";
+      const data = err?.response?.data;
+      if (typeof data === "string") msg = data;
+      else if (data?.message) msg = data.message;
+      else if (data?.error) msg = data.error;
+      setDeleteError(msg);
     } finally {
-      setToDelete(null);
+      setDeleting(false);
     }
   };
 
-  const cancelDelete = () => setToDelete(null);
+  const cancelDelete = () => {
+    if (deleting) return; 
+    setDeleteError("");
+    setToDelete(null);
+  };
 
   return (
     <section className="p-4 bg-gray-50 min-h-screen">
@@ -149,6 +166,8 @@ const ClientesFuegoYaList = () => {
         imageSrc={null}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
+        error={deleteError}
+        loading={deleting}
       />
     </section>
   );

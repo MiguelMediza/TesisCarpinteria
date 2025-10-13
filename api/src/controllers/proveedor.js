@@ -121,11 +121,35 @@ export const updateProveedor = async (req, res) => {
   }
 };
 
-// Eliminar un proveedor
 export const deleteProveedor = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log("🔔 deleteProveedor hit:", id);
+
+    const [provRows] = await pool.query(
+      `SELECT id_proveedor, COALESCE(nombre_empresa, nombre) AS display
+       FROM proveedores
+       WHERE id_proveedor = ?`,
+      [id]
+    );
+    if (provRows.length === 0) {
+      return res.status(404).json({ message: "Proveedor no encontrado." });
+    }
+    const nombreProv = provRows[0].display || `#${id}`;
+
+    const [[encargosRow]] = await pool.query(
+      "SELECT COUNT(*) AS n FROM encargos WHERE id_proveedor = ?",
+      [id]
+    );
+
+    if (encargosRow.n > 0) {
+      return res.status(409).json({
+        error: "REFERENCED",
+        message:
+          `No se puede eliminar el proveedor “${nombreProv}” porque tiene ${encargosRow.n} encargo(s) asociado(s). ` +
+          "Elimine o reasigne esos registros, o marque el proveedor como inactivo.",
+        detalles: { encargos: encargosRow.n },
+      });
+    }
 
     const [result] = await pool.query(
       "DELETE FROM proveedores WHERE id_proveedor = ?",
@@ -133,18 +157,36 @@ export const deleteProveedor = async (req, res) => {
     );
 
     if (result.affectedRows === 0) {
-      return res.status(404).json("Proveedor no encontrado!");
+      return res.status(404).json({ message: "Proveedor no encontrado." });
     }
 
-    console.log("✅ Proveedor eliminado:", result);
-    return res.status(200).json("Proveedor eliminado exitosamente!");
+    return res
+      .status(200)
+      .json({ message: `Proveedor “${nombreProv}” eliminado exitosamente.` });
   } catch (err) {
+    if (
+      err?.code === "ER_ROW_IS_REFERENCED_2" ||
+      err?.code === "ER_ROW_IS_REFERENCED" ||
+      err?.errno === 1451 ||
+      err?.errno === 1217
+    ) {
+      return res.status(409).json({
+        error: "REFERENCED",
+        message:
+          "No se puede eliminar el proveedor porque tiene registros relacionados (por ejemplo, encargos). " +
+          "Elimine o reasigne esos registros, o marque el proveedor como inactivo.",
+      });
+    }
+
     console.error("❌ Error en deleteProveedor:", err);
-    return res.status(500).json({ error: "Internal server error", details: err.message });
+    return res
+      .status(500)
+      .json({ error: "INTERNAL", message: "Error interno", details: err.message });
   }
 };
 
-// Obtener todos los proveedores
+
+
 export const listProveedores = async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT * FROM proveedores ORDER BY nombre ASC");
@@ -154,3 +196,4 @@ export const listProveedores = async (req, res) => {
     return res.status(500).json({ error: "Internal server error", details: err.message });
   }
 };
+ 

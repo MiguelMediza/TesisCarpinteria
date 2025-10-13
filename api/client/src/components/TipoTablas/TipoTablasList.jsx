@@ -10,7 +10,8 @@ const TipoTablasList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [toDelete, setToDelete] = useState(null);
   const navigate = useNavigate();
-
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(""); 
   const R2 = (import.meta.env.VITE_R2_PUBLIC_BASE || "").replace(/\/+$/, "");
   const imgFrom = (row) =>
     row?.foto_url ?? (row?.foto ? `${R2}/${String(row.foto).replace(/^\/+/, "")}` : null);
@@ -28,18 +29,45 @@ const TipoTablasList = () => {
   }, []);
 
   const handleEdit = (id) => navigate(`/tipotablas/${id}`);
-  const handleDeleteClick = (tipo) => setToDelete(tipo);
+const handleDeleteClick = (tipo) => {
+  setDeleteError("");
+  setToDelete(tipo);
+};
   const confirmDelete = async () => {
-    try {
-      await api.delete(`/tipotablas/${toDelete.id_tipo_tabla}`);
-      setTipos((prev) => prev.filter((t) => t.id_tipo_tabla !== toDelete.id_tipo_tabla));
-    } catch {
-      setError("Error al eliminar el tipo de tabla.");
-    } finally {
-      setToDelete(null);
+  if (!toDelete) return;
+  setDeleting(true);
+  setDeleteError("");
+
+  try {
+    await api.delete(`/tipotablas/${toDelete.id_tipo_tabla}`);
+    
+    setTipos(prev => prev.filter(t => t.id_tipo_tabla !== toDelete.id_tipo_tabla));
+    
+    setToDelete(null);
+  } catch (error) {               
+    let msg = "Error al eliminar el tipo de tabla.";
+    const data = error?.response?.data;
+    if (data) {
+      if (typeof data === "string") {
+        msg = data;
+      } else if (data.message) {
+        msg = data.message;  
+        
+     if (Array.isArray(data.prototipos) && data.prototipos.length) {
+       msg += "\nUsado en:\n - " + data.prototipos.join("\n - ");
+     }     
+      }
     }
-  };
-  const cancelDelete = () => setToDelete(null);
+    setDeleteError(msg);
+  } finally {
+    setDeleting(false);
+  }
+};
+  const cancelDelete = () => {
+  if (deleting) return;
+  setDeleteError("");
+  setToDelete(null);
+};
 
   const filteredTipos = tipos.filter((t) =>
     (t.titulo || "").toLowerCase().includes(searchTerm.toLowerCase())
@@ -53,7 +81,7 @@ const TipoTablasList = () => {
           to="/tipotablas"
           className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
         >
-          + Nuevo Tipo
+          + Nuevo Tipo Tabla
         </Link>
       </div>
 
@@ -92,6 +120,8 @@ const TipoTablasList = () => {
         imageSrc={toDelete ? imgFrom(toDelete) : null}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
+        error={deleteError}
+        loading={deleting}
       />
     </section>
   );

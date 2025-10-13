@@ -222,26 +222,47 @@ export const deleteClavo = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Leer foto antes de borrar
-    const [rows] = await connection.query(
+    const [[mpRow]] = await connection.query(
       `SELECT foto FROM materiaprima WHERE id_materia_prima = ?`,
       [id]
     );
-    if (rows.length === 0) return res.status(404).json("Clavo no encontrado!");
+    if (!mpRow) {
+      return res.status(404).json({ message: "Clavo no encontrado!" });
+    }
+    const fotoKey = mpRow.foto || null;
 
-    const fotoKey = rows[0].foto;
+    const [refs] = await connection.query(
+      `
+      SELECT
+        pp.id_prototipo,
+        COALESCE(NULLIF(TRIM(pp.titulo), ''), CONCAT('Prototipo #', pp.id_prototipo)) AS titulo
+      FROM prototipo_clavos pc
+      JOIN prototipo_pallet pp ON pp.id_prototipo = pc.id_prototipo
+      WHERE pc.id_materia_prima = ?
+      LIMIT 8
+      `,
+      [id]
+    );
+    if (refs.length > 0) {
+      return res.status(409).json({
+        code: "REFERENCED_IN_PROTOTIPO_CLAVOS",
+        message: `No se puede eliminar: este clavo está usado por ${refs.length} prototipo(s).`,
+        prototipos: refs.map(r => r.titulo),
+        count: refs.length,
+      });
+    }
 
     await connection.beginTransaction();
 
-    // Borrar detalle y padre
     const [childRes] = await connection.query(
       `DELETE FROM clavos WHERE id_materia_prima = ?`,
       [id]
     );
     if (childRes.affectedRows === 0) {
       await connection.rollback();
-      return res.status(404).json("Clavo no encontrado!");
+      return res.status(404).json({ message: "Clavo no encontrado!" });
     }
+
     await connection.query(
       `DELETE FROM materiaprima WHERE id_materia_prima = ?`,
       [id]
@@ -249,22 +270,47 @@ export const deleteClavo = async (req, res) => {
 
     await connection.commit();
 
-    // Borrar archivo de imagen en R2 si existe
     if (fotoKey) {
-      try {
-        await r2Delete(fotoKey);
-      } catch (e) {
-        console.warn("No se pudo borrar la imagen en R2:", fotoKey, e?.message);
-      }
+      try { await r2Delete(fotoKey); }
+      catch (e) { console.warn("No se pudo borrar la imagen en R2:", fotoKey, e?.message); }
     }
 
-    return res.status(200).json("Clavo eliminado exitosamente!");
+    return res.status(200).json({ message: "Clavo eliminado exitosamente!" });
   } catch (err) {
-    await connection.rollback();
+    try { await connection.rollback(); } catch {}
+
+  
+    if (err?.errno === 1451 || err?.code === "ER_ROW_IS_REFERENCED_2") {
+      try {
+        const [refs] = await pool.query(
+          `
+          SELECT
+            pp.id_prototipo,
+            COALESCE(NULLIF(TRIM(pp.titulo), ''), CONCAT('Prototipo #', pp.id_prototipo)) AS titulo
+          FROM prototipo_clavos pc
+          JOIN prototipo_pallet pp ON pp.id_prototipo = pc.id_prototipo
+          WHERE pc.id_materia_prima = ?
+          LIMIT 8
+          `,
+          [req.params.id]
+        );
+        if (refs.length > 0) {
+          return res.status(409).json({
+            code: "REFERENCED_IN_PROTOTIPO_CLAVOS",
+            message: `No se puede eliminar: este clavo está usado por ${refs.length} prototipo(s).`,
+            prototipos: refs.map(r => r.titulo),
+            count: refs.length,
+          });
+        }
+      } catch {}
+      return res.status(409).json({
+        code: "ROW_REFERENCED",
+        message: "No se puede eliminar: el clavo está referenciado por otros registros.",
+      });
+    }
+
     console.error("❌ Error en deleteClavo:", err);
-    return res
-      .status(500)
-      .json({ error: "Internal server error", details: err.message });
+    return res.status(500).json({ error: "Internal server error", details: err.message });
   } finally {
     connection.release();
   }

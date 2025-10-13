@@ -142,7 +142,7 @@ export const getPrototipoById = async (req, res) => {
   }
 };
 
-// ---------- LIST ----------
+// ---------- LIST ---------
 export const listPrototipos = async (req, res) => {
   try {
     const [rows] = await pool.query(

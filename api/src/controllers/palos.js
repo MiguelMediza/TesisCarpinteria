@@ -181,48 +181,93 @@ export const deletePalo = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [rows] = await connection.query(
+    const [[mpRow]] = await connection.query(
       "SELECT foto FROM materiaprima WHERE id_materia_prima = ?",
       [id]
     );
-    if (rows.length === 0) {
-      return res.status(404).json("Palo no encontrado!");
+    if (!mpRow) {
+      return res.status(404).json({ message: "Tirante no encontrado!" });
     }
-    const fotoKey = rows[0].foto;
+    const fotoKey = mpRow.foto || null;
+
+    const [tipoRows] = await connection.query(
+      `
+      SELECT
+        tt.id_tipo_taco,
+        COALESCE(NULLIF(TRIM(tt.titulo), ''), CONCAT('Tipo #', tt.id_tipo_taco)) AS titulo
+      FROM tipo_tacos tt
+      WHERE tt.id_materia_prima = ?
+      LIMIT 8
+      `,
+      [id]
+    );
+    if (tipoRows.length > 0) {
+      return res.status(409).json({
+        code: "REFERENCED_IN_TIPO_TACOS",
+        message:
+          `No se puede eliminar: este tirante tiene tipos derivados asociados (${tipoRows.length}).`,
+        tipos: tipoRows.map(r => r.titulo),
+        count: tipoRows.length,
+      });
+    }
 
     await connection.beginTransaction();
 
-    const [child] = await connection.query(
+    const [delChild] = await connection.query(
       "DELETE FROM palos WHERE id_materia_prima = ?",
       [id]
     );
-    if (child.affectedRows === 0) {
+    if (delChild.affectedRows === 0) {
       await connection.rollback();
-      return res.status(404).json("Palo no encontrado!");
+      return res.status(404).json({ message: "Tirante no encontrado!" });
     }
 
     await connection.query(
       "DELETE FROM materiaprima WHERE id_materia_prima = ?",
       [id]
     );
-
     await connection.commit();
 
     if (fotoKey) {
-      try {
-        await r2Delete(fotoKey);
-      } catch (e) {
-        console.warn("No se pudo borrar la imagen en R2:", fotoKey, e?.message);
-      }
+      try { await r2Delete(fotoKey); }
+      catch (e) { console.warn("⚠️ No se pudo borrar imagen R2:", fotoKey, e?.message); }
     }
 
-    return res.status(200).json("Palo eliminado exitosamente!");
+    return res.status(200).json({ message: "Tirante eliminado exitosamente!" });
   } catch (err) {
-    await connection.rollback();
+    try { await connection.rollback(); } catch {}
+
+    if (err?.errno === 1451 || err?.code === "ER_ROW_IS_REFERENCED_2") {
+      try {
+        const [tipoRows] = await pool.query(
+          `
+          SELECT
+            tt.id_tipo_taco,
+            COALESCE(NULLIF(TRIM(tt.titulo), ''), CONCAT('Tipo #', tt.id_tipo_taco)) AS titulo
+          FROM tipo_tacos tt
+          WHERE tt.id_materia_prima = ?
+          LIMIT 8
+          `,
+          [req.params.id]
+        );
+        if (tipoRows.length > 0) {
+          return res.status(409).json({
+            code: "REFERENCED_IN_TIPO_TACOS",
+            message:
+              `No se puede eliminar: este tirante tiene tipos derivados asociados (${tipoRows.length}).`,
+            tipos: tipoRows.map(r => r.titulo),
+            count: tipoRows.length,
+          });
+        }
+      } catch {}
+      return res.status(409).json({
+        code: "ROW_REFERENCED",
+        message: "No se puede eliminar: el tirante está referenciado por otros registros.",
+      });
+    }
+
     console.error("❌ Error en deletePalo:", err);
-    return res
-      .status(500)
-      .json({ error: "Internal server error", details: err.message });
+    return res.status(500).json({ error: "Internal server error", details: err.message });
   } finally {
     connection.release();
   }
@@ -250,7 +295,7 @@ export const listPalos = async (req, res) => {
       ORDER BY mp.titulo ASC
       `
     );
-
+ 
     const data = rows.map((r) => ({
       ...r,
       foto_url: urlFor(r.foto),

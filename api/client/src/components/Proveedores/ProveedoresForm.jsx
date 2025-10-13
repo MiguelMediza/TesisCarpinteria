@@ -1,10 +1,10 @@
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { api } from "../../api";
-import tablasBackground from "../../assets/tablasBackground.jpg"; 
-
+import tablasBackground from "../../assets/tablasBackground.jpg";
+import Alert from "../Modals/Alert";
 const Proveedores = () => {
-  const { id } = useParams();                
+  const { id } = useParams();
   const navigate = useNavigate();
 
   const [inputs, setInputs] = useState({
@@ -26,10 +26,11 @@ const Proveedores = () => {
     correo_electronico: "",
     comentarios: "",
   };
-  // 2. Si hay id, cargamos datos para editar
+
   useEffect(() => {
     if (!id) return;
-    api.get(`/proveedores/${id}`)
+    api
+      .get(`/proveedores/${id}`)
       .then(({ data }) => setInputs(data))
       .catch(() => {
         setErr("No se pudo cargar el proveedor.");
@@ -39,12 +40,14 @@ const Proveedores = () => {
 
   const validateInputs = () => {
     if (!inputs.rut) return "El RUT es requerido.";
-    if (inputs.rut.length !== 12) return "Ingresa un RUT válido (Debe tener 12 dígitos).";
+    if (inputs.rut.length !== 12)
+      return "Ingresa un RUT válido (Debe tener 12 dígitos).";
     if (!inputs.nombre) return "El nombre es requerido.";
     if (!inputs.nombre_empresa) return "El nombre de la empresa es requerido.";
     if (!inputs.telefono) return "El teléfono es requerido.";
     if (inputs.telefono.length < 9) return "El teléfono debe tener 9 dígitos.";
-    if (!inputs.correo_electronico) return "El correo electrónico es requerido.";
+    if (!inputs.correo_electronico)
+      return "El correo electrónico es requerido.";
     return null;
   };
 
@@ -53,7 +56,7 @@ const Proveedores = () => {
     if ((name === "rut" || name === "telefono") && !/^\d*$/.test(value)) return;
     if (name === "rut" && value.length > 12) return;
     if (name === "telefono" && value.length > 9) return;
-    setInputs(prev => ({ ...prev, [name]: value }));
+    setInputs((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -66,31 +69,22 @@ const Proveedores = () => {
     }
     try {
       if (id) {
-        // EDITAR
-        await api.put(
-          `/proveedores/${id}`,
-          inputs
-        );
+        await api.put(`/proveedores/${id}`, inputs);
         setErr("Proveedor actualizado correctamente.");
         setInputs(initialInputs);
       } else {
-        // CREAR
-        await api.post(
-          "/proveedores/agregar",
-          inputs
-        );
+        await api.post("/proveedores/agregar", inputs);
         setErr("Proveedor creado exitosamente.");
         setInputs(initialInputs);
       }
       setMessageType("success");
-      // Después de un breve delay o directamente:
-      setTimeout(() => navigate("/proveedores"), 500);
+      setTimeout(() => navigate("/proveedores/listar"), 500);
     } catch (error) {
       let msg = "Error al guardar proveedor.";
       if (error.response) {
         const payload = error.response.data;
-        if (typeof payload === "string")       msg = payload;
-        else if (payload.message)              msg = payload.message;
+        if (typeof payload === "string") msg = payload;
+        else if (payload.message) msg = payload.message;
       }
       setErr(msg);
       setMessageType("error");
@@ -121,7 +115,10 @@ const Proveedores = () => {
         <form className="space-y-4 md:space-y-6" onSubmit={handleSubmit}>
           {/* RUT */}
           <div>
-            <label htmlFor="rut" className="block mb-1 text-sm font-medium text-neutral-800">
+            <label
+              htmlFor="rut"
+              className="block mb-1 text-sm font-medium text-neutral-800"
+            >
               RUT
             </label>
             <input
@@ -140,7 +137,10 @@ const Proveedores = () => {
 
           {/* Nombre */}
           <div>
-            <label htmlFor="nombre" className="block mb-1 text-sm font-medium text-neutral-800">
+            <label
+              htmlFor="nombre"
+              className="block mb-1 text-sm font-medium text-neutral-800"
+            >
               Nombre
             </label>
             <input
@@ -156,7 +156,10 @@ const Proveedores = () => {
 
           {/* Empresa */}
           <div>
-            <label htmlFor="nombre_empresa" className="block mb-1 text-sm font-medium text-neutral-800">
+            <label
+              htmlFor="nombre_empresa"
+              className="block mb-1 text-sm font-medium text-neutral-800"
+            >
               Empresa
             </label>
             <input
@@ -172,7 +175,10 @@ const Proveedores = () => {
 
           {/* Teléfono */}
           <div>
-            <label htmlFor="telefono" className="block mb-1 text-sm font-medium text-neutral-800">
+            <label
+              htmlFor="telefono"
+              className="block mb-1 text-sm font-medium text-neutral-800"
+            >
               Teléfono
             </label>
             <input
@@ -191,7 +197,10 @@ const Proveedores = () => {
 
           {/* Correo */}
           <div>
-            <label htmlFor="correo_electronico" className="block mb-1 text-sm font-medium text-neutral-800">
+            <label
+              htmlFor="correo_electronico"
+              className="block mb-1 text-sm font-medium text-neutral-800"
+            >
               Correo Electrónico
             </label>
             <input
@@ -207,7 +216,10 @@ const Proveedores = () => {
 
           {/* Comentarios */}
           <div>
-            <label htmlFor="comentarios" className="block mb-1 text-sm font-medium text-neutral-800">
+            <label
+              htmlFor="comentarios"
+              className="block mb-1 text-sm font-medium text-neutral-800"
+            >
               Comentarios
             </label>
             <textarea
@@ -223,9 +235,17 @@ const Proveedores = () => {
 
           {/* Mensaje */}
           {err && (
-            <span className={messageType === "error" ? "text-red-500" : "text-green-500"}>
-              {err}
-            </span>
+            <div className="mb-3">
+              <Alert
+                type={messageType === "error" ? "error" : "success"}
+                onClose={() => {
+                  setErr("");
+                  setMessageType("");
+                }}
+              >
+                {err}
+              </Alert>
+            </div>
           )}
 
           {/* Submit */}

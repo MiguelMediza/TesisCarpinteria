@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import encargosBackground from "../../assets/tablasBackground.jpg";
 import { api } from "../../api";
-
+import Alert from "../Modals/Alert";
 const EncargosForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -11,37 +11,40 @@ const EncargosForm = () => {
     fecha_realizado: "",
     fecha_prevista_llegada: "",
     id_proveedor: "",
-    comentarios: ""
+    comentarios: "",
   });
 
   const [proveedores, setProveedores] = useState([]);
   const [materiasPrimas, setMateriasPrimas] = useState([]);
-  const [detalles, setDetalles] = useState([{ id_materia_prima: "", cantidad: "" }]);
+  const [detalles, setDetalles] = useState([
+    { id_materia_prima: "", cantidad: "" },
+  ]);
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
 
-  //Cargar proveedores y materias primas
   useEffect(() => {
     api.get("/proveedores/listar").then(({ data }) => setProveedores(data));
-    api.get("/encargos/primas")
-    .then(({ data }) => setMateriasPrimas(data))
-    .catch(err => console.error("Error cargando materias primas:", err)); 
+    api
+      .get("/encargos/primas")
+      .then(({ data }) => setMateriasPrimas(data))
+      .catch((err) => console.error("Error cargando materias primas:", err));
   }, []);
 
   //Cargar encargo si es edición
   useEffect(() => {
     if (!id) return;
-    api.get(`/encargos/${id}`)
+    api
+      .get(`/encargos/${id}`)
       .then(({ data }) => {
         setInputs({
           fecha_realizado: formatDate(data.fecha_realizado),
           fecha_prevista_llegada: formatDate(data.fecha_prevista_llegada),
           id_proveedor: data.id_proveedor || "",
-          comentarios: data.comentarios || ""
+          comentarios: data.comentarios || "",
         });
-        const detalleConvertido = data.detalles.map(d => ({
+        const detalleConvertido = data.detalles.map((d) => ({
           id_materia_prima: d.id_materia_prima?.toString() || "",
-          cantidad: d.cantidad?.toString() || ""
+          cantidad: d.cantidad?.toString() || "",
         }));
         setDetalles(detalleConvertido);
       })
@@ -53,7 +56,7 @@ const EncargosForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setInputs(prev => {
+    setInputs((prev) => {
       const next = { ...prev, [name]: value };
 
       if (name === "fecha_realizado" && next.fecha_prevista_llegada) {
@@ -66,7 +69,6 @@ const EncargosForm = () => {
     });
   };
 
-
   const handleDetalleChange = (index, field, value) => {
     const nuevos = [...detalles];
     nuevos[index][field] = value;
@@ -74,13 +76,14 @@ const EncargosForm = () => {
   };
 
   const formatDate = (isoString) => {
-  if (!isoString) return "";
-  return isoString.split("T")[0];
-};
+    if (!isoString) return "";
+    return isoString.split("T")[0];
+  };
 
-  const agregarDetalle = () => setDetalles([...detalles, { id_materia_prima: "", cantidad: "" }]);
+  const agregarDetalle = () =>
+    setDetalles([...detalles, { id_materia_prima: "", cantidad: "" }]);
 
-  const quitarDetalle = index => {
+  const quitarDetalle = (index) => {
     if (detalles.length === 1) return;
     const nuevos = detalles.filter((_, i) => i !== index);
     setDetalles(nuevos);
@@ -88,22 +91,29 @@ const EncargosForm = () => {
 
   // Validación
   const validar = () => {
-    if (!inputs.fecha_realizado) return "La fecha de realización es obligatoria.";
-    if (!inputs.id_proveedor) return "Debe seleccionar un proveedor.";
+    if (!inputs.fecha_realizado)
+      return "La fecha de realización es obligatoria.";
+    if(!inputs.fecha_prevista_llegada)
+      return "La fecha prevista de llegada es obligatoria.";
     if (inputs.fecha_prevista_llegada) {
       const fReal = new Date(inputs.fecha_realizado);
       const fPrev = new Date(inputs.fecha_prevista_llegada);
-      if (fPrev <= fReal) return "La fecha prevista de llegada debe ser mayor a la fecha realizada.";
+      if (fPrev <= fReal)
+        return "La fecha prevista de llegada debe ser mayor a la fecha realizada.";
     }
+    if (!inputs.id_proveedor) return "Debe seleccionar un proveedor.";
+
     for (let i = 0; i < detalles.length; i++) {
       const d = detalles[i];
-      if (!d.id_materia_prima) return `Seleccione una materia prima en la fila ${i + 1}`;
-      if (!d.cantidad || Number(d.cantidad) <= 0) return `Ingrese una cantidad válida en la fila ${i + 1}`;
+      if (!d.id_materia_prima)
+        return `Seleccione una materia prima en la fila ${i + 1}`;
+      if (!d.cantidad || Number(d.cantidad) <= 0)
+        return `Ingrese una cantidad válida en la fila ${i + 1}`;
     }
     return null;
   };
 
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const error = validar();
     if (error) {
@@ -114,10 +124,10 @@ const EncargosForm = () => {
 
     const payload = {
       ...inputs,
-      materias_primas: detalles.map(d => ({
+      materias_primas: detalles.map((d) => ({
         id_materia_prima: parseInt(d.id_materia_prima),
-        cantidad: parseInt(d.cantidad)
-      }))
+        cantidad: parseInt(d.cantidad),
+      })),
     };
 
     try {
@@ -138,11 +148,11 @@ const EncargosForm = () => {
   };
 
   return (
-        <section className="relative flex items-center justify-center min-h-screen bg-neutral-50">
-          <div
-            className="absolute inset-0 bg-cover bg-center filter blur opacity-90"
-            style={{ backgroundImage: `url(${encargosBackground})` }}
-          />
+    <section className="relative flex items-center justify-center min-h-screen bg-neutral-50">
+      <div
+        className="absolute inset-0 bg-cover bg-center filter blur opacity-90"
+        style={{ backgroundImage: `url(${encargosBackground})` }}
+      />
       <div className="relative z-10 w-full sm:max-w-md p-6 bg-white bg-opacity-80 rounded-lg shadow-md">
         <h1 className="text-2xl font-bold text-center mb-4">
           {id ? "Editar Encargo" : "Nuevo Encargo"}
@@ -151,20 +161,29 @@ const EncargosForm = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Fecha realizada */}
           <div>
-            <label className="block text-sm font-medium">Fecha realizada *</label>
-            <input type="date" name="fecha_realizado" value={inputs.fecha_realizado} onChange={handleChange}
-              className="w-full p-2 border rounded bg-neutral-100" />
+            <label className="block text-sm font-medium">
+              Fecha realizada *
+            </label>
+            <input
+              type="date"
+              name="fecha_realizado"
+              value={inputs.fecha_realizado}
+              onChange={handleChange}
+              className="w-full p-2 border rounded bg-neutral-100"
+            />
           </div>
 
           {/* Fecha prevista */}
           <div>
-            <label className="block text-sm font-medium">Fecha prevista de llegada *</label>
+            <label className="block text-sm font-medium">
+              Fecha prevista de llegada *
+            </label>
             <input
               type="date"
               name="fecha_prevista_llegada"
               value={inputs.fecha_prevista_llegada}
               onChange={handleChange}
-              min={inputs.fecha_realizado || undefined}   
+              min={inputs.fecha_realizado || undefined}
               className="w-full p-2 border rounded bg-neutral-100"
             />
           </div>
@@ -172,11 +191,17 @@ const EncargosForm = () => {
           {/* Proveedor */}
           <div>
             <label className="block text-sm font-medium">Proveedor *</label>
-            <select name="id_proveedor" value={inputs.id_proveedor} onChange={handleChange}
-              className="w-full p-2 border rounded bg-neutral-100">
+            <select
+              name="id_proveedor"
+              value={inputs.id_proveedor}
+              onChange={handleChange}
+              className="w-full p-2 border rounded bg-neutral-100"
+            >
               <option value="">Seleccione un proveedor</option>
-              {proveedores.map(p => (
-                <option key={p.id_proveedor} value={p.id_proveedor}>{p.nombre_empresa}</option>
+              {proveedores.map((p) => (
+                <option key={p.id_proveedor} value={p.id_proveedor}>
+                  {p.nombre_empresa}
+                </option>
               ))}
             </select>
           </div>
@@ -184,60 +209,100 @@ const EncargosForm = () => {
           {/* Comentarios */}
           <div>
             <label className="block text-sm font-medium">Comentarios</label>
-            <textarea name="comentarios" value={inputs.comentarios} onChange={handleChange}
-              className="w-full p-2 border rounded bg-neutral-100" rows={3} />
+            <textarea
+              name="comentarios"
+              value={inputs.comentarios}
+              onChange={handleChange}
+              className="w-full p-2 border rounded bg-neutral-100"
+              rows={3}
+            />
           </div>
 
           {/* Lista dinámica de materias primas */}
           <div>
-            <label className="block text-sm font-semibold mb-2">Materias primas *</label>
+            <label className="block text-sm font-semibold mb-2">
+              Materias primas *
+            </label>
             {detalles.map((detalle, index) => (
               <div key={index} className="flex gap-2 mb-2">
-              <select
-                value={detalle.id_materia_prima}
-                onChange={(e) => handleDetalleChange(index, "id_materia_prima", e.target.value)}
-                className="flex-1 p-2 border rounded bg-neutral-100"
-              >
-                <option value="">Materia prima</option>
-                {materiasPrimas.map(mp => (
-                  <option key={mp.id_materia_prima} value={mp.id_materia_prima}>
-                    {mp.titulo} ({mp.categoria})
-                  </option>
-                ))}
-              </select>
+                <select
+                  value={detalle.id_materia_prima}
+                  onChange={(e) =>
+                    handleDetalleChange(
+                      index,
+                      "id_materia_prima",
+                      e.target.value
+                    )
+                  }
+                  className="flex-1 p-2 border rounded bg-neutral-100"
+                >
+                  <option value="">Materia prima</option>
+                  {materiasPrimas.map((mp) => (
+                    <option
+                      key={mp.id_materia_prima}
+                      value={mp.id_materia_prima}
+                    >
+                      {mp.titulo} ({mp.categoria})
+                    </option>
+                  ))}
+                </select>
 
                 <input
                   type="number"
                   min="1"
                   value={detalle.cantidad}
-                  onChange={(e) => handleDetalleChange(index, "cantidad", e.target.value)}
+                  onChange={(e) =>
+                    handleDetalleChange(index, "cantidad", e.target.value)
+                  }
                   placeholder="Cantidad"
                   className="w-28 p-2 border rounded bg-neutral-100"
                 />
 
-                <button type="button" onClick={() => quitarDetalle(index)} className="text-red-600 font-bold">
+                <button
+                  type="button"
+                  onClick={() => quitarDetalle(index)}
+                  className="text-red-600 font-bold"
+                >
                   🗑️
                 </button>
               </div>
             ))}
 
-            <button type="button" onClick={agregarDetalle} className="mt-1 text-sm text-blue-600 font-medium">
+            <button
+              type="button"
+              onClick={agregarDetalle}
+              className="mt-1 text-sm text-blue-600 font-medium"
+            >
               + Agregar materia prima
             </button>
           </div>
 
-          {/* Errores */}
           {err && (
-            <div className={`text-sm mt-2 ${messageType === "error" ? "text-red-500" : "text-green-600"}`}>
-              {err}
+            <div className="mb-3">
+              <Alert
+                type={messageType === "error" ? "error" : "success"}
+                onClose={() => {
+                  setErr("");
+                  setMessageType("");
+                }}
+              >
+                {err}
+              </Alert>
             </div>
           )}
 
           {/* Botón */}
-          <button type="submit" className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+          <button
+            type="submit"
+            className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+          >
             {id ? "Guardar Cambios" : "Crear Encargo"}
           </button>
-            <p className="mt-4 text-sm text-neutral-700 text-center"><Link to="/encargos/listar" className="font-medium underline">Volver al listado de encargos</Link></p>
+          <p className="mt-4 text-sm text-neutral-700 text-center">
+            <Link to="/encargos/listar" className="font-medium underline">
+              Volver al listado de encargos
+            </Link>
+          </p>
         </form>
       </div>
     </section>

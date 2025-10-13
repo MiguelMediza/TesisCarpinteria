@@ -2,7 +2,7 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { api } from "../../api";
 import clientesBackground from "../../assets/tablasBackground.jpg";
-
+import Alert from "../Modals/Alert";
 const ClientesForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -12,10 +12,10 @@ const ClientesForm = () => {
     apellido: "",
     telefono: "",
     email: "",
-    es_empresa: "0",           
+    es_empresa: "0",
     nombre_empresa: "",
     direccion_empresa: "",
-    email_empresa: ""
+    email_empresa: "",
   };
 
   const [inputs, setInputs] = useState(initialInputs);
@@ -24,7 +24,8 @@ const ClientesForm = () => {
 
   useEffect(() => {
     if (!id) return;
-    api.get(`/clientes/${id}`)
+    api
+      .get(`/clientes/${id}`)
       .then(({ data }) => {
         setInputs({
           nombre: data?.nombre || "",
@@ -34,7 +35,7 @@ const ClientesForm = () => {
           es_empresa: data?.es_empresa ? "1" : "0",
           nombre_empresa: data?.nombre_empresa || "",
           direccion_empresa: data?.direccion_empresa || "",
-          email_empresa: data?.email_empresa || ""
+          email_empresa: data?.email_empresa || "",
         });
       })
       .catch(() => {
@@ -47,8 +48,10 @@ const ClientesForm = () => {
     if (!inputs.nombre) return "El nombre es requerido.";
     if (!inputs.email) return "El email es requerido.";
     if (inputs.es_empresa === "1") {
-      if (!inputs.nombre_empresa) return "El nombre de la empresa es requerido.";
-      if (!inputs.direccion_empresa) return "La dirección de la empresa es requerida.";
+      if (!inputs.nombre_empresa)
+        return "El nombre de la empresa es requerido.";
+      if (!inputs.direccion_empresa)
+        return "La dirección de la empresa es requerida.";
       if (!inputs.email_empresa) return "El email de la empresa es requerido.";
     }
     return null;
@@ -101,7 +104,10 @@ const ClientesForm = () => {
         style={{ backgroundImage: `url(${clientesBackground})` }}
       />
       <div className="relative z-10 w-full sm:max-w-md p-6 bg-white bg-opacity-80 rounded-lg shadow-md">
-        <Link to="/clientes/listar" className="block mb-6 text-2xl font-semibold text-neutral-800 text-center">
+        <Link
+          to="/clientes/listar"
+          className="block mb-6 text-2xl font-semibold text-neutral-800 text-center"
+        >
           Imanod Control de Clientes
         </Link>
         <h1 className="text-2xl font-bold text-neutral-900 text-center mb-4">
@@ -110,28 +116,67 @@ const ClientesForm = () => {
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
-            <label className="block mb-1 text-sm font-medium text-neutral-800">Nombre</label>
-            <input type="text" name="nombre" value={inputs.nombre} onChange={handleChange} className="w-full p-2 border rounded" />
+            <label className="block mb-1 text-sm font-medium text-neutral-800">
+              Nombre
+            </label>
+            <input
+              type="text"
+              name="nombre"
+              value={inputs.nombre}
+              onChange={handleChange}
+              className="w-full p-2 border rounded"
+            />
           </div>
 
           <div>
-            <label className="block mb-1 text-sm font-medium text-neutral-800">Apellido</label>
-            <input type="text" name="apellido" value={inputs.apellido} onChange={handleChange} className="w-full p-2 border rounded" />
+            <label className="block mb-1 text-sm font-medium text-neutral-800">
+              Apellido
+            </label>
+            <input
+              type="text"
+              name="apellido"
+              value={inputs.apellido}
+              onChange={handleChange}
+              className="w-full p-2 border rounded"
+            />
           </div>
 
           <div>
-            <label className="block mb-1 text-sm font-medium text-neutral-800">Teléfono</label>
-            <input type="text" name="telefono" value={inputs.telefono} onChange={handleChange} className="w-full p-2 border rounded" />
+            <label className="block mb-1 text-sm font-medium text-neutral-800">
+              Teléfono
+            </label>
+            <input
+              type="text"
+              name="telefono"
+              value={inputs.telefono}
+              onChange={handleChange}
+              className="w-full p-2 border rounded"
+            />
           </div>
 
           <div>
-            <label className="block mb-1 text-sm font-medium text-neutral-800">Email</label>
-            <input type="email" name="email" value={inputs.email} onChange={handleChange} className="w-full p-2 border rounded" />
+            <label className="block mb-1 text-sm font-medium text-neutral-800">
+              Email
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={inputs.email}
+              onChange={handleChange}
+              className="w-full p-2 border rounded"
+            />
           </div>
 
           <div>
-            <label className="block mb-1 text-sm font-medium text-neutral-800">¿Es empresa?</label>
-            <select name="es_empresa" value={inputs.es_empresa} onChange={handleChange} className="w-full p-2 border rounded">
+            <label className="block mb-1 text-sm font-medium text-neutral-800">
+              ¿Es empresa?
+            </label>
+            <select
+              name="es_empresa"
+              value={inputs.es_empresa}
+              onChange={handleChange}
+              className="w-full p-2 border rounded"
+            >
               <option value="0">No</option>
               <option value="1">Sí</option>
             </select>
@@ -140,29 +185,64 @@ const ClientesForm = () => {
           {inputs.es_empresa === "1" && (
             <>
               <div>
-                <label className="block mb-1 text-sm font-medium text-neutral-800">Nombre de Empresa</label>
-                <input type="text" name="nombre_empresa" value={inputs.nombre_empresa} onChange={handleChange} className="w-full p-2 border rounded" />
+                <label className="block mb-1 text-sm font-medium text-neutral-800">
+                  Nombre de Empresa
+                </label>
+                <input
+                  type="text"
+                  name="nombre_empresa"
+                  value={inputs.nombre_empresa}
+                  onChange={handleChange}
+                  className="w-full p-2 border rounded"
+                />
               </div>
 
               <div>
-                <label className="block mb-1 text-sm font-medium text-neutral-800">Dirección de Empresa</label>
-                <input type="text" name="direccion_empresa" value={inputs.direccion_empresa} onChange={handleChange} className="w-full p-2 border rounded" />
+                <label className="block mb-1 text-sm font-medium text-neutral-800">
+                  Dirección de Empresa
+                </label>
+                <input
+                  type="text"
+                  name="direccion_empresa"
+                  value={inputs.direccion_empresa}
+                  onChange={handleChange}
+                  className="w-full p-2 border rounded"
+                />
               </div>
 
               <div>
-                <label className="block mb-1 text-sm font-medium text-neutral-800">Email Empresa</label>
-                <input type="email" name="email_empresa" value={inputs.email_empresa} onChange={handleChange} className="w-full p-2 border rounded" />
+                <label className="block mb-1 text-sm font-medium text-neutral-800">
+                  Email Empresa
+                </label>
+                <input
+                  type="email"
+                  name="email_empresa"
+                  value={inputs.email_empresa}
+                  onChange={handleChange}
+                  className="w-full p-2 border rounded"
+                />
               </div>
             </>
           )}
 
           {err && (
-            <span className={messageType === "error" ? "text-red-500" : "text-green-500"}>
-              {err}
-            </span>
+            <div className="mb-3">
+              <Alert
+                type={messageType === "error" ? "error" : "success"}
+                onClose={() => {
+                  setErr("");
+                  setMessageType("");
+                }}
+              >
+                {err}
+              </Alert>
+            </div>
           )}
 
-          <button type="submit" className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+          <button
+            type="submit"
+            className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+          >
             {id ? "Guardar Cambios" : "Crear Cliente"}
           </button>
 

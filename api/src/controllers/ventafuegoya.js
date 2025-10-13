@@ -1,10 +1,8 @@
-// controllers/ventafuegoya.js
 import { pool } from "../db.js";
 import { r2Delete } from "../lib/r2.js";
 
 const PAGO_ESTADOS = new Set(["credito", "pago"]);
 const isValidPagoEstado = (v) => !v || PAGO_ESTADOS.has(v);
-
 
 const PUBLIC_BASE = (process.env.R2_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
 const urlFromKey = (key) => (key ? `${PUBLIC_BASE}/${key}` : null);
@@ -21,6 +19,89 @@ const toMySQLDateTime = (s) => {
   return t.slice(0, 19);
 };
 
+
+async function getPendienteVenta(conn, idVenta) {
+  const [rows] = await conn.query(
+    `
+    SELECT v.id_ventaFuegoya,
+           v.precio_total - COALESCE(SUM(a.monto),0) AS pendiente
+      FROM venta_fuegoya v
+ LEFT JOIN fuegoya_pago_aplicaciones a
+        ON a.id_ventaFuegoya = v.id_ventaFuegoya
+     WHERE v.id_ventaFuegoya = ?
+  GROUP BY v.id_ventaFuegoya, v.precio_total
+       FOR UPDATE
+    `,
+    [idVenta]
+  );
+  if (!rows.length) return null;
+  return Math.max(0, Number(rows[0].pendiente || 0));
+}
+
+async function getPagosConSaldo(conn, idCliente) {
+  const [rows] = await conn.query(
+    `
+    SELECT p.id_pago,
+           p.fecha_hora,
+           (p.monto - COALESCE(SUM(a.monto),0)) AS restante
+      FROM fuegoya_pagos p
+ LEFT JOIN fuegoya_pago_aplicaciones a
+        ON a.id_pago = p.id_pago
+     WHERE p.id_cliente = ?
+  GROUP BY p.id_pago, p.fecha_hora, p.monto
+    HAVING restante > 0
+  ORDER BY p.fecha_hora ASC, p.id_pago ASC
+       FOR UPDATE
+    `,
+    [idCliente]
+  );
+  return rows.map((r) => ({
+    id_pago: r.id_pago,
+    restante: Math.max(0, Number(r.restante || 0)),
+  }));
+}
+
+
+async function autoAplicarSaldoAFavor(conn, idCliente, idVenta) {
+  let aplicadoTotal = 0;
+
+  let pendiente = await getPendienteVenta(conn, idVenta);
+  if (pendiente == null || pendiente <= 0) {
+    return { aplicado: 0, pendiente_final: pendiente ?? 0 };
+  }
+
+  const pagos = await getPagosConSaldo(conn, idCliente);
+
+  for (const p of pagos) {
+    if (pendiente <= 0) break;
+    if (p.restante <= 0) continue;
+
+    const aplicar = Math.min(pendiente, p.restante);
+
+    await conn.query(
+      `INSERT INTO fuegoya_pago_aplicaciones (id_pago, id_ventaFuegoya, monto) VALUES (?,?,?)`,
+      [p.id_pago, idVenta, aplicar]
+    );
+
+    aplicadoTotal += aplicar;
+    pendiente -= aplicar;
+  }
+
+  if (pendiente <= 0) {
+    await conn.query(
+      `UPDATE venta_fuegoya SET estadopago='pago', fechapago=NOW() WHERE id_ventaFuegoya=?`,
+      [idVenta]
+    );
+  } else {
+    await conn.query(
+      `UPDATE venta_fuegoya SET estadopago='credito', fechapago=NULL WHERE id_ventaFuegoya=?`,
+      [idVenta]
+    );
+  }
+
+  return { aplicado: aplicadoTotal, pendiente_final: pendiente };
+}
+
 /* ========================= CREATE ============================== */
 export const createVentaFuegoya = async (req, res) => {
   const conn = await pool.getConnection();
@@ -32,13 +113,12 @@ export const createVentaFuegoya = async (req, res) => {
       id_fuego_ya,
       cantidadbolsas,
       comentarios,
-      estadopago,
-      fechapago,
+      estadopago,       
+      fechapago,        
     } = req.body;
 
     const fotoKey = req.fileR2?.key || null;
 
-    // Validaciones
     if (!fecha_realizada) {
       return res.status(400).json({ error: "La fecha de la venta es obligatoria." });
     }
@@ -46,27 +126,28 @@ export const createVentaFuegoya = async (req, res) => {
       return res.status(400).json({ error: "El precio total debe ser numérico si se envía." });
     }
     if (!id_fuego_ya) {
-      return res.status(400).json({ error: "id_fuego_ya es obligatorio." });
+      return res.status(400).json({ error: "Debe seleccionar un Fuego Ya" });
+    }
+    if (!id_cliente) {
+      return res.status(400).json("Debe seleccionar un cliente FuegoYa.");
     }
     if (!isValidPagoEstado(estadopago)) {
-      return res.status(400).json({ error: "estadopago inválido. Use 'credito' o 'pago'." });
+      return res.status(400).json({ error: "Estado pago inválido. Use 'credito' o 'pago'." });
     }
     if (cantidadbolsas == null) {
-      return res.status(400).json({ error: "cantidadbolsas es obligatorio." });
+      return res.status(400).json({ error: "Cantidad de bolsas es obligatorio." });
     }
     const cb = parseInt(cantidadbolsas, 10);
     if (!Number.isInteger(cb) || cb < 0) {
-      return res.status(400).json({ error: "cantidadbolsas debe ser un entero >= 0." });
+      return res.status(400).json({ error: "La cantidad de bolsas debe ser un entero >= 0." });
     }
 
-    if (id_cliente) {
-      const [cli] = await pool.query(
-        `SELECT id_cliente FROM clientes_fuegoya WHERE id_cliente = ?`,
-        [id_cliente]
-      );
-      if (cli.length === 0) {
-        return res.status(400).json({ error: "El cliente (FuegoYa) seleccionado no existe." });
-      }
+    const [cli] = await pool.query(
+      `SELECT id_cliente FROM clientes_fuegoya WHERE id_cliente = ?`,
+      [id_cliente]
+    );
+    if (cli.length === 0) {
+      return res.status(400).json({ error: "El cliente (FuegoYa) seleccionado no existe." });
     }
 
     await conn.beginTransaction();
@@ -86,7 +167,6 @@ export const createVentaFuegoya = async (req, res) => {
 
     const fechapagoSQL = toMySQLDateTime(fechapago);
 
-    // Insert venta
     const [ins] = await conn.query(
       `
       INSERT INTO venta_fuegoya
@@ -99,23 +179,37 @@ export const createVentaFuegoya = async (req, res) => {
         id_cliente || null,
         parseInt(id_fuego_ya, 10),
         cb,
-        fotoKey,                
+        fotoKey,
         comentarios || null,
         estadopago || null,
         fechapagoSQL,
       ]
     );
+    const idVenta = ins.insertId;
 
     await conn.query(
       `UPDATE fuego_ya SET stock = stock - ? WHERE id_fuego_ya = ?`,
       [cb, id_fuego_ya]
     );
 
+    let aplicado_auto = 0;
+    let estado_final = estadopago || null;
+
+    if (id_cliente && (estado_final === null || estado_final === "credito")) {
+      const { aplicado, pendiente_final } = await autoAplicarSaldoAFavor(conn, id_cliente, idVenta);
+      aplicado_auto = aplicado;
+      estado_final = pendiente_final <= 0 ? "pago" : "credito";
+    }
+
     await conn.commit();
 
     return res.status(201).json({
-      id_ventaFuegoya: ins.insertId,
-      message: "Venta Fuegoya creada exitosamente!",
+      id_ventaFuegoya: idVenta,
+      message: aplicado_auto > 0
+        ? "Venta creada y cubierta parcial/total con saldo a favor."
+        : "Venta Fuegoya creada exitosamente!",
+      aplicado_auto,
+      estadopago_final: estado_final,
       foto_key: fotoKey,
       foto_url: urlFromKey(fotoKey),
     });
@@ -172,20 +266,19 @@ export const updateVentaFuegoya = async (req, res) => {
     const {
       fecha_realizada,
       precio_total,
-      id_cliente,      
+      id_cliente,     
       id_fuego_ya,     
       cantidadbolsas,  
       comentarios,
       estadopago,
       fechapago,
-      borrar_foto      
+      borrar_foto
     } = req.body;
 
     const newFotoKey = req.fileR2?.key || null;
 
     await conn.beginTransaction();
 
-    
     const [[curr]] = await conn.query(
       `SELECT id_fuego_ya, cantidadbolsas, foto FROM venta_fuegoya WHERE id_ventaFuegoya = ? FOR UPDATE`,
       [id]
@@ -198,7 +291,6 @@ export const updateVentaFuegoya = async (req, res) => {
     const oldCB = parseInt(curr.cantidadbolsas, 10) || 0;
     const oldFotoKey = curr.foto || null;
 
-    
     if (precio_total != null && isNaN(parseFloat(precio_total))) {
       await conn.rollback();
       return res.status(400).json({ error: "precio_total debe ser numérico si se envía." });
@@ -225,11 +317,9 @@ export const updateVentaFuegoya = async (req, res) => {
       }
     }
 
-    
     const newFY = (id_fuego_ya !== undefined && id_fuego_ya !== null) ? parseInt(id_fuego_ya, 10) : oldFY;
     const newCB = (cantidadbolsas !== undefined && cantidadbolsas !== null) ? parseInt(cantidadbolsas, 10) : oldCB;
 
-    
     if (newFY !== oldFY) {
       const [[fyOld]] = await conn.query(
         `SELECT id_fuego_ya, stock FROM fuego_ya WHERE id_fuego_ya = ? FOR UPDATE`,
@@ -243,11 +333,9 @@ export const updateVentaFuegoya = async (req, res) => {
         await conn.rollback();
         return res.status(400).json({ error: "El nuevo fuego_ya especificado no existe." });
       }
-      
       if (oldCB > 0) {
         await conn.query(`UPDATE fuego_ya SET stock = stock + ? WHERE id_fuego_ya = ?`, [oldCB, oldFY]);
       }
-      
       if ((fyNew.stock ?? 0) < newCB) {
         await conn.rollback();
         return res.status(400).json({ error: "Stock insuficiente en el nuevo Fuego Ya." });
@@ -423,7 +511,7 @@ export const listVentaFuegoya = async (req, res) => {
 export const changeEstadoPagoVentaFuegoya = async (req, res) => {
   const conn = await pool.getConnection();
   try {
-    const { id } = req.params;        
+    const { id } = req.params;       
     const { estadopago } = req.body;  
 
     if (!isValidPagoEstado(estadopago)) {
@@ -443,19 +531,14 @@ export const changeEstadoPagoVentaFuegoya = async (req, res) => {
     await conn.beginTransaction();
 
     if (estadopago === "pago") {
-      const now = new Date().toISOString().slice(0, 19).replace("T", " ");
       await conn.query(
-        `UPDATE venta_fuegoya
-           SET estadopago = ?, fechapago = ?
-         WHERE id_ventaFuegoya = ?`,
-        [estadopago, now, id]
+        `UPDATE venta_fuegoya SET estadopago='pago', fechapago=NOW() WHERE id_ventaFuegoya = ?`,
+        [id]
       );
     } else {
       await conn.query(
-        `UPDATE venta_fuegoya
-           SET estadopago = ?, fechapago = NULL
-         WHERE id_ventaFuegoya = ?`,
-        [estadopago, id]
+        `UPDATE venta_fuegoya SET estadopago='credito', fechapago=NULL WHERE id_ventaFuegoya = ?`,
+        [id]
       );
     }
 
@@ -464,9 +547,145 @@ export const changeEstadoPagoVentaFuegoya = async (req, res) => {
   } catch (err) {
     await pool.query("ROLLBACK").catch(() => {});
     console.error("❌ Error en changeEstadoPagoVentaFuegoya:", err);
-    return res
-      .status(500)
-      .json({ error: "Internal server error", details: err.message });
+    return res.status(500).json({ error: "Internal server error", details: err.message });
+  } finally {
+    conn.release();
+  }
+};
+
+export const statsVentasFYMensual = async (req, res) => {
+  try {
+    const { desde, hasta } = req.query;
+    const where = [];
+    const params = [];
+    if (desde) { where.push("v.fecha_realizada >= ?"); params.push(desde); }
+    if (hasta) { where.push("v.fecha_realizada <= ?"); params.push(hasta); }
+
+    const sql = `
+      SELECT
+        DATE_FORMAT(v.fecha_realizada, '%Y-%m') AS ym,
+        SUM(COALESCE(v.precio_total, 0))       AS total_uyu
+      FROM venta_fuegoya v
+      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
+      GROUP BY ym
+      ORDER BY ym ASC
+    `;
+    const [rows] = await pool.query(sql, params);
+    res.status(200).json(rows);
+  } catch (err) {
+    console.error("statsVentasFYMensual:", err);
+    res.status(500).json({ error: "Error interno", details: err.message });
+  }
+};
+
+export const topClientesFuegoYa = async (req, res) => {
+  try {
+    const { desde, hasta, limit = 8 } = req.query;
+    if (!desde || !hasta) {
+      return res.status(400).json({ error: "Parámetros 'desde' y 'hasta' son obligatorios." });
+    }
+
+    const lim = Number(limit) || 8;
+
+    const sql = `
+      SELECT
+        v.id_cliente,
+        COALESCE(cf.nombre, CONCAT('Cliente #', v.id_cliente)) AS nombre,
+        SUM(COALESCE(v.precio_total, 0)) AS total_uyu
+      FROM venta_fuegoya v
+      LEFT JOIN clientes_fuegoya cf ON cf.id_cliente = v.id_cliente
+      WHERE v.fecha_realizada >= ? AND v.fecha_realizada <= ? AND v.id_cliente IS NOT NULL
+      GROUP BY v.id_cliente, cf.nombre
+      ORDER BY total_uyu DESC
+      LIMIT ?
+    `;
+    const [rows] = await pool.query(sql, [desde, hasta, lim]);
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error("topClientesFuegoYa:", err);
+    return res.status(500).json({ error: "Error interno", details: err.message });
+  }
+};
+
+export const marcarPagoManual = async function (req, res) {
+  const conn = await pool.getConnection();
+  try {
+    const idVenta = Number(req.params.id);
+    await conn.beginTransaction();
+
+    await conn.query(
+      `UPDATE venta_fuegoya SET estadopago='pago', fechapago=NOW() WHERE id_ventaFuegoya=?`,
+      [idVenta]
+    );
+
+    const [apps] = await conn.query(
+      `SELECT id_aplicacion, id_pago, monto
+         FROM fuegoya_pago_aplicaciones
+        WHERE id_ventaFuegoya=? 
+        ORDER BY aplicado_en ASC, id_aplicacion ASC
+        FOR UPDATE`,
+      [idVenta]
+    );
+
+    if (apps.length) {
+      const [ventasCredito] = await conn.query(
+        `SELECT v.id_ventaFuegoya
+           FROM venta_fuegoya v
+          WHERE v.id_cliente = (SELECT id_cliente FROM venta_fuegoya WHERE id_ventaFuegoya=?)
+            AND v.estadopago='credito'
+          ORDER BY v.fecha_realizada ASC, v.id_ventaFuegoya ASC
+          FOR UPDATE`,
+        [idVenta]
+      );
+
+      for (const app of apps) {
+        let aReasignar = Number(app.monto);
+
+        for (const vc of ventasCredito) {
+          if (aReasignar <= 0) break;
+
+          const [[pend]] = await conn.query(
+            `SELECT v.precio_total - COALESCE(SUM(a.monto),0) AS pendiente
+               FROM venta_fuegoya v
+          LEFT JOIN fuegoya_pago_aplicaciones a ON a.id_ventaFuegoya=v.id_ventaFuegoya
+              WHERE v.id_ventaFuegoya=? GROUP BY v.id_ventaFuegoya FOR UPDATE`,
+            [vc.id_ventaFuegoya]
+          );
+
+          const pendiente = Math.max(0, Number(pend?.pendiente ?? 0));
+          if (pendiente <= 0) continue;
+
+          const mov = Math.min(aReasignar, pendiente);
+
+          await conn.query(
+            `INSERT INTO fuegoya_pago_aplicaciones (id_pago, id_ventaFuegoya, monto)
+             VALUES (?,?,?)`,
+            [app.id_pago, vc.id_ventaFuegoya, mov]
+          );
+
+          aReasignar -= mov;
+
+          if (mov === pendiente) {
+            await conn.query(
+              `UPDATE venta_fuegoya SET estadopago='pago', fechapago=NOW() WHERE id_ventaFuegoya=?`,
+              [vc.id_ventaFuegoya]
+            );
+          }
+        }
+
+        await conn.query(
+          `DELETE FROM fuegoya_pago_aplicaciones WHERE id_aplicacion=?`,
+          [app.id_aplicacion]
+        );
+      }
+    }
+
+    await conn.commit();
+    return res.json({ ok: true });
+  } catch (err) {
+    await conn.rollback();
+    console.error(err);
+    return res.status(500).json({ error: "No se pudo marcar como pagada" });
   } finally {
     conn.release();
   }

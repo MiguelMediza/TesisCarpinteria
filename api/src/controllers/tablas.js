@@ -1,12 +1,9 @@
-// controllers/tablas.js
 import { pool } from "../db.js";
 import { r2Delete } from "../lib/r2.js";
 
 const PUBLIC_BASE = process.env.R2_PUBLIC_BASE_URL || "";
 const urlFromKey = (key) => (key ? `${PUBLIC_BASE}/${key}` : null);
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Crear una nueva tabla
 export const createTabla = async (req, res) => {
   try {
     const {
@@ -21,10 +18,8 @@ export const createTabla = async (req, res) => {
       comentarios,
     } = req.body;
 
-    // req.fileR2 = { key, url } si se subió archivo a R2
     const fotoKey = req.fileR2?.key || null;
 
-    // Inserción en materiaprima
     const insertMP = `
       INSERT INTO materiaprima
         (categoria, titulo, precio_unidad, stock, foto, comentarios)
@@ -222,34 +217,51 @@ export const updateTabla = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Eliminar una tabla y su imagen (si existe) en R2
 export const deleteTabla = async (req, res) => {
   const connection = await pool.getConnection();
   try {
     const { id } = req.params;
 
-    // Leer key antes de borrar
-    const [rows] = await connection.query(
+    const [[mpRow]] = await connection.query(
       "SELECT foto FROM materiaprima WHERE id_materia_prima = ?",
       [id]
     );
-    if (rows.length === 0) {
-      connection.release();
-      return res.status(404).json("Tabla no encontrada!");
+    if (!mpRow) {
+      return res.status(404).json({ message: "Tabla no encontrada!" });
     }
-    const fotoKey = rows[0].foto || null;
+    const fotoKey = mpRow.foto || null;
+
+    const [tipoRows] = await connection.query(
+      `
+      SELECT
+        tt.id_tipo_tabla,
+        COALESCE(NULLIF(TRIM(tt.titulo), ''), CONCAT('Tipo #', tt.id_tipo_tabla)) AS titulo
+      FROM tipo_tablas tt
+      WHERE tt.id_materia_prima = ?
+      LIMIT 8
+      `,
+      [id]
+    );
+    if (tipoRows.length > 0) {
+      const titulos = tipoRows.map(r => r.titulo);
+      return res.status(409).json({
+        code: "REFERENCED_IN_TIPO_TABLAS",
+        message:
+          `No se puede eliminar: esta tabla tiene tipos derivados asociados (${tipoRows.length}).`,
+        tipos: titulos,
+        count: tipoRows.length,
+      });
+    }
 
     await connection.beginTransaction();
 
-    // Borrar detalle y padre
-    const [childRes] = await connection.query(
+    const [delChild] = await connection.query(
       "DELETE FROM tablas WHERE id_materia_prima = ?",
       [id]
     );
-    if (childRes.affectedRows === 0) {
+    if (delChild.affectedRows === 0) {
       await connection.rollback();
-      connection.release();
-      return res.status(404).json("Tabla no encontrada!");
+      return res.status(404).json({ message: "Tabla no encontrada!" });
     }
 
     await connection.query(
@@ -259,29 +271,53 @@ export const deleteTabla = async (req, res) => {
 
     await connection.commit();
 
-    // Borrar en R2 si hay key
     if (fotoKey) {
-      try {
-        await r2Delete(fotoKey);
-      } catch (e) {
-        console.warn("⚠️ No se pudo borrar la imagen en R2:", fotoKey, e?.message);
-      }
+      try { await r2Delete(fotoKey); } 
+      catch (e) { console.warn("⚠️ No se pudo borrar imagen R2:", fotoKey, e?.message); }
     }
 
-    return res.status(200).json("Tabla eliminada exitosamente!");
+    return res.status(200).json({ message: "Tabla eliminada exitosamente!" });
   } catch (err) {
-    await connection.rollback();
+    try { await connection.rollback(); } catch {}
+
+    if (err?.errno === 1451 || err?.code === "ER_ROW_IS_REFERENCED_2") {
+      try {
+        const [tipoRows] = await pool.query(
+          `
+          SELECT
+            tt.id_tipo_tabla,
+            COALESCE(NULLIF(TRIM(tt.titulo), ''), CONCAT('Tipo #', tt.id_tipo_tabla)) AS titulo
+          FROM tipo_tablas tt
+          WHERE tt.id_materia_prima = ?
+          LIMIT 8
+          `,
+          [req.params.id]
+        );
+        if (tipoRows.length > 0) {
+          return res.status(409).json({
+            code: "REFERENCED_IN_TIPO_TABLAS",
+            message:
+              `No se puede eliminar: esta tabla tiene tipos derivados asociados (${tipoRows.length}).`,
+            tipos: tipoRows.map(r => r.titulo),
+            count: tipoRows.length,
+          });
+        }
+      } catch {}
+      return res.status(409).json({
+        code: "ROW_REFERENCED",
+        message: "No se puede eliminar: la tabla está referenciada por otros registros.",
+      });
+    }
+
     console.error("❌ Error en deleteTabla:", err);
-    return res
-      .status(500)
-      .json({ error: "Internal server error", details: err.message });
+    return res.status(500).json({ error: "Internal server error", details: err.message });
   } finally {
     connection.release();
   }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Listar todas las tablas
+// Listar todas las tabla
 export const listTablas = async (req, res) => {
   try {
     const [rows] = await pool.query(

@@ -27,19 +27,40 @@ const FuegoYaList = () => {
   const handleEdit = (id) => navigate(`/fuegoya/${id}`);
   const handleDeleteClick = (f) => setToDelete(f);
 
-  const confirmDelete = async () => {
-    try {
-      await api.delete(`/fuegoya/${toDelete.id_fuego_ya}`);
-      setFuegoYa((prev) => prev.filter((t) => t.id_fuego_ya !== toDelete.id_fuego_ya));
-    } catch (err) {
-      console.error(err);
-      setError("Error al eliminar la fuegoya.");
-    } finally {
-      setToDelete(null);
-    }
-  };
+const [deleteErr, setDeleteErr] = useState("");
+const [deleting, setDeleting] = useState(false);
 
-  const cancelDelete = () => setToDelete(null);
+const cancelDelete = () => {
+  setToDelete(null);
+  setDeleteErr("");        
+};
+
+const confirmDelete = async () => {
+  if (!toDelete) return;
+  try {
+    setDeleting(true);
+    setDeleteErr("");
+
+    await api.delete(`/fuegoya/${toDelete.id_fuego_ya}`);
+
+    setFuegoYa(prev => prev.filter(t => t.id_fuego_ya !== toDelete.id_fuego_ya));
+    setToDelete(null);
+  } catch (err) {
+    console.error(err);
+
+    const msg =
+      err?.response?.data?.message ||
+      err?.response?.data?.error ||
+      (typeof err?.response?.data === "string" ? err.response.data : "") ||
+      (err?.response?.status === 409
+        ? "No se puede eliminar: el registro está referenciado por otras entidades."
+        : "No se pudo eliminar la FuegoYa.");
+
+    setDeleteErr(msg);   
+  } finally {
+    setDeleting(false);
+  }
+};
 
   const filteredFuegoYa = fuegoya.filter((t) =>
     (t.tipo || "").toLowerCase().includes(searchTerm.toLowerCase())
@@ -93,6 +114,8 @@ const FuegoYaList = () => {
         imageSrc={modalImgSrc}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
+        error={deleteErr}       
+        loading={deleting}  
       />
     </section>
   );

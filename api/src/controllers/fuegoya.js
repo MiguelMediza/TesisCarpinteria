@@ -6,20 +6,17 @@ const PUBLIC_BASE = (process.env.R2_PUBLIC_BASE_URL || "").replace(/\/+$/, "");
 
 const urlFromKey = (key) => {
   if (!key) return null;
-  // si ya es una URL absoluta, respetar
   if (/^https?:\/\//i.test(key)) return key;
 
-  const clean = String(key).replace(/^\/+/, ""); // quita leading slashes
+  const clean = String(key).replace(/^\/+/, ""); 
   return PUBLIC_BASE ? `${PUBLIC_BASE}/${clean}` : `/${clean}`;
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Crear un nuevo Fuego Y
+
 export const createFuegoYa = async (req, res) => {
   try {
     const { tipo, precio_unidad, stock } = req.body;
 
-    // req.fileR2 = { key, url } si se subió archivo a R2
     const fotoKey = req.fileR2?.key || null;
 
     const insertQ = `
@@ -157,32 +154,54 @@ export const deleteFuegoYa = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Obtener key antes de borrar
-    const [rows] = await connection.query(
-      `SELECT foto FROM fuego_ya WHERE id_fuego_ya = ?`,
+    const [[row]] = await connection.query(
+      "SELECT tipo, foto FROM fuego_ya WHERE id_fuego_ya = ?",
       [id]
     );
-    if (rows.length === 0) {
-      connection.release();
-      return res.status(404).json("Fuego Ya no encontrado!");
+    if (!row) {
+      return res.status(404).json({ message: "Fuego Ya no encontrado!" });
     }
-    const fotoKey = rows[0].foto || null;
+    const fotoKey = row.foto || null;
+
+
+    const [ventasRefs] = await connection.query(
+      `
+      SELECT
+        -- intenta ambos posibles nombres y aliasa a 'id'
+        COALESCE(vf.id_ventaFuegoya, vf.id_ventaFuegoya) AS id,
+        DATE_FORMAT(vf.fecha_realizada, '%Y-%m-%d') AS fecha,
+        vf.cantidadbolsas AS bolsas
+      FROM venta_fuegoya vf
+      WHERE vf.id_fuego_ya = ?
+      LIMIT 5
+      `,
+      [id]
+    );
+    if (ventasRefs.length > 0) {
+      const ejemplos = ventasRefs
+        .map(r => `#${r.id}${r.fecha ? ` (${r.fecha})` : ""}`)
+        .join(", ");
+
+      return res.status(409).json({
+        code: "REFERENCED_IN_VENTA_FUEGOYA",
+        message:
+          `No se puede eliminar: este producto de Fuego Ya ` +
+          `está utilizado en ${ventasRefs.length > 1 ? "ventas" : "una venta"} ` +
+          `${ejemplos}.`,
+      });
+    }
 
     await connection.beginTransaction();
-
     const [delRes] = await connection.query(
-      `DELETE FROM fuego_ya WHERE id_fuego_ya = ?`,
+      "DELETE FROM fuego_ya WHERE id_fuego_ya = ?",
       [id]
     );
     if (delRes.affectedRows === 0) {
       await connection.rollback();
-      connection.release();
-      return res.status(404).json("Fuego Ya no encontrado!");
+      return res.status(404).json({ message: "Fuego Ya no encontrado!" });
     }
-
     await connection.commit();
 
-    // Borrar en R2
     if (fotoKey) {
       try {
         await r2Delete(fotoKey);
@@ -191,9 +210,41 @@ export const deleteFuegoYa = async (req, res) => {
       }
     }
 
-    return res.status(200).json("Fuego Ya eliminado exitosamente!");
+    return res.status(200).json({ message: "Fuego Ya eliminado exitosamente!" });
   } catch (err) {
-    await connection.rollback();
+    try { await connection.rollback(); } catch {}
+
+    if (err?.errno === 1451 || err?.code === "ER_ROW_IS_REFERENCED_2") {
+      try {
+        const [ventasRefs] = await pool.query(
+          `
+          SELECT
+            COALESCE(vf.id_ventaFuegoya, vf.id_ventaFuegoya) AS id,
+            DATE_FORMAT(vf.fecha_realizada, '%Y-%m-%d') AS fecha
+          FROM venta_fuegoya vf
+          WHERE vf.id_fuego_ya = ?
+          LIMIT 5
+          `,
+          [req.params.id]
+        );
+        if (ventasRefs.length > 0) {
+          const ej = ventasRefs.map(r => `#${r.id}${r.fecha ? ` (${r.fecha})` : ""}`).join(", ");
+          return res.status(409).json({
+            code: "REFERENCED_IN_VENTA_FUEGOYA",
+            message:
+              `No se puede eliminar: este producto de Fuego Ya ` +
+              `está utilizado en ${ventasRefs.length > 1 ? "ventas" : "una venta"} ${ej}.`,
+          });
+        }
+      } catch {
+      }
+      return res.status(409).json({
+        code: "ROW_REFERENCED",
+        message:
+          "No se puede eliminar: el registro de Fuego Ya está referenciado por otros datos.",
+      });
+    }
+
     console.error("❌ Error en deleteFuegoYa:", err);
     return res
       .status(500)
@@ -202,6 +253,7 @@ export const deleteFuegoYa = async (req, res) => {
     connection.release();
   }
 };
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Listar todos los Fuego Ya

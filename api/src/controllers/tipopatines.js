@@ -1,4 +1,3 @@
-// controllers/tipo_patines.js
 import { pool } from "../db.js";
 import { r2Delete } from "../lib/r2.js";
 
@@ -23,11 +22,9 @@ const calcCostoPatin = async (conn, id_tipo_tabla, id_tipo_taco) => {
   return Number(costo.toFixed(2));
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CREAR: descontar stock SOLO si el INSERT se hace bien; si falla, ROLLBACK y borrar logo en R2
+
 export const createTipoPatin = async (req, res) => {
   const connection = await pool.getConnection();
-  // ⚠️ Guardamos la key subida a R2 para poder borrarla si la transacción falla
   const uploadedLogoKey = req.fileR2?.key || null;
 
   try {
@@ -40,7 +37,6 @@ export const createTipoPatin = async (req, res) => {
 
     await connection.beginTransaction();
 
-    // Lock de padres
     const [[tabla]] = await connection.query(
       `SELECT stock FROM tipo_tablas WHERE id_tipo_tabla = ? FOR UPDATE`,
       [id_tipo_tabla]
@@ -73,7 +69,6 @@ export const createTipoPatin = async (req, res) => {
 
     const costoCalculado = await calcCostoPatin(connection, id_tipo_tabla, id_tipo_taco);
 
-    // ✅ Primero insertamos el patín
     const [ins] = await connection.query(
       `INSERT INTO tipo_patines 
         (id_tipo_tabla, id_tipo_taco, titulo, medidas, logo, precio_unidad, comentarios, stock)
@@ -91,11 +86,9 @@ export const createTipoPatin = async (req, res) => {
     );
 
     if (ins.affectedRows !== 1) {
-      // si por algún motivo no insertó, abortamos
       throw new Error("No se pudo crear el tipo de patín");
     }
 
-    // ✅ Recién ahora descontamos stock (misma transacción)
     await connection.query(
       `UPDATE tipo_tablas SET stock = stock - ? WHERE id_tipo_tabla = ?`,
       [tablasNecesarias, id_tipo_tabla]
@@ -114,7 +107,6 @@ export const createTipoPatin = async (req, res) => {
       logo_url: urlFromKey(uploadedLogoKey),
     });
   } catch (err) {
-    // ⚠️ Muy importante: revertir cambios y limpiar el logo subido a R2 si no hay patín creado
     try { await connection.rollback(); } catch {}
     if (uploadedLogoKey) {
       try { await r2Delete(uploadedLogoKey); } catch {}
@@ -125,11 +117,10 @@ export const createTipoPatin = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ACTUALIZAR: si sube logo nuevo y falla la tx, borrar el logo nuevo en R2
+
 export const updateTipoPatin = async (req, res) => {
   const connection = await pool.getConnection();
-  const newLogoKey = req.fileR2?.key || null; // ⚠️ podría necesitar limpieza en caso de error
+  const newLogoKey = req.fileR2?.key || null; 
 
   try {
     const { id } = req.params;
@@ -142,7 +133,6 @@ export const updateTipoPatin = async (req, res) => {
 
     await connection.beginTransaction();
 
-    // Lock del patín (aseguramos existencia y leemos valores anteriores)
     const [[old]] = await connection.query(
       `SELECT id_tipo_tabla, id_tipo_taco, stock, logo 
        FROM tipo_patines WHERE id_tipo_patin = ? FOR UPDATE`,
@@ -153,7 +143,6 @@ export const updateTipoPatin = async (req, res) => {
       return res.status(404).json("Tipo de patín no encontrado!");
     }
 
-    // Lock de padres
     const [[tabla]] = await connection.query(
       `SELECT stock FROM tipo_tablas WHERE id_tipo_tabla = ? FOR UPDATE`,
       [id_tipo_tabla]
@@ -172,7 +161,7 @@ export const updateTipoPatin = async (req, res) => {
       return res.status(404).json("Tipo de taco padre no encontrado!");
     }
 
-    // Diferencia de stock
+
     const delta = newCantidad - old.stock;
     const tablasNecesarias = delta * TABLES_PER_PATIN;
     const tacosNecesarios  = delta * TACOS_PER_PATIN;
@@ -188,7 +177,7 @@ export const updateTipoPatin = async (req, res) => {
       }
     }
 
-    // Ajustes de stock de padres (si delta != 0)
+
     if (tablasNecesarias !== 0) {
       await connection.query(
         `UPDATE tipo_tablas SET stock = stock - ? WHERE id_tipo_tabla = ?`,
@@ -220,7 +209,7 @@ export const updateTipoPatin = async (req, res) => {
         id_tipo_taco,
         titulo,
         medidas || "",
-        newLogoKey,                 // solo cambia si hay nueva
+        newLogoKey,                
         costoCalculado,
         comentarios || "",
         newCantidad,
@@ -230,7 +219,6 @@ export const updateTipoPatin = async (req, res) => {
 
     await connection.commit();
 
-    // ✅ Si hubo logo nuevo y cambió, borramos el anterior en R2
     if (newLogoKey && old.logo && newLogoKey !== old.logo) {
       try { await r2Delete(old.logo); } catch {}
     }
@@ -241,7 +229,6 @@ export const updateTipoPatin = async (req, res) => {
       logo_url: urlFromKey(newLogoKey || old.logo),
     });
   } catch (err) {
-    // ⚠️ Limpieza: si subimos un logo nuevo pero falló la tx, borrarlo en R2
     try { await connection.rollback(); } catch {}
     if (newLogoKey) {
       try { await r2Delete(newLogoKey); } catch {}
@@ -252,8 +239,7 @@ export const updateTipoPatin = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// El resto igual (GET/DELETE/LIST), sin cambios estructurales
+
 export const getTipoPatinById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -277,12 +263,34 @@ export const deleteTipoPatin = async (req, res) => {
   const connection = await pool.getConnection();
   try {
     const { id } = req.params;
-    const [rows] = await connection.query(
+
+    const [[row]] = await connection.query(
       `SELECT logo FROM tipo_patines WHERE id_tipo_patin = ?`,
       [id]
     );
-    if (rows.length === 0) return res.status(404).json("Tipo de patín no encontrado!");
-    const logo = rows[0].logo;
+    if (!row) return res.status(404).json({ message: "Tipo de patín no encontrado!" });
+    const logoKey = row.logo || null;
+
+    const [refsProt] = await connection.query(
+      `
+      SELECT
+        pp.id_prototipo,
+        COALESCE(NULLIF(TRIM(pp.titulo), ''), CONCAT('Prototipo #', pp.id_prototipo)) AS titulo
+      FROM prototipo_pallet pp
+      WHERE pp.id_tipo_patin = ?
+      LIMIT 12
+      `,
+      [id]
+    );
+
+    if (refsProt.length) {
+      return res.status(409).json({
+        code: "ROW_REFERENCED",
+        message: "No se puede eliminar: el patín está referenciado por otros registros.",
+        prototipos: refsProt.map(r => r.titulo),
+        count: refsProt.length,
+      });
+    }
 
     await connection.beginTransaction();
     const [del] = await connection.query(
@@ -291,18 +299,25 @@ export const deleteTipoPatin = async (req, res) => {
     );
     if (del.affectedRows === 0) {
       await connection.rollback();
-      return res.status(404).json("Tipo de patín no encontrado!");
+      return res.status(404).json({ message: "Tipo de patín no encontrado!" });
     }
     await connection.commit();
 
-    if (logo) {
-      try { await r2Delete(logo); } catch {}
+    if (logoKey) {
+      try { await r2Delete(logoKey); } catch (e) { console.warn("R2 delete:", e?.message); }
     }
 
-    return res.status(200).json("Tipo de patín eliminado exitosamente!");
+    return res.status(200).json({ message: "Tipo de patín eliminado exitosamente!" });
   } catch (err) {
     try { await connection.rollback(); } catch {}
-    return res.status(500).json({ error: err.message });
+    if (err?.errno === 1451 || err?.code === "ER_ROW_IS_REFERENCED_2") {
+      return res.status(409).json({
+        code: "ROW_REFERENCED",
+        message: "No se puede eliminar: el patín está referenciado por otros registros.",
+      });
+    }
+    console.error("❌ Error en deleteTipoPatin:", err);
+    return res.status(500).json({ error: "Internal server error", details: err.message });
   } finally {
     connection.release();
   }

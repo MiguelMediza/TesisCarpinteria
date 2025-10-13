@@ -36,7 +36,7 @@ export const login = async (req, res) => {
         const [rows] = await pool.query("SELECT * FROM usuarios WHERE username = ?", [username]);
 
         if (rows.length === 0) {
-            return res.status(404).json("Usuario no encontrado!");
+            return res.status(404).json("Usuario o contraseña incorrectos!");
         }
 
         const user = rows[0];

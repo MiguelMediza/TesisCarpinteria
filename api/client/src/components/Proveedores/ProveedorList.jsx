@@ -8,7 +8,7 @@ const ProveedoresList = () => {
   const [proveedores, setProveedores] = useState([]);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [toDelete, setToDelete] = useState(null); // proveedor seleccionado para borrar
+  const [toDelete, setToDelete] = useState(null); 
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -33,20 +33,72 @@ const ProveedoresList = () => {
     setToDelete(proveedor);
   };
 
-  // Confirmar borrado
-  const confirmDelete = async () => {
-    try {
-      await api.delete(`/proveedores/${toDelete.id_proveedor}`);
-      setProveedores(prev =>
-        prev.filter(p => p.id_proveedor !== toDelete.id_proveedor)
-      );
-    } catch (err) {
-      console.error(err);
-      setError("Error al eliminar el proveedor.");
-    } finally {
-      setToDelete(null);
+const [deleting, setDeleting] = useState(false);
+const [deleteError, setDeleteError] = useState("");
+
+
+const fmtDate = (s) => {
+  if (!s) return "";
+  const d = new Date(s);
+  return Number.isNaN(d.getTime())
+    ? ""
+    : d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
+};
+
+const confirmDelete = async () => {
+  if (!toDelete) return;
+  setDeleting(true);
+  setDeleteError("");
+
+  try {
+    await api.delete(`/proveedores/${toDelete.id_proveedor}`);
+
+    setProveedores(prev =>
+      prev.filter(p => p.id_proveedor !== toDelete.id_proveedor)
+    );
+    setToDelete(null);
+  } catch (err) {
+    console.error(err);
+
+    let msg = "No se pudo eliminar el proveedor.";
+    const data = err?.response?.data;
+
+    if (data) {
+      if (typeof data === "string") msg = data;
+      else if (data.message) msg = data.message;
+
+      const partes = [];
+
+      const enc = data.encargos || data?.referencias?.encargos || [];
+      if (Array.isArray(enc) && enc.length) {
+        const lines = enc.map(e => {
+          if (e && typeof e === "object") {
+            const id = e.id_encargo ?? e.id ?? "?";
+            const prov = e.nombre_empresa || e.proveedor || "";
+            const f = e.fecha_realizado || e.fecha || "";
+            const fecha = fmtDate(f);
+            return `#${id}${prov ? ` — ${prov}` : ""}${fecha ? ` — ${fecha}` : ""}`;
+          }
+          return `#${e}`;
+        });
+        partes.push(`Usado por encargos:\n - ${lines.join("\n - ")}`);
+      }
+
+      const comp = data.compras || data?.referencias?.compras || [];
+      if (Array.isArray(comp) && comp.length) {
+        const lines = comp.map(c => (typeof c === "object" ? `#${c.id_compra ?? c.id ?? "?"}` : `#${c}`));
+        partes.push(`Usado por compras:\n - ${lines.join("\n - ")}`);
+      }
+
+      if (partes.length) msg += `\n${partes.join("\n")}`;
     }
-  };
+
+    setDeleteError(msg);
+  } finally {
+    setDeleting(false);
+  }
+};
+
 
   // Cancelar borrado
   const cancelDelete = () => {
@@ -102,9 +154,10 @@ const ProveedoresList = () => {
       <DeleteConfirm
         isOpen={!!toDelete}
         title={toDelete?.nombre}
-        // si quieres mostrar una imagen del proveedor: imageSrc={...}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
+        error={deleteError}
+        loading={deleting}
       />
     </section>
   );

@@ -3,7 +3,7 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
 import tablasBackground from "../../assets/tablasBackground.jpg";
-
+import Alert from "../Modals/Alert";
 const TipoTablasForm = () => {
   const { currentUser } = useContext(AuthContext);
   const { id } = useParams();
@@ -29,15 +29,15 @@ const TipoTablasForm = () => {
   const [fotoFile, setFotoFile] = useState(null);
   const [preview, setPreview] = useState(null);
 
-  // 👉 control para borrar foto existente sin subir una nueva
-  const [hadServerFoto, setHadServerFoto] = useState(false); // había foto al cargar
-  const [borrarFoto, setBorrarFoto] = useState(false);       // mandar borrar_foto="1"
+  const [hadServerFoto, setHadServerFoto] = useState(false);
+  const [borrarFoto, setBorrarFoto] = useState(false);
 
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
 
   useEffect(() => {
-    api.get("/tablas/listar")
+    api
+      .get("/tablas/listar")
       .then(({ data }) => setTablas(data || []))
       .catch(() => {});
   }, []);
@@ -46,7 +46,8 @@ const TipoTablasForm = () => {
     if (!id) return;
     if (tablas.length === 0) return;
 
-    api.get(`/tipotablas/${id}`)
+    api
+      .get(`/tipotablas/${id}`)
       .then(({ data }) => {
         setInputs({
           id_materia_prima: data.id_materia_prima?.toString() || "",
@@ -59,7 +60,9 @@ const TipoTablasForm = () => {
           stock: data.stock?.toString() || "",
         });
 
-        const parent = tablas.find((t) => t.id_materia_prima === data.id_materia_prima);
+        const parent = tablas.find(
+          (t) => t.id_materia_prima === data.id_materia_prima
+        );
         if (parent) {
           setSelectedTabla(parent);
           setTablaPreview(parent.foto_url || parent.foto || null);
@@ -67,8 +70,8 @@ const TipoTablasForm = () => {
 
         if (data.foto_url) {
           setPreview(data.foto_url);
-          setHadServerFoto(true);   // marcar que venía foto del servidor
-          setBorrarFoto(false);     // aún no se pidió borrar
+          setHadServerFoto(true);
+          setBorrarFoto(false);
         } else {
           setPreview(null);
           setHadServerFoto(false);
@@ -85,21 +88,25 @@ const TipoTablasForm = () => {
     if (!inputs.id_materia_prima) return "Selecciona una tabla padre.";
     if (!inputs.titulo) return "El título es requerido.";
     if (!inputs.largo_cm) return "El largo es requerido.";
-    if (isNaN(inputs.largo_cm) || +inputs.largo_cm <= 0) return "Largo inválido.";
+    if (isNaN(inputs.largo_cm) || +inputs.largo_cm <= 0)
+      return "Largo inválido.";
     if (!inputs.ancho_cm) return "El ancho es requerido.";
-    if (isNaN(inputs.ancho_cm) || +inputs.ancho_cm <= 0) return "Ancho inválido.";
+    if (isNaN(inputs.ancho_cm) || +inputs.ancho_cm <= 0)
+      return "Ancho inválido.";
     if (!inputs.espesor_mm) return "El espesor es requerido.";
-    if (isNaN(inputs.espesor_mm) || +inputs.espesor_mm <= 0) return "Espesor inválido.";
+    if (isNaN(inputs.espesor_mm) || +inputs.espesor_mm <= 0)
+      return "Espesor inválido.";
     if (currentUser?.tipo !== "encargado") {
       if (!inputs.precio_unidad) return "El precio unitario es requerido.";
-      if (isNaN(inputs.precio_unidad) || +inputs.precio_unidad <= 0) return "Precio inválido.";
+      if (isNaN(inputs.precio_unidad) || +inputs.precio_unidad <= 0)
+        return "Precio inválido.";
     }
     if (!inputs.cepillada) return "Selecciona cepillada si/no.";
     if (!inputs.stock) return "El stock es requerido.";
-    if (!Number.isInteger(+inputs.stock) || +inputs.stock < 0) return "Stock inválido.";
+    if (!Number.isInteger(+inputs.stock) || +inputs.stock < 0)
+      return "Stock inválido.";
     return null;
   };
-
   const handleParentChange = (e) => {
     const idp = e.target.value;
     setInputs((prev) => ({ ...prev, id_materia_prima: idp }));
@@ -110,7 +117,9 @@ const TipoTablasForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    if (["largo_cm", "ancho_cm", "espesor_mm", "precio_unidad"].includes(name)) {
+    if (
+      ["largo_cm", "ancho_cm", "espesor_mm", "precio_unidad"].includes(name)
+    ) {
       if (!/^[0-9]*\.?[0-9]*$/.test(value)) return;
     }
     if (name === "stock" && !/^\d*$/.test(value)) return;
@@ -122,7 +131,6 @@ const TipoTablasForm = () => {
     if (!f) return;
     setFotoFile(f);
     setPreview(URL.createObjectURL(f));
-    // si sube una nueva, no hay borrado explícito
     setBorrarFoto(false);
   };
 
@@ -131,7 +139,6 @@ const TipoTablasForm = () => {
     setPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
 
-    // si estamos editando y la foto que se muestra venía del server, marcamos borrar
     if (id && hadServerFoto) {
       setBorrarFoto(true);
     } else {
@@ -155,7 +162,8 @@ const TipoTablasForm = () => {
       fd.append("ancho_cm", inputs.ancho_cm);
       fd.append("espesor_mm", inputs.espesor_mm);
 
-      const precio = currentUser?.tipo === "encargado" ? "0" : inputs.precio_unidad;
+      const precio =
+        currentUser?.tipo === "encargado" ? "0" : inputs.precio_unidad;
       fd.append("precio_unidad", precio);
 
       fd.append("cepillada", inputs.cepillada);
@@ -163,9 +171,8 @@ const TipoTablasForm = () => {
 
       // imagen
       if (fotoFile) {
-        fd.append("foto", fotoFile); // subimos nueva
+        fd.append("foto", fotoFile);
       } else if (id && borrarFoto) {
-        // editar: sin nueva imagen y pidió borrar la existente
         fd.append("borrar_foto", "1");
       }
 
@@ -191,6 +198,11 @@ const TipoTablasForm = () => {
           mensaje = error.response.data.error;
         } else if (error.response.data.message) {
           mensaje = error.response.data.message;
+        }
+
+        if (error.response.status === 409 && error.response.data.detalles) {
+          const d = error.response.data.detalles;
+          mensaje += ` (Requiere +${d.requerido_adicional}, disponible ${d.disponible})`;
         }
       }
       setErr(mensaje);
@@ -399,7 +411,11 @@ const TipoTablasForm = () => {
             />
             {preview && (
               <div className="relative mt-2">
-                <img src={preview} alt="Preview" className="w-full h-auto rounded" />
+                <img
+                  src={preview}
+                  alt="Preview"
+                  className="w-full h-auto rounded"
+                />
                 <button
                   type="button"
                   onClick={clearImage}
@@ -412,9 +428,17 @@ const TipoTablasForm = () => {
           </div>
 
           {err && (
-            <p className={messageType === "error" ? "text-red-500" : "text-green-500"}>
-              {err}
-            </p>
+            <div className="mb-3">
+              <Alert
+                type={messageType === "error" ? "error" : "success"}
+                onClose={() => {
+                  setErr("");
+                  setMessageType("");
+                }}
+              >
+                {err}
+              </Alert>
+            </div>
           )}
 
           <button
