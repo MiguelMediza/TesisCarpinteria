@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { api } from "../../api";
 import tablasBackground from "../../assets/tablasBackground.jpg";
 import Alert from "../Modals/Alert";
+
 const Proveedores = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ const Proveedores = () => {
   });
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const initialInputs = {
     rut: "",
@@ -40,14 +42,12 @@ const Proveedores = () => {
 
   const validateInputs = () => {
     if (!inputs.rut) return "El RUT es requerido.";
-    if (inputs.rut.length !== 12)
-      return "Ingresa un RUT válido (Debe tener 12 dígitos).";
+    if (inputs.rut.length !== 12) return "Ingresa un RUT válido (Debe tener 12 dígitos).";
     if (!inputs.nombre) return "El nombre es requerido.";
     if (!inputs.nombre_empresa) return "El nombre de la empresa es requerido.";
     if (!inputs.telefono) return "El teléfono es requerido.";
     if (inputs.telefono.length < 9) return "El teléfono debe tener 9 dígitos.";
-    if (!inputs.correo_electronico)
-      return "El correo electrónico es requerido.";
+    if (!inputs.correo_electronico) return "El correo electrónico es requerido.";
     return null;
   };
 
@@ -61,6 +61,8 @@ const Proveedores = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+
     const validationError = validateInputs();
     if (validationError) {
       setErr(validationError);
@@ -68,6 +70,7 @@ const Proveedores = () => {
       return;
     }
     try {
+      setSubmitting(true);
       if (id) {
         await api.put(`/proveedores/${id}`, inputs);
         setErr("Proveedor actualizado correctamente.");
@@ -89,12 +92,13 @@ const Proveedores = () => {
       setErr(msg);
       setMessageType("error");
       console.error(error);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
     <section className="relative flex items-center justify-center min-h-screen bg-neutral-50">
-      {/* Fondo difuminado */}
       <div
         className="absolute inset-0 bg-cover bg-center filter blur opacity-90"
         style={{ backgroundImage: `url(${tablasBackground})` }}
@@ -112,128 +116,123 @@ const Proveedores = () => {
           {id ? "Editar Proveedor" : "Nuevo Proveedor"}
         </h1>
 
-        <form className="space-y-4 md:space-y-6" onSubmit={handleSubmit}>
-          {/* RUT */}
-          <div>
-            <label
-              htmlFor="rut"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
-              RUT
-            </label>
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={12}
-              name="rut"
-              id="rut"
-              value={inputs.rut}
-              onChange={handleChange}
-              placeholder="RUT del proveedor"
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-            />
-          </div>
+        <form className="space-y-4 md:space-y-6" onSubmit={handleSubmit} aria-busy={submitting}>
+          <fieldset disabled={submitting} className="space-y-4 md:space-y-6">
+            <div>
+              <label
+                htmlFor="rut"
+                className="block mb-1 text-sm font-medium text-neutral-800"
+              >
+                RUT
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={12}
+                name="rut"
+                id="rut"
+                value={inputs.rut}
+                onChange={handleChange}
+                placeholder="RUT del proveedor"
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+              />
+            </div>
 
-          {/* Nombre */}
-          <div>
-            <label
-              htmlFor="nombre"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
-              Nombre
-            </label>
-            <input
-              type="text"
-              name="nombre"
-              id="nombre"
-              value={inputs.nombre}
-              onChange={handleChange}
-              placeholder="Nombre del contacto"
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-            />
-          </div>
+            <div>
+              <label
+                htmlFor="nombre"
+                className="block mb-1 text-sm font-medium text-neutral-800"
+              >
+                Nombre
+              </label>
+              <input
+                type="text"
+                name="nombre"
+                id="nombre"
+                value={inputs.nombre}
+                onChange={handleChange}
+                placeholder="Nombre del contacto"
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+              />
+            </div>
 
-          {/* Empresa */}
-          <div>
-            <label
-              htmlFor="nombre_empresa"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
-              Empresa
-            </label>
-            <input
-              type="text"
-              name="nombre_empresa"
-              id="nombre_empresa"
-              value={inputs.nombre_empresa}
-              onChange={handleChange}
-              placeholder="Nombre de la empresa"
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-            />
-          </div>
+            <div>
+              <label
+                htmlFor="nombre_empresa"
+                className="block mb-1 text-sm font-medium text-neutral-800"
+              >
+                Empresa
+              </label>
+              <input
+                type="text"
+                name="nombre_empresa"
+                id="nombre_empresa"
+                value={inputs.nombre_empresa}
+                onChange={handleChange}
+                placeholder="Nombre de la empresa"
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+              />
+            </div>
 
-          {/* Teléfono */}
-          <div>
-            <label
-              htmlFor="telefono"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
-              Teléfono
-            </label>
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={9}
-              name="telefono"
-              id="telefono"
-              value={inputs.telefono}
-              onChange={handleChange}
-              placeholder="Teléfono del proveedor"
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-            />
-          </div>
+            <div>
+              <label
+                htmlFor="telefono"
+                className="block mb-1 text-sm font-medium text-neutral-800"
+              >
+                Teléfono
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={9}
+                name="telefono"
+                id="telefono"
+                value={inputs.telefono}
+                onChange={handleChange}
+                placeholder="Teléfono del proveedor"
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+              />
+            </div>
 
-          {/* Correo */}
-          <div>
-            <label
-              htmlFor="correo_electronico"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
-              Correo Electrónico
-            </label>
-            <input
-              type="email"
-              name="correo_electronico"
-              id="correo_electronico"
-              value={inputs.correo_electronico}
-              onChange={handleChange}
-              placeholder="correo@ejemplo.com"
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-            />
-          </div>
+            <div>
+              <label
+                htmlFor="correo_electronico"
+                className="block mb-1 text-sm font-medium text-neutral-800"
+              >
+                Correo Electrónico
+              </label>
+              <input
+                type="email"
+                name="correo_electronico"
+                id="correo_electronico"
+                value={inputs.correo_electronico}
+                onChange={handleChange}
+                placeholder="correo@ejemplo.com"
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+              />
+            </div>
 
-          {/* Comentarios */}
-          <div>
-            <label
-              htmlFor="comentarios"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
-              Comentarios
-            </label>
-            <textarea
-              name="comentarios"
-              id="comentarios"
-              value={inputs.comentarios}
-              onChange={handleChange}
-              placeholder="Comentarios adicionales"
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-              rows={3}
-            />
-          </div>
+            <div>
+              <label
+                htmlFor="comentarios"
+                className="block mb-1 text-sm font-medium text-neutral-800"
+              >
+                Comentarios
+              </label>
+              <textarea
+                name="comentarios"
+                id="comentarios"
+                value={inputs.comentarios}
+                onChange={handleChange}
+                placeholder="Comentarios adicionales"
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                rows={3}
+              />
+            </div>
+          </fieldset>
 
-          {/* Mensaje */}
           {err && (
             <div className="mb-3">
               <Alert
@@ -248,12 +247,40 @@ const Proveedores = () => {
             </div>
           )}
 
-          {/* Submit */}
           <button
             type="submit"
-            className="w-full py-2.5 text-white bg-neutral-700 hover:bg-neutral-800 rounded transition"
+            disabled={submitting}
+            className="w-full py-2.5 text-white bg-neutral-700 hover:bg-neutral-800 rounded transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {id ? "Guardar Cambios" : "Crear Proveedor"}
+            {submitting && (
+              <svg
+                className="h-4 w-4 animate-spin"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                />
+              </svg>
+            )}
+            {id
+              ? submitting
+                ? "Actualizando..."
+                : "Guardar Cambios"
+              : submitting
+              ? "Agregando..."
+              : "Crear Proveedor"}
           </button>
 
           <p className="mt-4 text-sm text-neutral-700 text-center">

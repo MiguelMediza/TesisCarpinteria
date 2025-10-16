@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { api } from "../../api";
 import clientesBackground from "../../assets/tablasBackground.jpg";
 import Alert from "../Modals/Alert";
+
 const ClientesForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -21,6 +22,7 @@ const ClientesForm = () => {
   const [inputs, setInputs] = useState(initialInputs);
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -48,10 +50,8 @@ const ClientesForm = () => {
     if (!inputs.nombre) return "El nombre es requerido.";
     if (!inputs.email) return "El email es requerido.";
     if (inputs.es_empresa === "1") {
-      if (!inputs.nombre_empresa)
-        return "El nombre de la empresa es requerido.";
-      if (!inputs.direccion_empresa)
-        return "La dirección de la empresa es requerida.";
+      if (!inputs.nombre_empresa) return "El nombre de la empresa es requerido.";
+      if (!inputs.direccion_empresa) return "La dirección de la empresa es requerida.";
       if (!inputs.email_empresa) return "El email de la empresa es requerido.";
     }
     return null;
@@ -64,6 +64,7 @@ const ClientesForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
 
     const validationError = validateInputs();
     if (validationError) {
@@ -78,6 +79,7 @@ const ClientesForm = () => {
     };
 
     try {
+      setSubmitting(true);
       if (id) {
         await api.put(`/clientes/${id}`, payload);
         setErr("Cliente actualizado correctamente.");
@@ -94,6 +96,8 @@ const ClientesForm = () => {
         "Error al guardar el cliente.";
       setErr(msg);
       setMessageType("error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -114,116 +118,118 @@ const ClientesForm = () => {
           {id ? "Editar Cliente" : "Nuevo Cliente"}
         </h1>
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div>
-            <label className="block mb-1 text-sm font-medium text-neutral-800">
-              Nombre
-            </label>
-            <input
-              type="text"
-              name="nombre"
-              value={inputs.nombre}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-            />
-          </div>
+        <form className="space-y-4" onSubmit={handleSubmit} aria-busy={submitting}>
+          <fieldset disabled={submitting} className="space-y-4">
+            <div>
+              <label className="block mb-1 text-sm font-medium text-neutral-800">
+                Nombre
+              </label>
+              <input
+                type="text"
+                name="nombre"
+                value={inputs.nombre}
+                onChange={handleChange}
+                className="w-full p-2 border rounded"
+              />
+            </div>
 
-          <div>
-            <label className="block mb-1 text-sm font-medium text-neutral-800">
-              Apellido
-            </label>
-            <input
-              type="text"
-              name="apellido"
-              value={inputs.apellido}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-            />
-          </div>
+            <div>
+              <label className="block mb-1 text-sm font-medium text-neutral-800">
+                Apellido
+              </label>
+              <input
+                type="text"
+                name="apellido"
+                value={inputs.apellido}
+                onChange={handleChange}
+                className="w-full p-2 border rounded"
+              />
+            </div>
 
-          <div>
-            <label className="block mb-1 text-sm font-medium text-neutral-800">
-              Teléfono
-            </label>
-            <input
-              type="text"
-              name="telefono"
-              value={inputs.telefono}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-            />
-          </div>
+            <div>
+              <label className="block mb-1 text-sm font-medium text-neutral-800">
+                Teléfono
+              </label>
+              <input
+                type="text"
+                name="telefono"
+                value={inputs.telefono}
+                onChange={handleChange}
+                className="w-full p-2 border rounded"
+              />
+            </div>
 
-          <div>
-            <label className="block mb-1 text-sm font-medium text-neutral-800">
-              Email
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={inputs.email}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-            />
-          </div>
+            <div>
+              <label className="block mb-1 text-sm font-medium text-neutral-800">
+                Email
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={inputs.email}
+                onChange={handleChange}
+                className="w-full p-2 border rounded"
+              />
+            </div>
 
-          <div>
-            <label className="block mb-1 text-sm font-medium text-neutral-800">
-              ¿Es empresa?
-            </label>
-            <select
-              name="es_empresa"
-              value={inputs.es_empresa}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-            >
-              <option value="0">No</option>
-              <option value="1">Sí</option>
-            </select>
-          </div>
+            <div>
+              <label className="block mb-1 text-sm font-medium text-neutral-800">
+                ¿Es empresa?
+              </label>
+              <select
+                name="es_empresa"
+                value={inputs.es_empresa}
+                onChange={handleChange}
+                className="w-full p-2 border rounded"
+              >
+                <option value="0">No</option>
+                <option value="1">Sí</option>
+              </select>
+            </div>
 
-          {inputs.es_empresa === "1" && (
-            <>
-              <div>
-                <label className="block mb-1 text-sm font-medium text-neutral-800">
-                  Nombre de Empresa
-                </label>
-                <input
-                  type="text"
-                  name="nombre_empresa"
-                  value={inputs.nombre_empresa}
-                  onChange={handleChange}
-                  className="w-full p-2 border rounded"
-                />
-              </div>
+            {inputs.es_empresa === "1" && (
+              <>
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-neutral-800">
+                    Nombre de Empresa
+                  </label>
+                  <input
+                    type="text"
+                    name="nombre_empresa"
+                    value={inputs.nombre_empresa}
+                    onChange={handleChange}
+                    className="w-full p-2 border rounded"
+                  />
+                </div>
 
-              <div>
-                <label className="block mb-1 text-sm font-medium text-neutral-800">
-                  Dirección de Empresa
-                </label>
-                <input
-                  type="text"
-                  name="direccion_empresa"
-                  value={inputs.direccion_empresa}
-                  onChange={handleChange}
-                  className="w-full p-2 border rounded"
-                />
-              </div>
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-neutral-800">
+                    Dirección de Empresa
+                  </label>
+                  <input
+                    type="text"
+                    name="direccion_empresa"
+                    value={inputs.direccion_empresa}
+                    onChange={handleChange}
+                    className="w-full p-2 border rounded"
+                  />
+                </div>
 
-              <div>
-                <label className="block mb-1 text-sm font-medium text-neutral-800">
-                  Email Empresa
-                </label>
-                <input
-                  type="email"
-                  name="email_empresa"
-                  value={inputs.email_empresa}
-                  onChange={handleChange}
-                  className="w-full p-2 border rounded"
-                />
-              </div>
-            </>
-          )}
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-neutral-800">
+                    Email Empresa
+                  </label>
+                  <input
+                    type="email"
+                    name="email_empresa"
+                    value={inputs.email_empresa}
+                    onChange={handleChange}
+                    className="w-full p-2 border rounded"
+                  />
+                </div>
+              </>
+            )}
+          </fieldset>
 
           {err && (
             <div className="mb-3">
@@ -241,9 +247,38 @@ const ClientesForm = () => {
 
           <button
             type="submit"
-            className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+            disabled={submitting}
+            className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {id ? "Guardar Cambios" : "Crear Cliente"}
+            {submitting && (
+              <svg
+                className="h-4 w-4 animate-spin"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                />
+              </svg>
+            )}
+            {id
+              ? submitting
+                ? "Actualizando..."
+                : "Guardar Cambios"
+              : submitting
+              ? "Agregando..."
+              : "Crear Cliente"}
           </button>
 
           <p className="mt-4 text-sm text-neutral-700 text-center">

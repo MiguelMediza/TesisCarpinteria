@@ -4,6 +4,7 @@ import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
 import pelletsBackground from "../../assets/tablasBackground.jpg";
 import Alert from "../Modals/Alert";
+
 const PelletsForm = () => {
   const { currentUser } = useContext(AuthContext);
   const { id } = useParams();
@@ -22,6 +23,7 @@ const PelletsForm = () => {
   const [preview, setPreview] = useState(null);
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -44,25 +46,13 @@ const PelletsForm = () => {
 
   const validateInputs = () => {
     if (!inputs.titulo) return "El título es requerido.";
-    if (
-      !inputs.bolsa_kilogramos ||
-      isNaN(inputs.bolsa_kilogramos) ||
-      Number(inputs.bolsa_kilogramos) <= 0
-    )
+    if (!inputs.bolsa_kilogramos || isNaN(inputs.bolsa_kilogramos) || Number(inputs.bolsa_kilogramos) <= 0)
       return "Ingresa un peso de bolsa válido.";
     if (currentUser?.tipo !== "encargado") {
-      if (
-        !inputs.precio_unidad ||
-        isNaN(inputs.precio_unidad) ||
-        Number(inputs.precio_unidad) <= 0
-      )
+      if (!inputs.precio_unidad || isNaN(inputs.precio_unidad) || Number(inputs.precio_unidad) <= 0)
         return "Ingresa un precio válido.";
     }
-    if (
-      !inputs.stock ||
-      !Number.isInteger(Number(inputs.stock)) ||
-      Number(inputs.stock) < 0
-    )
+    if (!inputs.stock || !Number.isInteger(Number(inputs.stock)) || Number(inputs.stock) < 0)
       return "Ingresa un stock válido.";
     return null;
   };
@@ -91,6 +81,8 @@ const PelletsForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+
     const validationError = validateInputs();
     if (validationError) {
       setErr(validationError);
@@ -99,6 +91,7 @@ const PelletsForm = () => {
     }
 
     try {
+      setSubmitting(true);
       const formData = new FormData();
       Object.entries(inputs).forEach(([key, value]) => {
         if (key === "precio_unidad") {
@@ -134,6 +127,8 @@ const PelletsForm = () => {
       }
       setErr(msg);
       setMessageType("error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -144,10 +139,7 @@ const PelletsForm = () => {
         style={{ backgroundImage: `url(${pelletsBackground})` }}
       />
       <div className="relative z-10 w-full sm:max-w-md p-6 bg-white bg-opacity-80 rounded-lg shadow-md">
-        <Link
-          to="/pellets"
-          className="block mb-6 text-2xl font-semibold text-neutral-800 text-center"
-        >
+        <Link to="/pellets" className="block mb-6 text-2xl font-semibold text-neutral-800 text-center">
           Imanod Control de Stock
         </Link>
 
@@ -155,81 +147,80 @@ const PelletsForm = () => {
           {id ? "Editar Pellet" : "Nuevo Pellet"}
         </h1>
 
-        <form
-          className="space-y-4"
-          onSubmit={handleSubmit}
-          encType="multipart/form-data"
-        >
-          <div>
-            <label className="block mb-1 text-sm font-medium">Título</label>
-            <input
-              name="titulo"
-              value={inputs.titulo}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-            />
-          </div>
-
-          <div>
-            <label className="block mb-1 text-sm font-medium">Bolsa (kg)</label>
-            <input
-              name="bolsa_kilogramos"
-              value={inputs.bolsa_kilogramos}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-            />
-          </div>
-
-          {currentUser?.tipo !== "encargado" && (
+        <form className="space-y-4" onSubmit={handleSubmit} encType="multipart/form-data" aria-busy={submitting}>
+          <fieldset disabled={submitting} className="space-y-4">
             <div>
-              <label className="block mb-1 text-sm font-medium">
-                Precio Unitario
-              </label>
+              <label className="block mb-1 text-sm font-medium">Título</label>
               <input
-                name="precio_unidad"
-                value={inputs.precio_unidad}
+                name="titulo"
+                value={inputs.titulo}
                 onChange={handleChange}
-                className="w-full p-2 border rounded"
+                className="w-full p-2 border rounded bg-neutral-100"
+                placeholder="Ej: Pellet Premium"
               />
             </div>
-          )}
 
-          <div>
-            <label className="block mb-1 text-sm font-medium">Stock</label>
-            <input
-              name="stock"
-              value={inputs.stock}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-            />
-          </div>
+            <div>
+              <label className="block mb-1 text-sm font-medium">Bolsa (kg)</label>
+              <input
+                name="bolsa_kilogramos"
+                inputMode="decimal"
+                value={inputs.bolsa_kilogramos}
+                onChange={handleChange}
+                className="w-full p-2 border rounded bg-neutral-100"
+                placeholder="Ej: 15"
+              />
+            </div>
 
-          <div>
-            <label className="block mb-1 text-sm font-medium">Foto</label>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFotoChange}
-              className="w-full p-2 border rounded"
-            />
-            {preview && (
-              <div className="relative mt-2">
-                <img
-                  src={preview}
-                  alt="Preview"
-                  className="w-full h-auto rounded"
+            {currentUser?.tipo !== "encargado" && (
+              <div>
+                <label className="block mb-1 text-sm font-medium">Precio Unitario</label>
+                <input
+                  name="precio_unidad"
+                  inputMode="decimal"
+                  value={inputs.precio_unidad}
+                  onChange={handleChange}
+                  className="w-full p-2 border rounded bg-neutral-100"
+                  placeholder="Ej: 180"
                 />
-                <button
-                  type="button"
-                  onClick={clearImage}
-                  className="absolute top-1 right-1 bg-gray-800 bg-opacity-50 text-white rounded-full p-1 hover:bg-opacity-75"
-                >
-                  &times;
-                </button>
               </div>
             )}
-          </div>
+
+            <div>
+              <label className="block mb-1 text-sm font-medium">Stock</label>
+              <input
+                name="stock"
+                inputMode="numeric"
+                value={inputs.stock}
+                onChange={handleChange}
+                className="w-full p-2 border rounded bg-neutral-100"
+                placeholder="Ej: 100"
+              />
+            </div>
+
+            <div>
+              <label className="block mb-1 text-sm font-medium">Foto</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFotoChange}
+                className="w-full p-2 border rounded bg-neutral-100"
+              />
+              {preview && (
+                <div className="relative mt-2">
+                  <img src={preview} alt="Preview" className="w-full h-auto rounded" />
+                  <button
+                    type="button"
+                    onClick={clearImage}
+                    className="absolute top-1 right-1 bg-gray-800 bg-opacity-50 text-white rounded-full p-1 hover:bg-opacity-75"
+                  >
+                    &times;
+                  </button>
+                </div>
+              )}
+            </div>
+          </fieldset>
 
           {err && (
             <div className="mb-3">
@@ -247,9 +238,16 @@ const PelletsForm = () => {
 
           <button
             type="submit"
-            className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+            disabled={submitting}
+            className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {id ? "Guardar Cambios" : "Crear Pellet"}
+            {submitting && (
+              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              </svg>
+            )}
+            {id ? (submitting ? "Actualizando..." : "Guardar Cambios") : submitting ? "Agregando..." : "Crear Pellet"}
           </button>
 
           <p className="mt-4 text-center text-sm">

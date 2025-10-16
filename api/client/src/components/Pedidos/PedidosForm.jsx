@@ -3,13 +3,8 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import { api } from "../../api";
 import pedidosBg from "../../assets/tablasBackground.jpg";
 import Alert from "../Modals/Alert";
-const ESTADOS = [
-  "pendiente",
-  "en_produccion",
-  "listo",
-  "entregado",
-  "cancelado",
-];
+
+const ESTADOS = ["pendiente", "en_produccion", "listo", "entregado", "cancelado"];
 
 const PedidosForm = () => {
   const { id } = useParams();
@@ -37,8 +32,8 @@ const PedidosForm = () => {
 
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  // Helpers
   const formatDateFromISO = (iso) => (iso ? iso.split("T")[0] : "");
 
   const nextDayISO = (yyyy_mm_dd) => {
@@ -48,14 +43,10 @@ const PedidosForm = () => {
     return d.toISOString().split("T")[0];
   };
 
-  // Cargar combos
   useEffect(() => {
     (async () => {
       try {
-        const [cliRes, protRes] = await Promise.all([
-          api.get("/clientes/listar"),
-          api.get("/prototipos/listar"),
-        ]);
+        const [cliRes, protRes] = await Promise.all([api.get("/clientes/listar"), api.get("/prototipos/listar")]);
         setClientes(cliRes.data || []);
         setPrototipos(protRes.data || []);
       } catch (e) {
@@ -66,7 +57,6 @@ const PedidosForm = () => {
     })();
   }, []);
 
-  // Cargar pedido si edición
   useEffect(() => {
     if (!id) return;
     (async () => {
@@ -79,7 +69,6 @@ const PedidosForm = () => {
           fecha_de_entrega: formatDateFromISO(data.fecha_de_entrega),
           comentarios: data.comentarios || "",
         });
-
         const its = (data.items || []).map((x) => ({
           id_prototipo: x.id_prototipo?.toString() || "",
           cantidad_pallets: x.cantidad_pallets?.toString() || "",
@@ -108,7 +97,6 @@ const PedidosForm = () => {
     })();
   }, [id]);
 
-  // Handlers
   const handleChange = (e) => {
     const { name, value } = e.target;
     setInputs((prev) => {
@@ -148,47 +136,36 @@ const PedidosForm = () => {
     ]);
 
   const delItem = (idx) =>
-    setItems((prev) =>
-      prev.length === 1 ? prev : prev.filter((_, i) => i !== idx)
-    );
+    setItems((prev) => (prev.length === 1 ? prev : prev.filter((_, i) => i !== idx)));
 
-  // Validación
   const validar = () => {
     if (!inputs.id_cliente) return "Debe seleccionar un cliente.";
     if (!inputs.fecha_realizado) return "La fecha de realizado es obligatoria.";
     if (!inputs.fecha_de_entrega) return "La fecha de entrega es obligatoria.";
-
     const fReal = new Date(inputs.fecha_realizado);
     const fEnt = new Date(inputs.fecha_de_entrega);
-    if (fEnt <= fReal)
-      return "La fecha de entrega debe ser estrictamente posterior a la fecha realizado.";
-
+    if (fEnt <= fReal) return "La fecha de entrega debe ser estrictamente posterior a la fecha realizado.";
     const isValidQty = (v) => /^[1-9]\d*$/.test(String(v).trim());
-    const validItems = items.filter(
-      (it) => it.id_prototipo && isValidQty(it.cantidad_pallets)
-    );
-    if (validItems.length === 0)
-      return "Debe agregar al menos un prototipo con cantidad > 0.";
-
+    const validItems = items.filter((it) => it.id_prototipo && isValidQty(it.cantidad_pallets));
+    if (validItems.length === 0) return "Debe agregar al menos un prototipo con cantidad > 0.";
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
       if (it.id_prototipo && !isValidQty(it.cantidad_pallets)) {
         return `Ingrese una cantidad válida (> 0) en la fila ${i + 1}.`;
       }
     }
-
     return null;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
     const v = validar();
     if (v) {
       setErr(v);
       setMessageType("error");
       return;
     }
-
     const payload = {
       ...inputs,
       id_cliente: inputs.id_cliente ? parseInt(inputs.id_cliente, 10) : null,
@@ -202,8 +179,8 @@ const PedidosForm = () => {
           comentarios: it.comentarios?.trim() || null,
         })),
     };
-
     try {
+      setSubmitting(true);
       if (id) {
         await api.put(`/pedidos/${id}`, payload);
         setErr("Pedido actualizado correctamente.");
@@ -217,6 +194,8 @@ const PedidosForm = () => {
       console.error(e);
       setErr("Error al guardar el pedido.");
       setMessageType("error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -227,15 +206,8 @@ const PedidosForm = () => {
         .filter(Boolean)
     );
 
-  const optionsForIndex = (idx) =>
-    prototipos.filter(
-      (p) => !selectedIdsExcept(idx).has(String(p.id_prototipo))
-    );
-
   const remainingForNewItem = prototipos.filter((p) => {
-    const chosen = new Set(
-      items.map((it) => String(it.id_prototipo || "")).filter(Boolean)
-    );
+    const chosen = new Set(items.map((it) => String(it.id_prototipo || "")).filter(Boolean));
     return !chosen.has(String(p.id_prototipo));
   }).length;
 
@@ -246,208 +218,165 @@ const PedidosForm = () => {
         style={{ backgroundImage: `url(${pedidosBg})` }}
       />
       <div className="relative z-10 w-full sm:max-w-2xl p-6 bg-white bg-opacity-80 rounded-lg shadow-md">
-        <Link
-          to="/pedidos/listar"
-          className="block mb-6 text-2xl font-semibold text-neutral-800 text-center"
-        >
+        <Link to="/pedidos/listar" className="block mb-6 text-2xl font-semibold text-neutral-800 text-center">
           Imanod Pedidos
         </Link>
 
-        <h1 className="text-2xl font-bold text-neutral-900 text-center mb-4">
-          {id ? "Editar Pedido" : "Nuevo Pedido"}
-        </h1>
+        <h1 className="text-2xl font-bold text-neutral-900 text-center mb-4">{id ? "Editar Pedido" : "Nuevo Pedido"}</h1>
 
-        <form className="space-y-5" onSubmit={handleSubmit}>
-          {/* Cliente */}
-          <div>
-            <label className="block mb-1 text-sm font-medium">Cliente *</label>
-            <select
-              name="id_cliente"
-              value={inputs.id_cliente}
-              onChange={handleChange}
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
-            >
-              <option value="">Seleccionar cliente</option>
-              {clientes.map((c) => (
-                <option key={c.id_cliente} value={c.id_cliente}>
-                  {c.es_empresa
-                    ? c.nombre_empresa
-                    : `${c.nombre} ${c.apellido || ""}`}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Estado */}
-          <div>
-            <label className="block mb-1 text-sm font-medium">Estado</label>
-            <select
-              name="estado"
-              value={inputs.estado}
-              onChange={handleChange}
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
-            >
-              {ESTADOS.map((e) => (
-                <option key={e} value={e}>
-                  {e.replace("_", " ")}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Fechas */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <form className="space-y-5" onSubmit={handleSubmit} aria-busy={submitting}>
+          <fieldset disabled={submitting} className="space-y-5">
             <div>
-              <label className="block mb-1 text-sm font-medium">
-                Fecha realizado *
-              </label>
-              <input
-                type="date"
-                name="fecha_realizado"
-                value={inputs.fecha_realizado}
+              <label className="block mb-1 text-sm font-medium">Cliente *</label>
+              <select
+                name="id_cliente"
+                value={inputs.id_cliente}
                 onChange={handleChange}
                 className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
-              />
-            </div>
-            <div>
-              <label className="block mb-1 text-sm font-medium">
-                Fecha de entrega *
-              </label>
-              <input
-                type="date"
-                name="fecha_de_entrega"
-                value={inputs.fecha_de_entrega}
-                onChange={handleChange}
-                min={
-                  inputs.fecha_realizado
-                    ? nextDayISO(inputs.fecha_realizado)
-                    : undefined
-                }
-                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
-              />
-            </div>
-          </div>
-
-          {/* Comentarios */}
-          <div>
-            <label className="block mb-1 text-sm font-medium">
-              Comentarios
-            </label>
-            <textarea
-              name="comentarios"
-              value={inputs.comentarios}
-              onChange={handleChange}
-              rows={3}
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
-              placeholder="Notas del pedido (opcional)"
-            />
-          </div>
-
-          {/* Ítems */}
-          <div>
-            <p className="text-sm font-semibold mb-2">Ítems del pedido *</p>
-            {items.map((it, i) => (
-              <div
-                key={`it-${i}`}
-                className="grid grid-cols-1 md:grid-cols-12 gap-2 mb-2"
               >
-                <select
-                  value={it.id_prototipo}
-                  onChange={(e) =>
-                    handleItemChange(i, "id_prototipo", e.target.value)
-                  }
-                  className="md:col-span-5 p-2 border rounded bg-neutral-100"
-                >
-                  <option value="">Seleccionar prototipo</option>
-                  {prototipos.map((p) => {
-                    const yaElegido = selectedIdsExcept(i).has(
-                      String(p.id_prototipo)
-                    );
-                    return (
-                      <option
-                        key={p.id_prototipo}
-                        value={p.id_prototipo}
-                        disabled={yaElegido}
-                      >
-                        {p.titulo} {p.medidas ? `(${p.medidas})` : ""}
-                        {yaElegido ? " — (ya seleccionado)" : ""}
-                      </option>
-                    );
-                  })}
-                </select>
+                <option value="">Seleccionar cliente</option>
+                {clientes.map((c) => (
+                  <option key={c.id_cliente} value={c.id_cliente}>
+                    {c.es_empresa ? c.nombre_empresa : `${c.nombre} ${c.apellido || ""}`}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  placeholder="Cantidad"
-                  value={it.cantidad_pallets}
-                  onChange={(e) =>
-                    handleItemChange(i, "cantidad_pallets", e.target.value)
-                  }
-                  className="md:col-span-2 p-2 border rounded bg-neutral-100"
-                />
+            <div>
+              <label className="block mb-1 text-sm font-medium">Estado</label>
+              <select
+                name="estado"
+                value={inputs.estado}
+                onChange={handleChange}
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
+              >
+                {ESTADOS.map((e) => (
+                  <option key={e} value={e}>
+                    {e.replace("_", " ")}
+                  </option>
+                ))}
+              </select>
+            </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block mb-1 text-sm font-medium">Fecha realizado *</label>
                 <input
-                  type="text"
-                  value={it.numero_lote}
-                  onChange={(e) =>
-                    handleItemChange(i, "numero_lote", e.target.value)
-                  }
-                  placeholder="Lote (opcional)"
-                  className="md:col-span-2 p-2 border rounded bg-neutral-100"
-                />
-                <input
-                  type="text"
-                  value={it.numero_tratamiento}
-                  onChange={(e) =>
-                    handleItemChange(i, "numero_tratamiento", e.target.value)
-                  }
-                  placeholder="Tratamiento (opcional)"
-                  className="md:col-span-2 p-2 border rounded bg-neutral-100"
-                />
-                <button
-                  type="button"
-                  onClick={() => delItem(i)}
-                  className="md:col-span-1 text-red-600 font-bold"
-                  title="Quitar línea"
-                >
-                  🗑️
-                </button>
-
-                <input
-                  type="text"
-                  value={it.comentarios}
-                  onChange={(e) =>
-                    handleItemChange(i, "comentarios", e.target.value)
-                  }
-                  placeholder="Comentarios del ítem (opcional)"
-                  className="md:col-span-12 p-2 border rounded bg-neutral-100"
+                  type="date"
+                  name="fecha_realizado"
+                  value={inputs.fecha_realizado}
+                  onChange={handleChange}
+                  className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
                 />
               </div>
-            ))}
+              <div>
+                <label className="block mb-1 text-sm font-medium">Fecha de entrega *</label>
+                <input
+                  type="date"
+                  name="fecha_de_entrega"
+                  value={inputs.fecha_de_entrega}
+                  onChange={handleChange}
+                  min={inputs.fecha_realizado ? nextDayISO(inputs.fecha_realizado) : undefined}
+                  className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
+                />
+              </div>
+            </div>
 
-            <button
-              type="button"
-              onClick={addItem}
-              className="mt-1 text-sm text-blue-600 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={remainingForNewItem === 0}
-              title={
-                remainingForNewItem === 0
-                  ? "No quedan prototipos disponibles"
-                  : "Agregar ítem"
-              }
-            >
-              + Agregar ítem
-            </button>
-            {remainingForNewItem === 0 && (
-              <p className="text-xs text-gray-500 mt-1">
-                No quedan prototipos disponibles para agregar.
-              </p>
-            )}
-          </div>
+            <div>
+              <label className="block mb-1 text-sm font-medium">Comentarios</label>
+              <textarea
+                name="comentarios"
+                value={inputs.comentarios}
+                onChange={handleChange}
+                rows={3}
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
+                placeholder="Notas del pedido (opcional)"
+              />
+            </div>
 
-          {/* Mensajes */}
+            <div>
+              <p className="text-sm font-semibold mb-2">Ítems del pedido *</p>
+              {items.map((it, i) => (
+                <div key={`it-${i}`} className="grid grid-cols-1 md:grid-cols-12 gap-2 mb-2">
+                  <select
+                    value={it.id_prototipo}
+                    onChange={(e) => handleItemChange(i, "id_prototipo", e.target.value)}
+                    className="md:col-span-5 p-2 border rounded bg-neutral-100"
+                  >
+                    <option value="">Seleccionar prototipo</option>
+                    {prototipos.map((p) => {
+                      const yaElegido = selectedIdsExcept(i).has(String(p.id_prototipo));
+                      return (
+                        <option key={p.id_prototipo} value={p.id_prototipo} disabled={yaElegido}>
+                          {p.titulo} {p.medidas ? `(${p.medidas})` : ""}
+                          {yaElegido ? " — (ya seleccionado)" : ""}
+                        </option>
+                      );
+                    })}
+                  </select>
+
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="Cantidad"
+                    value={it.cantidad_pallets}
+                    onChange={(e) => handleItemChange(i, "cantidad_pallets", e.target.value)}
+                    className="md:col-span-2 p-2 border rounded bg-neutral-100"
+                  />
+
+                  <input
+                    type="text"
+                    value={it.numero_lote}
+                    onChange={(e) => handleItemChange(i, "numero_lote", e.target.value)}
+                    placeholder="Lote (opcional)"
+                    className="md:col-span-2 p-2 border rounded bg-neutral-100"
+                  />
+                  <input
+                    type="text"
+                    value={it.numero_tratamiento}
+                    onChange={(e) => handleItemChange(i, "numero_tratamiento", e.target.value)}
+                    placeholder="Tratamiento (opcional)"
+                    className="md:col-span-2 p-2 border rounded bg-neutral-100"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => delItem(i)}
+                    className="md:col-span-1 text-red-600 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Quitar línea"
+                    disabled={submitting}
+                  >
+                    🗑️
+                  </button>
+
+                  <input
+                    type="text"
+                    value={it.comentarios}
+                    onChange={(e) => handleItemChange(i, "comentarios", e.target.value)}
+                    placeholder="Comentarios del ítem (opcional)"
+                    className="md:col-span-12 p-2 border rounded bg-neutral-100"
+                  />
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={addItem}
+                className="mt-1 text-sm text-blue-600 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={remainingForNewItem === 0 || submitting}
+                title={
+                  remainingForNewItem === 0 ? "No quedan prototipos disponibles" : "Agregar ítem"
+                }
+              >
+                + Agregar ítem
+              </button>
+              {remainingForNewItem === 0 && (
+                <p className="text-xs text-gray-500 mt-1">No quedan prototipos disponibles para agregar.</p>
+              )}
+            </div>
+          </fieldset>
+
           {err && (
             <div className="mb-3">
               <Alert
@@ -462,12 +391,18 @@ const PedidosForm = () => {
             </div>
           )}
 
-          {/* Botón */}
           <button
             type="submit"
-            className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+            disabled={submitting}
+            className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {id ? "Guardar Cambios" : "Crear Pedido"}
+            {submitting && (
+              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              </svg>
+            )}
+            {id ? (submitting ? "Actualizando..." : "Guardar Cambios") : submitting ? "Agregando..." : "Crear Pedido"}
           </button>
 
           <p className="mt-4 text-sm text-neutral-700 text-center">

@@ -1,4 +1,3 @@
-// ClientesFuegoYaCard.jsx
 import React, {
   useContext,
   useEffect,
@@ -40,7 +39,7 @@ const getInitials = (nombre = "", apellido = "") => {
     .join("");
 };
 
-/* ===== helper: bloquear scroll del body cuando hay modal ===== */
+/* bloquear scroll del body cuando hay modal  */
 function useBodyScrollLock(locked) {
   useEffect(() => {
     if (!locked) return;
@@ -52,7 +51,7 @@ function useBodyScrollLock(locked) {
   }, [locked]);
 }
 
-/* ========== MODAL: Registrar Entrega (Portal) ========== */
+/* MODAL: Registrar Entrega */
 const EntregaModal = ({
   open,
   onClose,
@@ -194,7 +193,7 @@ const EntregaModal = ({
   return createPortal(node, document.body);
 };
 
-/* ========== MODAL: Listado de Pagos (Portal) ========== */
+/* MODAL: Listado de Pagos  */
 const PagosModal = ({ open, onClose, idCliente }) => {
   useBodyScrollLock(open);
 
@@ -225,10 +224,7 @@ const PagosModal = ({ open, onClose, idCliente }) => {
 
   if (!open) return null;
 
-  const totalAbonado = rows.reduce(
-    (acc, r) => acc + Number(r?.monto ?? 0),
-    0
-  );
+  const totalAbonado = rows.reduce((acc, r) => acc + Number(r?.monto ?? 0), 0);
 
   const node = (
     <div
@@ -237,30 +233,42 @@ const PagosModal = ({ open, onClose, idCliente }) => {
         if (e.target === e.currentTarget) onClose?.();
       }}
     >
-      <div className="w-full max-w-xl overflow-hidden rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-xl">
-        <div className="relative">
-          <div className="h-16 w-full bg-gradient-to-r from-emerald-50 to-sky-50" />
-          <div className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-slate-800">
-            Pagos registrados
+      {/* Dialog */}
+      <div
+        className="
+          w-full max-w-xl rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-xl
+          flex flex-col overflow-hidden
+        "
+        // Altura máx siempre menor a la pantalla (svh para móviles + fallback vh)
+        style={{ maxHeight: "min(90svh, 90vh)" }}
+        role="dialog"
+        aria-modal="true"
+      >
+        {/* Header sticky */}
+        <div className="sticky top-0 z-10">
+          <div className="relative">
+            <div className="h-16 w-full bg-gradient-to-r from-emerald-50 to-sky-50" />
+            <div className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-slate-800">
+              Pagos registrados
+            </div>
+            <button
+              type="button"
+              className="absolute right-3 top-2.5 rounded-full p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+              onClick={onClose}
+              aria-label="Cerrar"
+              title="Cerrar"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6.225 4.811l12.964 12.964-1.414 1.414L4.811 6.225l1.414-1.414z" />
+                <path d="M19.189 6.225L6.225 19.189l-1.414-1.414L17.775 4.811l1.414 1.414z" />
+              </svg>
+            </button>
           </div>
-          <button
-            type="button"
-            className="absolute right-3 top-2.5 rounded-full p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
-            onClick={onClose}
-            aria-label="Cerrar"
-            title="Cerrar"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M6.225 4.811l12.964 12.964-1.414 1.414L4.811 6.225l1.414-1.414z" />
-              <path d="M19.189 6.225L6.225 19.189l-1.414-1.414L17.775 4.811l1.414 1.414z" />
-            </svg>
-          </button>
         </div>
 
-        <div className="p-4">
-          {loading && (
-            <p className="text-sm text-slate-600">Cargando pagos…</p>
-          )}
+        {/* Contenido con scroll interno */}
+        <div className="flex-1 min-h-0 overflow-y-auto p-4">
+          {loading && <p className="text-sm text-slate-600">Cargando pagos…</p>}
           {err && <p className="text-sm text-red-600">{err}</p>}
 
           {!loading && !err && (
@@ -295,8 +303,7 @@ const PagosModal = ({ open, onClose, idCliente }) => {
                               </p>
                             )}
                           </div>
-                          {(p?.aplicado != null ||
-                            p?.sin_aplicar != null) && (
+                          {(p?.aplicado != null || p?.sin_aplicar != null) && (
                             <div className="text-right text-[12px] text-slate-600">
                               {p?.aplicado != null && (
                                 <div>
@@ -306,15 +313,14 @@ const PagosModal = ({ open, onClose, idCliente }) => {
                                   </span>
                                 </div>
                               )}
-                              {p?.sin_aplicar != null &&
-                                p.sin_aplicar > 0 && (
-                                  <div>
-                                    Sin aplicar:{" "}
-                                    <span className="font-medium">
-                                      {formatMoney(p.sin_aplicar)}
-                                    </span>
-                                  </div>
-                                )}
+                              {p?.sin_aplicar != null && p.sin_aplicar > 0 && (
+                                <div>
+                                  Sin aplicar:{" "}
+                                  <span className="font-medium">
+                                    {formatMoney(p.sin_aplicar)}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -331,8 +337,11 @@ const PagosModal = ({ open, onClose, idCliente }) => {
               </div>
             </>
           )}
+        </div>
 
-          <div className="mt-4 flex justify-end">
+        {/* Footer fijo visible */}
+        <div className="shrink-0 border-t px-4 py-3 bg-white">
+          <div className="flex justify-end">
             <button
               type="button"
               onClick={onClose}
@@ -345,7 +354,6 @@ const PagosModal = ({ open, onClose, idCliente }) => {
       </div>
     </div>
   );
-
   return createPortal(node, document.body);
 };
 
@@ -360,14 +368,11 @@ const ClientesFuegoYaCard = ({ cliente, onEdit, onDelete }) => {
   const [credError, setCredError] = useState("");
   const [creditoData, setCreditoData] = useState(null);
 
-  // pagos
   const [pagosCount, setPagosCount] = useState(0);
   const [pagosModalOpen, setPagosModalOpen] = useState(false);
 
-  // saldo a favor (pagos no aplicados)
   const [saldoAFavor, setSaldoAFavor] = useState(0);
 
-  // entrega modal
   const [modalOpen, setModalOpen] = useState(false);
   const [savingEntrega, setSavingEntrega] = useState(false);
   const [flash, setFlash] = useState(null);
@@ -406,11 +411,9 @@ const ClientesFuegoYaCard = ({ cliente, onEdit, onDelete }) => {
     }
   }, [isAdmin, id_cliente]);
 
-  // 👉 saldo a favor = suma de sin_aplicar de todos los pagos
   const fetchSaldoAFavor = useCallback(async () => {
     if (!isAdmin || !id_cliente) return;
     try {
-      // traemos "muchos" en una sola página para simplificar
       const { data } = await api.get(`/clientesfuegoya/${id_cliente}/pagos`, {
         params: { limit: 500, offset: 0 },
       });
@@ -460,7 +463,6 @@ const ClientesFuegoYaCard = ({ cliente, onEdit, onDelete }) => {
 
       const aplicado = Number(data?.aplicado ?? 0);
 
-      // Ajuste optimista
       setCreditoData((prev) => {
         if (!prev)
           return { creditos: [], credito_total: Math.max(0, 0 - aplicado) };
@@ -479,7 +481,6 @@ const ClientesFuegoYaCard = ({ cliente, onEdit, onDelete }) => {
         };
       });
 
-      // refrescar datos reales
       await Promise.all([fetchCredito(), fetchPagosCount(), fetchSaldoAFavor()]);
 
       const sin = Number(data?.sin_aplicar ?? 0);
@@ -699,7 +700,7 @@ const ClientesFuegoYaCard = ({ cliente, onEdit, onDelete }) => {
                       Sin crédito pendiente.
                     </p>
 
-                    {/* 👉 Mostrar saldo a favor cuando exista */}
+                    
                     {saldoAFavor > 0 && (
                       <p className="mt-2 inline-flex items-center gap-2 rounded-lg bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200 px-3 py-1.5 text-sm font-medium">
                         <svg

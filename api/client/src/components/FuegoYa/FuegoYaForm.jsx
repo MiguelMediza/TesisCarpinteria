@@ -4,6 +4,7 @@ import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
 import tablasBackground from "../../assets/tablasBackground.jpg";
 import Alert from "../Modals/Alert";
+
 const FuegoYaForm = () => {
   const { currentUser } = useContext(AuthContext);
   const { id } = useParams();
@@ -17,6 +18,7 @@ const FuegoYaForm = () => {
   const [preview, setPreview] = useState(null);
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -72,6 +74,8 @@ const FuegoYaForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+
     const v = validateInputs();
     if (v) {
       setErr(v);
@@ -79,6 +83,7 @@ const FuegoYaForm = () => {
       return;
     }
     try {
+      setSubmitting(true);
       const formData = new FormData();
       Object.entries(inputs).forEach(([key, value]) => {
         if (key === "precio_unidad") {
@@ -114,7 +119,8 @@ const FuegoYaForm = () => {
       }
       setErr(msg);
       setMessageType("error");
-      console.error(error);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -138,110 +144,109 @@ const FuegoYaForm = () => {
           className="space-y-4 md:space-y-6"
           onSubmit={handleSubmit}
           encType="multipart/form-data"
+          aria-busy={submitting}
         >
-          {/* Tipo */}
-          <div>
-            <label
-              htmlFor="tipo"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
-              Tipo
-            </label>
-            <select
-              name="tipo"
-              id="tipo"
-              value={inputs.tipo}
-              onChange={handleChange}
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-            >
-              <option value="" disabled>
-                Selecciona un tipo
-              </option>
-              <option value="Clasica 22">Clasica 22</option>
-              <option value="Pikolina">Pikolina</option>
-              <option value="50mm">50mm Transparente</option>
-              <option value="Clasica 12 granel">Clasica de 12 Granel</option>
-            </select>
-          </div>
-
-          {/* Precio unitario*/}
-          {currentUser?.tipo !== "encargado" && (
+          <fieldset disabled={submitting} className="space-y-4 md:space-y-6">
             <div>
               <label
-                htmlFor="precio_unidad"
+                htmlFor="tipo"
                 className="block mb-1 text-sm font-medium text-neutral-800"
               >
-                Precio Unitario
+                Tipo
+              </label>
+              <select
+                name="tipo"
+                id="tipo"
+                value={inputs.tipo}
+                onChange={handleChange}
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+              >
+                <option value="" disabled>
+                  Selecciona un tipo
+                </option>
+                <option value="Clasica 22">Clasica 22</option>
+                <option value="Pikolina">Pikolina</option>
+                <option value="50mm">50mm Transparente</option>
+                <option value="Clasica 12 granel">Clasica de 12 Granel</option>
+              </select>
+            </div>
+
+            {currentUser?.tipo !== "encargado" && (
+              <div>
+                <label
+                  htmlFor="precio_unidad"
+                  className="block mb-1 text-sm font-medium text-neutral-800"
+                >
+                  Precio Unitario
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  name="precio_unidad"
+                  id="precio_unidad"
+                  value={inputs.precio_unidad}
+                  onChange={handleChange}
+                  placeholder="Ej: 12.50"
+                  className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                />
+              </div>
+            )}
+
+            <div>
+              <label
+                htmlFor="stock"
+                className="block mb-1 text-sm font-medium text-neutral-800"
+              >
+                Stock
               </label>
               <input
                 type="text"
-                inputMode="decimal"
-                name="precio_unidad"
-                id="precio_unidad"
-                value={inputs.precio_unidad}
+                inputMode="numeric"
+                name="stock"
+                id="stock"
+                value={inputs.stock}
                 onChange={handleChange}
-                placeholder="Ej: 12.50"
+                placeholder="Ej: 50"
                 className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
               />
             </div>
-          )}
 
-          {/* Stock */}
-          <div>
-            <label
-              htmlFor="stock"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
-              Stock
-            </label>
-            <input
-              type="text"
-              inputMode="numeric"
-              name="stock"
-              id="stock"
-              value={inputs.stock}
-              onChange={handleChange}
-              placeholder="Ej: 50"
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-            />
-          </div>
+            <div>
+              <label
+                htmlFor="foto"
+                className="block mb-1 text-sm font-medium text-neutral-800"
+              >
+                Foto
+              </label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                name="foto"
+                id="foto"
+                onChange={handleFotoChange}
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+              />
+              {preview && (
+                <div className="relative mt-2">
+                  <img
+                    src={preview}
+                    alt="Preview"
+                    className="w-full h-auto rounded"
+                  />
+                  <button
+                    type="button"
+                    onClick={clearImage}
+                    disabled={submitting}
+                    className="absolute top-1 right-1 bg-gray-800 bg-opacity-50 text-white rounded-full p-1 hover:bg-opacity-75 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    &times;
+                  </button>
+                </div>
+              )}
+            </div>
+          </fieldset>
 
-          {/* Foto */}
-          <div>
-            <label
-              htmlFor="foto"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
-              Foto
-            </label>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              name="foto"
-              id="foto"
-              onChange={handleFotoChange}
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-            />
-            {preview && (
-              <div className="relative mt-2">
-                <img
-                  src={preview}
-                  alt="Preview"
-                  className="w-full h-auto rounded"
-                />
-                <button
-                  type="button"
-                  onClick={clearImage}
-                  className="absolute top-1 right-1 bg-gray-800 bg-opacity-50 text-white rounded-full p-1 hover:bg-opacity-75"
-                >
-                  &times;
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Mensaje */}
           {err && (
             <div className="mb-3">
               <Alert
@@ -256,13 +261,26 @@ const FuegoYaForm = () => {
             </div>
           )}
 
-          {/* Submit */}
           <button
             type="submit"
-            className="w-full py-2.5 text-white bg-neutral-700 hover:bg-neutral-800 rounded transition"
+            disabled={submitting}
+            className="w-full py-2.5 text-white bg-neutral-700 hover:bg-neutral-800 rounded transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {id ? "Guardar Cambios" : "Crear Fuego Ya"}
+            {submitting && (
+              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              </svg>
+            )}
+            {id
+              ? submitting
+                ? "Actualizando..."
+                : "Guardar Cambios"
+              : submitting
+              ? "Agregando..."
+              : "Crear Fuego Ya"}
           </button>
+
           <p className="mt-4 text-sm text-neutral-700 text-center">
             <Link to="/fuegoya/listar" className="font-medium underline">
               Volver al listado de Fuego Ya

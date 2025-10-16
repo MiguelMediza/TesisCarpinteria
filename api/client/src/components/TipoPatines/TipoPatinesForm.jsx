@@ -4,6 +4,7 @@ import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
 import tablasBackground from "../../assets/tablasBackground.jpg";
 import Alert from "../Modals/Alert";
+
 const TABLES_PER_PATIN = 1;
 const TACOS_PER_PATIN = 3;
 
@@ -31,16 +32,11 @@ const TipoPatinesForm = () => {
   const [logoFile, setLogoFile] = useState(null);
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    api
-      .get("/tipotablas/listar")
-      .then(({ data }) => setTablas(data))
-      .catch(() => {});
-    api
-      .get("/tipotacos/listar")
-      .then(({ data }) => setTacos(data))
-      .catch(() => {});
+    api.get("/tipotablas/listar").then(({ data }) => setTablas(data)).catch(() => {});
+    api.get("/tipotacos/listar").then(({ data }) => setTacos(data)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -56,13 +52,10 @@ const TipoPatinesForm = () => {
           stock: data.stock?.toString() || "",
           comentarios: data.comentarios || "",
         });
-        const tabla = tablas.find(
-          (t) => t.id_tipo_tabla === data.id_tipo_tabla
-        );
+        const tabla = tablas.find((t) => t.id_tipo_tabla === data.id_tipo_tabla);
         const taco = tacos.find((t) => t.id_tipo_taco === data.id_tipo_taco);
         if (tabla) setSelectedTabla(tabla);
         if (taco) setSelectedTaco(taco);
-
         const img = data.logo_url || null;
         if (img) setPreview(img);
       })
@@ -77,8 +70,7 @@ const TipoPatinesForm = () => {
     if (!inputs.id_tipo_taco) return "Selecciona un taco.";
     if (!inputs.titulo) return "El título es requerido.";
     if (!inputs.medidas) return "Las medidas son requeridas.";
-    if (!inputs.stock || !Number.isInteger(+inputs.stock) || +inputs.stock < 0)
-      return "Stock inválido.";
+    if (!inputs.stock || !Number.isInteger(+inputs.stock) || +inputs.stock < 0) return "Stock inválido.";
     return null;
   };
 
@@ -89,17 +81,13 @@ const TipoPatinesForm = () => {
   };
 
   const handleParentTabla = (e) => {
-    const tabla = tablas.find(
-      (t) => t.id_tipo_tabla.toString() === e.target.value
-    );
+    const tabla = tablas.find((t) => t.id_tipo_tabla.toString() === e.target.value);
     setInputs((prev) => ({ ...prev, id_tipo_tabla: e.target.value }));
     setSelectedTabla(tabla || null);
   };
 
   const handleParentTaco = (e) => {
-    const taco = tacos.find(
-      (t) => t.id_tipo_taco.toString() === e.target.value
-    );
+    const taco = tacos.find((t) => t.id_tipo_taco.toString() === e.target.value);
     setInputs((prev) => ({ ...prev, id_tipo_taco: e.target.value }));
     setSelectedTaco(taco || null);
   };
@@ -123,7 +111,7 @@ const TipoPatinesForm = () => {
           Math.floor((selectedTabla.stock ?? 0) / TABLES_PER_PATIN),
           Math.floor((selectedTaco.stock ?? 0) / TACOS_PER_PATIN)
         )
-      : 0;
+      : undefined;
 
   const precioPreview =
     selectedTabla && selectedTaco
@@ -135,6 +123,7 @@ const TipoPatinesForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
     const v = validate();
     if (v) {
       setErr(v);
@@ -142,6 +131,7 @@ const TipoPatinesForm = () => {
       return;
     }
     try {
+      setSubmitting(true);
       const fd = new FormData();
       fd.append("id_tipo_tabla", inputs.id_tipo_tabla);
       fd.append("id_tipo_taco", inputs.id_tipo_taco);
@@ -152,14 +142,10 @@ const TipoPatinesForm = () => {
       if (logoFile) fd.append("logo", logoFile);
 
       if (id) {
-        await api.put(`/tipopatines/${id}`, fd, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        await api.put(`/tipopatines/${id}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
         setErr("Tipo de patín actualizado.");
       } else {
-        await api.post("/tipopatines/agregar", fd, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        await api.post("/tipopatines/agregar", fd, { headers: { "Content-Type": "multipart/form-data" } });
         setErr("Tipo de patín creado.");
       }
       setMessageType("success");
@@ -167,14 +153,14 @@ const TipoPatinesForm = () => {
     } catch (error) {
       let mensaje = "Error al guardar.";
       if (error.response && error.response.data) {
-        if (typeof error.response.data === "string")
-          mensaje = error.response.data;
+        if (typeof error.response.data === "string") mensaje = error.response.data;
         else if (error.response.data.error) mensaje = error.response.data.error;
-        else if (error.response.data.message)
-          mensaje = error.response.data.message;
+        else if (error.response.data.message) mensaje = error.response.data.message;
       }
       setErr(mensaje);
       setMessageType("error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -194,124 +180,113 @@ const TipoPatinesForm = () => {
         <h1 className="text-2xl font-bold text-neutral-900 text-center mb-4">
           {id ? "Editar Tipo de Patín" : "Nuevo Tipo de Patín"}
         </h1>
-        <form
-          className="space-y-4"
-          onSubmit={handleSubmit}
-          encType="multipart/form-data"
-        >
-          <div>
-            <label className="block mb-1 text-sm font-medium">
-              Tabla utilizada
-            </label>
-            <select
-              value={inputs.id_tipo_tabla}
-              onChange={handleParentTabla}
-              className="w-full p-2 border rounded"
-            >
-              <option value="" disabled>
-                Selecciona tabla
-              </option>
-              {tablas.map((t) => (
-                <option key={t.id_tipo_tabla} value={t.id_tipo_tabla}>
-                  {t.titulo}
+        <form className="space-y-4" onSubmit={handleSubmit} encType="multipart/form-data" aria-busy={submitting}>
+          <fieldset disabled={submitting} className="space-y-4">
+            <div>
+              <label className="block mb-1 text-sm font-medium">Tabla utilizada</label>
+              <select value={inputs.id_tipo_tabla} onChange={handleParentTabla} className="w-full p-2 border rounded">
+                <option value="" disabled>
+                  Selecciona tabla
                 </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block mb-1 text-sm font-medium">
-              Taco utilizado
-            </label>
-            <select
-              value={inputs.id_tipo_taco}
-              onChange={handleParentTaco}
-              className="w-full p-2 border rounded"
-            >
-              <option value="" disabled>
-                Selecciona taco
-              </option>
-              {tacos.map((tc) => (
-                <option key={tc.id_tipo_taco} value={tc.id_tipo_taco}>
-                  {tc.titulo}
+                {tablas.map((t) => (
+                  <option key={t.id_tipo_tabla} value={t.id_tipo_tabla}>
+                    {t.titulo}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block mb-1 text-sm font-medium">Taco utilizado</label>
+              <select value={inputs.id_tipo_taco} onChange={handleParentTaco} className="w-full p-2 border rounded">
+                <option value="" disabled>
+                  Selecciona taco
                 </option>
-              ))}
-            </select>
-          </div>
-          {selectedTabla && selectedTaco && (
-            <div className="text-sm text-gray-700">
-              <p>
-                <strong>Stock Tabla:</strong> {selectedTabla.stock}
-              </p>
-              <p>
-                <strong>Stock Tacos:</strong> {selectedTaco.stock}
-              </p>
-              <p>
-                <strong>Máximo patines posible:</strong> {stockMax}
-              </p>
+                {tacos.map((tc) => (
+                  <option key={tc.id_tipo_taco} value={tc.id_tipo_taco}>
+                    {tc.titulo}
+                  </option>
+                ))}
+              </select>
             </div>
-          )}
-          {currentUser?.tipo === "admin" && (
-            <div className="text-sm text-gray-700">
-              <p>
-                <strong>Precio calculado (auto): </strong>
-                {precioPreview !== null ? `$ ${precioPreview}` : "—"}
-              </p>
-              <p className="text-xs text-gray-500">
-                Se calcula como: precio tabla × {TABLES_PER_PATIN} + precio taco
-                × {TACOS_PER_PATIN}.
-              </p>
-            </div>
-          )}
-          <input
-            name="titulo"
-            value={inputs.titulo}
-            onChange={handleChange}
-            placeholder="Título"
-            className="w-full p-2 border rounded"
-          />
-          <input
-            name="medidas"
-            value={inputs.medidas}
-            onChange={handleChange}
-            placeholder="Medidas"
-            className="w-full p-2 border rounded"
-          />
-          <input
-            name="stock"
-            value={inputs.stock}
-            onChange={handleChange}
-            placeholder="Stock"
-            className="w-full p-2 border rounded"
-          />
-          <textarea
-            name="comentarios"
-            value={inputs.comentarios}
-            onChange={handleChange}
-            placeholder="Comentarios"
-            className="w-full p-2 border rounded"
-          />
-          <div>
-            <label>Logo</label>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleLogoChange}
-              className="w-full p-2 border rounded"
-            />
-            {preview && (
-              <div className="relative mt-2">
-                <img src={preview} alt="Preview" className="w-full rounded" />
-                <button
-                  type="button"
-                  onClick={clearLogo}
-                  className="absolute top-1 right-1 bg-gray-800 text-white rounded-full px-2"
-                >
-                  ×
-                </button>
+            {selectedTabla && selectedTaco && (
+              <div className="text-sm text-gray-700">
+                <p>
+                  <strong>Stock Tabla:</strong> {selectedTabla.stock}
+                </p>
+                <p>
+                  <strong>Stock Tacos:</strong> {selectedTaco.stock}
+                </p>
+                <p>
+                  <strong>Máximo patines posible:</strong> {stockMax ?? 0}
+                </p>
               </div>
             )}
-          </div>
+            {currentUser?.tipo === "admin" && (
+              <div className="text-sm text-gray-700">
+                <p>
+                  <strong>Precio calculado (auto): </strong>
+                  {precioPreview !== null ? `$ ${precioPreview}` : "—"}
+                </p>
+                <p className="text-xs text-gray-500">
+                  Se calcula como: precio tabla × {TABLES_PER_PATIN} + precio taco × {TACOS_PER_PATIN}.
+                </p>
+              </div>
+            )}
+            <input
+              name="titulo"
+              value={inputs.titulo}
+              onChange={handleChange}
+              placeholder="Título"
+              className="w-full p-2 border rounded"
+            />
+            <input
+              name="medidas"
+              value={inputs.medidas}
+              onChange={handleChange}
+              placeholder="Medidas"
+              className="w-full p-2 border rounded"
+            />
+            <input
+              name="stock"
+              value={inputs.stock}
+              onChange={handleChange}
+              placeholder="Stock"
+              inputMode="numeric"
+              pattern="\d*"
+              max={stockMax !== undefined ? stockMax : undefined}
+              className="w-full p-2 border rounded"
+            />
+            <textarea
+              name="comentarios"
+              value={inputs.comentarios}
+              onChange={handleChange}
+              placeholder="Comentarios"
+              className="w-full p-2 border rounded"
+            />
+            <div>
+              <label>Logo</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleLogoChange}
+                className="w-full p-2 border rounded"
+              />
+              {preview && (
+                <div className="relative mt-2">
+                  <img src={preview} alt="Preview" className="w-full rounded" />
+                  <button
+                    type="button"
+                    onClick={clearLogo}
+                    className="absolute top-1 right-1 bg-gray-800 text-white rounded-full px-2"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+            </div>
+          </fieldset>
+
           {err && (
             <div className="mb-3">
               <Alert
@@ -327,9 +302,16 @@ const TipoPatinesForm = () => {
           )}
           <button
             type="submit"
-            className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            disabled={submitting}
+            className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {id ? "Guardar Cambios" : "Crear Tipo de Patín"}
+            {submitting && (
+              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              </svg>
+            )}
+            {id ? (submitting ? "Actualizando..." : "Guardar Cambios") : submitting ? "Agregando..." : "Crear Tipo de Patín"}
           </button>
           <p className="mt-4 text-center text-sm">
             <Link to="/tipopatines/listar" className="underline">

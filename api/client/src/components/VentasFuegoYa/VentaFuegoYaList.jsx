@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import VentaFuegoyaCard from "./VentaFuegoYaCard";
 import DeleteConfirm from "../Modals/DeleteConfirm";
 
-const PAGO_ESTADOS = ["", "credito", "pago"]; 
+const PAGO_ESTADOS = ["", "credito", "pago"];
 
 const monthNames = [
   "Enero","Febrero","Marzo","Abril","Mayo","Junio",
@@ -13,7 +13,7 @@ const monthNames = [
 
 const yyyymmFirst = (y, m) => `${y}-${String(m).padStart(2,"0")}-01`;
 const yyyymmLast  = (y, m) => {
-  const last = new Date(Number(y), Number(m), 0); 
+  const last = new Date(Number(y), Number(m), 0);
   const yyyy = last.getFullYear();
   const mm   = String(last.getMonth()+1).padStart(2,"0");
   const dd   = String(last.getDate()).padStart(2,"0");
@@ -24,12 +24,15 @@ const VentaFuegoYaList = () => {
   const [ventas, setVentas] = useState([]);
   const [error, setError]   = useState("");
 
-  const [clienteQ, setClienteQ]     = useState(""); 
-  const [estadopago, setEstadopago] = useState(""); 
+  // 🔄 Nuevo: lista de clientes + selección
+  const [clientes, setClientes] = useState([]);
+  const [clienteId, setClienteId] = useState(""); // "" = todos
+
+  const [estadopago, setEstadopago] = useState("");
 
   const now = useMemo(() => new Date(), []);
-  const [anio, setAnio]   = useState(String(now.getFullYear()));
-  const [mes, setMes]     = useState(String(now.getMonth() + 1)); 
+  const [anio, setAnio] = useState(String(now.getFullYear()));
+  const [mes, setMes]   = useState(String(now.getMonth() + 1));
 
   const yearOptions = useMemo(() => {
     const y = now.getFullYear();
@@ -42,12 +45,33 @@ const VentaFuegoYaList = () => {
 
   const navigate = useNavigate();
 
+  // 🔄 Cargar clientes para el select
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await api.get("/clientesfuegoya/listar");
+        setClientes(Array.isArray(data) ? data : []);
+      } catch {
+        // No frenamos la UI si falla: sólo no habrá opciones
+        setClientes([]);
+      }
+    })();
+  }, []);
+
   const fetchVentas = useCallback(async () => {
     try {
       const params = new URLSearchParams();
 
-      if (clienteQ.trim()) params.append("cliente", clienteQ.trim());
-      if (estadopago)      params.append("estadopago", estadopago);
+      // Si hay cliente seleccionado, usamos su nombre para el filtro existente (?cliente=)
+      if (clienteId) {
+        const c = clientes.find(
+          (x) => String(x.id_cliente) === String(clienteId)
+        );
+        const nombre = (c?.nombre || "").trim();
+        if (nombre) params.append("cliente", nombre);
+      }
+
+      if (estadopago) params.append("estadopago", estadopago);
 
       if (anio && mes) {
         const desde = yyyymmFirst(anio, mes);
@@ -64,7 +88,7 @@ const VentaFuegoYaList = () => {
       console.error(e);
       setError("No se pudieron cargar las ventas.");
     }
-  }, [clienteQ, estadopago, anio, mes]);
+  }, [clienteId, clientes, estadopago, anio, mes]);
 
   useEffect(() => {
     fetchVentas();
@@ -89,7 +113,7 @@ const VentaFuegoYaList = () => {
   const handlePagoChanged = () => fetchVentas();
 
   const resetFiltros = () => {
-    setClienteQ("");
+    setClienteId("");
     setEstadopago("");
     setAnio(String(now.getFullYear()));
     setMes(String(now.getMonth() + 1));
@@ -109,14 +133,19 @@ const VentaFuegoYaList = () => {
 
       {/* Filtros */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-4">
-        {/* Cliente */}
-        <input
-          type="text"
-          value={clienteQ}
-          onChange={(e) => setClienteQ(e.target.value)}
+        {/* Cliente (select) */}
+        <select
+          value={clienteId}
+          onChange={(e) => setClienteId(e.target.value)}
           className="md:col-span-4 p-2 border border-gray-300 rounded"
-          placeholder="Buscar por cliente (nombre)"
-        />
+        >
+          <option value="">Cliente (todos)</option>
+          {clientes.map((c) => (
+            <option key={c.id_cliente} value={String(c.id_cliente)}>
+              {c.nombre || `Cliente #${c.id_cliente}`}
+            </option>
+          ))}
+        </select>
 
         {/* Estado de pago */}
         <select

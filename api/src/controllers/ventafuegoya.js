@@ -418,28 +418,109 @@ export const deleteVentaFuegoya = async (req, res) => {
     const { id } = req.params;
 
     await conn.beginTransaction();
-    const [[row]] = await conn.query(
-      `SELECT id_fuego_ya, cantidadbolsas, foto FROM venta_fuegoya WHERE id_ventaFuegoya = ? FOR UPDATE`,
+
+    const [[venta]] = await conn.query(
+      `SELECT id_cliente, id_fuego_ya, cantidadbolsas, foto
+         FROM venta_fuegoya
+        WHERE id_ventaFuegoya = ?
+        FOR UPDATE`,
       [id]
     );
-    if (!row) {
+    if (!venta) {
       await conn.rollback();
       return res.status(404).json("Venta Fuegoya no encontrada!");
     }
-    const addBack = parseInt(row.cantidadbolsas, 10) || 0;
 
-    if (row.id_fuego_ya && addBack > 0) {
+    const addBack = parseInt(venta.cantidadbolsas, 10) || 0;
+
+    const [apps] = await conn.query(
+      `SELECT id_aplicacion, id_pago, monto
+         FROM fuegoya_pago_aplicaciones
+        WHERE id_ventaFuegoya = ?
+        ORDER BY aplicado_en ASC, id_aplicacion ASC
+        FOR UPDATE`,
+      [id]
+    );
+
+    if (apps.length) {
+      const [ventasCredito] = await conn.query(
+        `SELECT v.id_ventaFuegoya
+           FROM venta_fuegoya v
+          WHERE v.id_cliente = ?
+            AND v.id_ventaFuegoya <> ?
+            AND v.estadopago = 'credito'
+          ORDER BY v.fecha_realizada ASC, v.id_ventaFuegoya ASC
+          FOR UPDATE`,
+        [venta.id_cliente, id]
+      );
+
+      for (const app of apps) {
+        let aReasignar = Number(app.monto);
+
+        for (const vc of ventasCredito) {
+          if (aReasignar <= 0) break;
+
+          const [[pend]] = await conn.query(
+            `SELECT v.precio_total - COALESCE(SUM(a.monto),0) AS pendiente
+               FROM venta_fuegoya v
+          LEFT JOIN fuegoya_pago_aplicaciones a ON a.id_ventaFuegoya = v.id_ventaFuegoya
+              WHERE v.id_ventaFuegoya = ?
+           GROUP BY v.id_ventaFuegoya
+               FOR UPDATE`,
+            [vc.id_ventaFuegoya]
+          );
+
+          const pendiente = Math.max(0, Number(pend?.pendiente ?? 0));
+          if (pendiente <= 0) continue;
+
+          const mov = Math.min(aReasignar, pendiente);
+
+          await conn.query(
+            `INSERT INTO fuegoya_pago_aplicaciones (id_pago, id_ventaFuegoya, monto)
+             VALUES (?,?,?)`,
+            [app.id_pago, vc.id_ventaFuegoya, mov]
+          );
+
+          aReasignar -= mov;
+
+          if (mov === pendiente) {
+            await conn.query(
+              `UPDATE venta_fuegoya
+                  SET estadopago = 'pago', fechapago = NOW()
+                WHERE id_ventaFuegoya = ?`,
+              [vc.id_ventaFuegoya]
+            );
+          }
+        }
+
+        await conn.query(
+          `DELETE FROM fuegoya_pago_aplicaciones WHERE id_aplicacion = ?`,
+          [app.id_aplicacion]
+        );
+      }
+    }
+
+    if (venta.id_fuego_ya && addBack > 0) {
       await conn.query(
         `UPDATE fuego_ya SET stock = stock + ? WHERE id_fuego_ya = ?`,
-        [addBack, row.id_fuego_ya]
+        [addBack, venta.id_fuego_ya]
       );
     }
 
-    await conn.query(`DELETE FROM venta_fuegoya WHERE id_ventaFuegoya = ?`, [id]);
+    await conn.query(
+      `DELETE FROM fuegoya_pago_aplicaciones WHERE id_ventaFuegoya = ?`,
+      [id]
+    );
+
+    await conn.query(
+      `DELETE FROM venta_fuegoya WHERE id_ventaFuegoya = ?`,
+      [id]
+    );
+
     await conn.commit();
 
-    if (row.foto) {
-      try { await r2Delete(row.foto); } catch {}
+    if (venta.foto) {
+      try { await r2Delete(venta.foto); } catch {}
     }
 
     return res.status(200).json("Venta Fuegoya eliminada correctamente!");
@@ -451,6 +532,7 @@ export const deleteVentaFuegoya = async (req, res) => {
     conn.release();
   }
 };
+
 
 /* ============================= LIST ============================ */
 export const listVentaFuegoya = async (req, res) => {

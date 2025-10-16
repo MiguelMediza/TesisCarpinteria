@@ -4,6 +4,7 @@ import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
 import tablasBackground from "../../assets/tablasBackground.jpg";
 import Alert from "../Modals/Alert";
+
 const TablasForm = () => {
   const { currentUser } = useContext(AuthContext);
   const { id } = useParams();
@@ -27,6 +28,7 @@ const TablasForm = () => {
   const [preview, setPreview] = useState(null);
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -45,7 +47,7 @@ const TablasForm = () => {
           comentarios: data.comentarios || "",
         });
         if (data.foto_url) {
-          setPreview(data.foto_url); 
+          setPreview(data.foto_url);
         }
       })
       .catch(() => {
@@ -106,6 +108,7 @@ const TablasForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
     const validationError = validateInputs();
     if (validationError) {
       setErr(validationError);
@@ -113,6 +116,7 @@ const TablasForm = () => {
       return;
     }
     try {
+      setSubmitting(true);
       const formData = new FormData();
       Object.entries(inputs).forEach(([key, value]) => {
         if (key === "precio_unidad") {
@@ -140,7 +144,6 @@ const TablasForm = () => {
       setMessageType("success");
       setInputs(initialInputs);
       clearImage();
-
       setTimeout(() => navigate("/tablas/listar"), 500);
     } catch (error) {
       let msg = "Error al guardar la tabla.";
@@ -150,6 +153,8 @@ const TablasForm = () => {
       }
       setErr(msg);
       setMessageType("error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -173,218 +178,221 @@ const TablasForm = () => {
           className="space-y-4 md:space-y-6"
           onSubmit={handleSubmit}
           encType="multipart/form-data"
+          aria-busy={submitting}
         >
-          <div>
-            <label
-              htmlFor="titulo"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
-              Título
-            </label>
-            <input
-              type="text"
-              name="titulo"
-              id="titulo"
-              value={inputs.titulo}
-              onChange={handleChange}
-              placeholder="Título de la tabla"
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="largo_cm"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
-              Largo (cm)
-            </label>
-            <input
-              type="text"
-              inputMode="decimal"
-              name="largo_cm"
-              id="largo_cm"
-              value={inputs.largo_cm}
-              onChange={handleChange}
-              placeholder="Ej: 200"
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="ancho_cm"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
-              Ancho (cm)
-            </label>
-            <input
-              type="text"
-              inputMode="decimal"
-              name="ancho_cm"
-              id="ancho_cm"
-              value={inputs.ancho_cm}
-              onChange={handleChange}
-              placeholder="Ej: 25"
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="espesor_mm"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
-              Espesor (mm)
-            </label>
-            <input
-              type="text"
-              inputMode="decimal"
-              name="espesor_mm"
-              id="espesor_mm"
-              value={inputs.espesor_mm}
-              onChange={handleChange}
-              placeholder="Ej: 20"
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="tipo_madera"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
-              Tipo de Madera
-            </label>
-            <select
-              name="tipo_madera"
-              id="tipo_madera"
-              value={inputs.tipo_madera}
-              onChange={handleChange}
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-            >
-              <option value="" disabled>
-                Selecciona un tipo
-              </option>
-              <option value="pino">Pino</option>
-              <option value="eucalipto">Eucalipto</option>
-              <option value="álamo">Álamo</option>
-            </select>
-          </div>
-
-          <div>
-            <label
-              htmlFor="cepilladas"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
-              Cepilladas
-            </label>
-            <select
-              name="cepilladas"
-              id="cepilladas"
-              value={inputs.cepilladas}
-              onChange={handleChange}
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-            >
-              <option value="" disabled>
-                Cepillada
-              </option>
-              <option value="si">Si</option>
-              <option value="no">No</option>
-            </select>
-          </div>
-
-          {currentUser?.tipo !== "encargado" && (
+          <fieldset disabled={submitting} className="space-y-4 md:space-y-6">
             <div>
               <label
-                htmlFor="precio_unidad"
+                htmlFor="titulo"
                 className="block mb-1 text-sm font-medium text-neutral-800"
               >
-                Precio Unitario
+                Título
+              </label>
+              <input
+                type="text"
+                name="titulo"
+                id="titulo"
+                value={inputs.titulo}
+                onChange={handleChange}
+                placeholder="Título de la tabla"
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="largo_cm"
+                className="block mb-1 text-sm font-medium text-neutral-800"
+              >
+                Largo (cm)
               </label>
               <input
                 type="text"
                 inputMode="decimal"
-                name="precio_unidad"
-                id="precio_unidad"
-                value={inputs.precio_unidad}
+                name="largo_cm"
+                id="largo_cm"
+                value={inputs.largo_cm}
                 onChange={handleChange}
-                placeholder="Ej: 12.50"
+                placeholder="Ej: 200"
                 className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
               />
             </div>
-          )}
 
-          <div>
-            <label
-              htmlFor="stock"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
-              Stock
-            </label>
-            <input
-              type="text"
-              inputMode="numeric"
-              name="stock"
-              id="stock"
-              value={inputs.stock}
-              onChange={handleChange}
-              placeholder="Ej: 50"
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-            />
-          </div>
+            <div>
+              <label
+                htmlFor="ancho_cm"
+                className="block mb-1 text-sm font-medium text-neutral-800"
+              >
+                Ancho (cm)
+              </label>
+              <input
+                type="text"
+                inputMode="decimal"
+                name="ancho_cm"
+                id="ancho_cm"
+                value={inputs.ancho_cm}
+                onChange={handleChange}
+                placeholder="Ej: 25"
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+              />
+            </div>
 
-          <div>
-            <label
-              htmlFor="foto"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
-              Foto
-            </label>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              name="foto"
-              id="foto"
-              onChange={handleFotoChange}
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-            />
-            {preview && (
-              <div className="relative mt-2">
-                <img
-                  src={preview}
-                  alt="Preview"
-                  className="w-full h-auto rounded"
-                />
-                <button
-                  type="button"
-                  onClick={clearImage}
-                  className="absolute top-1 right-1 bg-gray-800 bg-opacity-50 text-white rounded-full p-1 hover:bg-opacity-75"
+            <div>
+              <label
+                htmlFor="espesor_mm"
+                className="block mb-1 text-sm font-medium text-neutral-800"
+              >
+                Espesor (mm)
+              </label>
+              <input
+                type="text"
+                inputMode="decimal"
+                name="espesor_mm"
+                id="espesor_mm"
+                value={inputs.espesor_mm}
+                onChange={handleChange}
+                placeholder="Ej: 20"
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="tipo_madera"
+                className="block mb-1 text-sm font-medium text-neutral-800"
+              >
+                Tipo de Madera
+              </label>
+              <select
+                name="tipo_madera"
+                id="tipo_madera"
+                value={inputs.tipo_madera}
+                onChange={handleChange}
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+              >
+                <option value="" disabled>
+                  Selecciona un tipo
+                </option>
+                <option value="pino">Pino</option>
+                <option value="eucalipto">Eucalipto</option>
+                <option value="álamo">Álamo</option>
+              </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor="cepilladas"
+                className="block mb-1 text-sm font-medium text-neutral-800"
+              >
+                Cepilladas
+              </label>
+              <select
+                name="cepilladas"
+                id="cepilladas"
+                value={inputs.cepilladas}
+                onChange={handleChange}
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+              >
+                <option value="" disabled>
+                  Cepillada
+                </option>
+                <option value="si">Si</option>
+                <option value="no">No</option>
+              </select>
+            </div>
+
+            {currentUser?.tipo !== "encargado" && (
+              <div>
+                <label
+                  htmlFor="precio_unidad"
+                  className="block mb-1 text-sm font-medium text-neutral-800"
                 >
-                  &times;
-                </button>
+                  Precio Unitario
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  name="precio_unidad"
+                  id="precio_unidad"
+                  value={inputs.precio_unidad}
+                  onChange={handleChange}
+                  placeholder="Ej: 12.50"
+                  className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                />
               </div>
             )}
-          </div>
 
-          <div>
-            <label
-              htmlFor="comentarios"
-              className="block mb-1 text-sm font-medium text-neutral-800"
-            >
-              Comentarios
-            </label>
-            <textarea
-              name="comentarios"
-              id="comentarios"
-              value={inputs.comentarios}
-              onChange={handleChange}
-              placeholder="Comentarios adicionales"
-              rows={3}
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-            />
-          </div>
+            <div>
+              <label
+                htmlFor="stock"
+                className="block mb-1 text-sm font-medium text-neutral-800"
+              >
+                Stock
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                name="stock"
+                id="stock"
+                value={inputs.stock}
+                onChange={handleChange}
+                placeholder="Ej: 50"
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="foto"
+                className="block mb-1 text-sm font-medium text-neutral-800"
+              >
+                Foto
+              </label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                name="foto"
+                id="foto"
+                onChange={handleFotoChange}
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+              />
+              {preview && (
+                <div className="relative mt-2">
+                  <img
+                    src={preview}
+                    alt="Preview"
+                    className="w-full h-auto rounded"
+                  />
+                  <button
+                    type="button"
+                    onClick={clearImage}
+                    className="absolute top-1 right-1 bg-gray-800 bg-opacity-50 text-white rounded-full p-1 hover:bg-opacity-75"
+                  >
+                    &times;
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label
+                htmlFor="comentarios"
+                className="block mb-1 text-sm font-medium text-neutral-800"
+              >
+                Comentarios
+              </label>
+              <textarea
+                name="comentarios"
+                id="comentarios"
+                value={inputs.comentarios}
+                onChange={handleChange}
+                placeholder="Comentarios adicionales"
+                rows={3}
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+              />
+            </div>
+          </fieldset>
 
           {err && (
             <div className="mb-3">
@@ -402,9 +410,38 @@ const TablasForm = () => {
 
           <button
             type="submit"
-            className="w-full py-2.5 text-white bg-neutral-700 hover:bg-neutral-800 rounded transition"
+            disabled={submitting}
+            className="w-full py-2.5 text-white bg-neutral-700 hover:bg-neutral-800 rounded transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {id ? "Guardar Cambios" : "Crear Tabla"}
+            {submitting && (
+              <svg
+                className="h-4 w-4 animate-spin"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                />
+              </svg>
+            )}
+            {id
+              ? submitting
+                ? "Actualizando..."
+                : "Guardar Cambios"
+              : submitting
+              ? "Agregando..."
+              : "Crear Tabla"}
           </button>
           <p className="mt-4 text-sm text-neutral-700 text-center">
             <Link to="/tablas/listar" className="font-medium underline">

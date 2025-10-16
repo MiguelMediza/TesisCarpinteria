@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { api } from "../../api";
 import bgImg from "../../assets/tablasBackground.jpg";
@@ -7,7 +7,6 @@ import Alert from "../Modals/Alert";
 const PAGO_OPCIONES = ["credito", "pago"];
 const ADD_SENTINEL = "__add_client__";
 
-// 🔧 Siempre devolvemos string legible para mostrar en <Alert>
 const normalizeError = (error, fallback = "Ocurrió un error.") => {
   const data = error?.response?.data;
   if (typeof data === "string") return data;
@@ -16,7 +15,7 @@ const normalizeError = (error, fallback = "Ocurrió un error.") => {
   }
   return fallback;
 };
-
+ 
 const VentaFuegoYaForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -43,8 +42,10 @@ const VentaFuegoYaForm = () => {
   const [precioTouched, setPrecioTouched] = useState(false);
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  // Modal "Agregar cliente"
+  const fileInputRef = useRef(null);
+
   const [showAddCliente, setShowAddCliente] = useState(false);
   const [newCliente, setNewCliente] = useState({
     nombre: "",
@@ -54,7 +55,6 @@ const VentaFuegoYaForm = () => {
   const [savingCliente, setSavingCliente] = useState(false);
   const [clientErr, setClientErr] = useState("");
 
-  // Emails ya existentes (para prevenir duplicados en front)
   const emailsEnUso = useMemo(
     () =>
       new Set(
@@ -89,7 +89,6 @@ const VentaFuegoYaForm = () => {
   }, [fuegos]);
 
   const getAxiosMessage = (error, fallback = "Error al guardar la venta.") => {
-    // También normalizamos aquí para garantizar string
     return normalizeError(error, fallback);
   };
 
@@ -103,7 +102,6 @@ const VentaFuegoYaForm = () => {
         setClientes(cliRes.data || []);
         setFuegos(fyRes.data || []);
       } catch (e) {
-        console.error(e);
         setErr("No se pudieron cargar clientes / FuegoYa.");
         setMessageType("error");
       }
@@ -132,7 +130,6 @@ const VentaFuegoYaForm = () => {
         setBorrarFoto(false);
         setPrecioTouched(true);
       } catch (e) {
-        console.error(e);
         setErr("No se pudo cargar la venta.");
         setMessageType("error");
       }
@@ -168,12 +165,30 @@ const VentaFuegoYaForm = () => {
     }
   }, [fuegos, inputs.id_fuego_ya, inputs.cantidadbolsas]);
 
+  const handleIntKeyDown = (e) => {
+    if (["e", "E", "+", "-", ".", ",", " "].includes(e.key)) e.preventDefault();
+  };
+  const handleIntPaste = (e, field) => {
+    e.preventDefault();
+    const digits = (e.clipboardData.getData("text") || "").replace(/\D/g, "");
+    setInputs((prev) => ({ ...prev, [field]: digits }));
+  };
+  const handleDecimalKeyDown = (e) => {
+    if (["e", "E", "+", "-", ",", " "].includes(e.key)) e.preventDefault();
+  };
+  const handleDecimalPaste = (e) => {
+    e.preventDefault();
+    const raw = (e.clipboardData.getData("text") || "").replace(/[^0-9.]/g, "");
+    const parts = raw.split(".");
+    const sane = parts.length > 2 ? `${parts[0]}.${parts.slice(1).join("")}` : raw;
+    setInputs((prev) => ({ ...prev, precio_total: sane }));
+    setPrecioTouched(true);
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-
     setInputs((prev) => {
       const next = { ...prev, [name]: value };
-
       if (name === "precio_total") {
         const raw = value.replace(/[^0-9.]/g, "");
         const parts = raw.split(".");
@@ -182,11 +197,9 @@ const VentaFuegoYaForm = () => {
         next.precio_total = sane;
         setPrecioTouched(true);
       }
-
       if (name === "cantidadbolsas") {
         next.cantidadbolsas = value.replace(/[^\d]/g, "");
       }
-
       return next;
     });
   };
@@ -208,10 +221,8 @@ const VentaFuegoYaForm = () => {
 
   const saveNewCliente = async () => {
     setClientErr("");
-
     const nombre = newCliente.nombre.trim();
     const email = (newCliente.email || "").trim().toLowerCase();
-
     if (!nombre) {
       setClientErr("El nombre es obligatorio.");
       return;
@@ -220,7 +231,6 @@ const VentaFuegoYaForm = () => {
       setClientErr("Ya existe un cliente con ese correo.");
       return;
     }
-
     setSavingCliente(true);
     try {
       const payload = {
@@ -229,10 +239,8 @@ const VentaFuegoYaForm = () => {
         email: email || null,
       };
       const res = await api.post("/clientesfuegoya/agregar", payload);
-
       let created = (res && res.data) || null;
       let newId = created?.id_cliente ?? created?.insertId ?? null;
-
       if (!newId) {
         const list = await api.get("/clientesfuegoya/listar");
         const data = list.data || [];
@@ -244,29 +252,21 @@ const VentaFuegoYaForm = () => {
         created =
           candidatos.sort((a, b) => b.id_cliente - a.id_cliente)[0] ||
           data.sort((a, b) => b.id_cliente - a.id_cliente)[0];
-
         newId = created?.id_cliente;
       }
-
       if (newId) {
         setClientes((prev) => {
-          if (prev.some((c) => String(c.id_cliente) === String(newId)))
-            return prev;
-
+          if (prev.some((c) => String(c.id_cliente) === String(newId))) return prev;
           const toAdd = {
             id_cliente: newId,
             nombre: (created && created.nombre) || nombre,
-            telefono:
-              (created && created.telefono) ?? (newCliente.telefono || null),
+            telefono: (created && created.telefono) ?? (newCliente.telefono || null),
             email: (created && created.email) ?? (email || null),
           };
-
           return [...prev, toAdd];
         });
-
         setInputs((prev) => ({ ...prev, id_cliente: String(newId) }));
       }
-
       setShowAddCliente(false);
       setNewCliente({ nombre: "", telefono: "", email: "" });
     } catch (e) {
@@ -290,6 +290,7 @@ const VentaFuegoYaForm = () => {
     setPreviewUrl(null);
     setPrecioTouched(false);
     setBorrarFoto(!!id);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const recalcPrecio = () => {
@@ -319,6 +320,7 @@ const VentaFuegoYaForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
 
     const fySel = fuegos.find(
       (f) => String(f.id_fuego_ya) === String(inputs.id_fuego_ya)
@@ -331,7 +333,6 @@ const VentaFuegoYaForm = () => {
       setMessageType("error");
       return;
     }
-
     const v = validar();
     if (v) {
       setErr(v);
@@ -348,7 +349,6 @@ const VentaFuegoYaForm = () => {
       fd.append("cantidadbolsas", inputs.cantidadbolsas);
     if (inputs.comentarios) fd.append("comentarios", inputs.comentarios);
     if (inputs.estadopago) fd.append("estadopago", inputs.estadopago);
-
     if (fotoFile) {
       fd.append("foto", fotoFile);
     } else if (id && borrarFoto) {
@@ -356,6 +356,7 @@ const VentaFuegoYaForm = () => {
     }
 
     try {
+      setSubmitting(true);
       if (id) {
         await api.put(`/ventafuegoya/${id}`, fd);
         setErr("Venta Fuegoya actualizada correctamente.");
@@ -366,11 +367,17 @@ const VentaFuegoYaForm = () => {
       setMessageType("success");
       setTimeout(() => navigate("/ventafuegoya/listar"), 800);
     } catch (e) {
-      console.error(e);
       setErr(getAxiosMessage(e, "Error al guardar la venta."));
       setMessageType("error");
+    } finally {
+      setSubmitting(false);
     }
   };
+
+  const unitPrice = inputs.id_fuego_ya ? getUnitPrice(inputs.id_fuego_ya) : null;
+  const selectedFy = inputs.id_fuego_ya
+    ? fuegos.find((f) => String(f.id_fuego_ya) === String(inputs.id_fuego_ya))
+    : null;
 
   return (
     <section className="relative flex items-center justify-center min-h-screen bg-neutral-50">
@@ -390,189 +397,207 @@ const VentaFuegoYaForm = () => {
           {id ? "Editar Venta" : "Nueva Venta"}
         </h1>
 
-        <form className="space-y-5" onSubmit={handleSubmit}>
-          {/* Fuego Ya */}
-          <div>
-            <label className="block mb-1 text-sm font-medium">Fuego Ya *</label>
-            <select
-              name="id_fuego_ya"
-              value={inputs.id_fuego_ya}
-              onChange={handleChange}
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
-            >
-              <option value="">Seleccionar Fuego Ya</option>
-              {fuegos.map((f) => (
-                <option key={f.id_fuego_ya} value={f.id_fuego_ya}>
-                  {f.tipo || `FuegoYa #${f.id_fuego_ya}`}
+        <form className="space-y-5" onSubmit={handleSubmit} aria-busy={submitting}>
+          <fieldset disabled={submitting} className="space-y-5">
+            <div>
+              <label className="block mb-1 text-sm font-medium">Fuego Ya *</label>
+              <select
+                name="id_fuego_ya"
+                value={inputs.id_fuego_ya}
+                onChange={handleChange}
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
+              >
+                <option value="">Seleccionar Fuego Ya</option>
+                {fuegos.map((f) => (
+                  <option key={f.id_fuego_ya} value={f.id_fuego_ya}>
+                    {f.tipo || `FuegoYa #${f.id_fuego_ya}`}
+                  </option>
+                ))}
+              </select>
+              {inputs.id_fuego_ya && (
+                <div className="text-xs text-neutral-600 mt-1 space-y-0.5">
+                  <p>
+                    Precio unitario:{" "}
+                    {unitPrice != null
+                      ? unitPrice.toLocaleString("es-UY", {
+                          style: "currency",
+                          currency: "UYU",
+                        })
+                      : "—"}
+                  </p>
+                  {Number.isFinite?.(selectedFy?.stock) && (
+                    <p>Stock disponible: {selectedFy?.stock ?? "—"}</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block mb-1 text-sm font-medium">Cliente *</label>
+              <select
+                name="id_cliente"
+                value={inputs.id_cliente}
+                onChange={handleClienteSelect}
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
+              >
+                <option value="" disabled>
+                  Seleccionar cliente
                 </option>
-              ))}
-            </select>
-            {inputs.id_fuego_ya && (
-              <p className="text-xs text-neutral-600 mt-1">
-                Precio unitario:{" "}
-                {(() => {
-                  const u = getUnitPrice(inputs.id_fuego_ya);
-                  return u != null
-                    ? u.toLocaleString("es-UY", {
-                        style: "currency",
-                        currency: "UYU",
-                      })
-                    : "—";
-                })()}
-              </p>
-            )}
-          </div>
+                {clientes.map((c) => (
+                  <option key={c.id_cliente} value={String(c.id_cliente)}>
+                    {c.nombre || `Cliente #${c.id_cliente}`}
+                  </option>
+                ))}
+                <option value={ADD_SENTINEL}>➕ Agregar cliente…</option>
+              </select>
+            </div>
 
-          {/* Cliente con opción Agregar */}
-          <div>
-            <label className="block mb-1 text-sm font-medium">Cliente *</label>
-            <select
-              name="id_cliente"
-              value={inputs.id_cliente}
-              onChange={handleClienteSelect}
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
-            >
-              <option value="" disabled>
-                Seleccionar cliente
-              </option>
-              {clientes.map((c) => (
-                <option key={c.id_cliente} value={String(c.id_cliente)}>
-                  {c.nombre || `Cliente #${c.id_cliente}`}
-                </option>
-              ))}
-              <option value={ADD_SENTINEL}>➕ Agregar cliente…</option>
-            </select>
-          </div>
+            <div>
+              <label className="block mb-1 text-sm font-medium">
+                Fecha realizada *
+              </label>
+              <input
+                type="date"
+                name="fecha_realizada"
+                value={inputs.fecha_realizada}
+                onChange={handleChange}
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
+              />
+            </div>
 
-          {/* Fecha realizada */}
-          <div>
-            <label className="block mb-1 text-sm font-medium">
-              Fecha realizada *
-            </label>
-            <input
-              type="date"
-              name="fecha_realizada"
-              value={inputs.fecha_realizada}
-              onChange={handleChange}
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
-            />
-          </div>
-
-          {/* Cantidad de bolsas */}
-          <div>
-            <label className="block mb-1 text-sm font-medium">
-              Cantidad de bolsas
-            </label>
-            <input
-              type="text"
-              inputMode="numeric"
-              name="cantidadbolsas"
-              value={inputs.cantidadbolsas}
-              onChange={handleChange}
-              placeholder="Ej: 10"
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
-            />
-          </div>
-
-          {/* Estado de pago */}
-          <div>
-            <label className="block mb-1 text-sm font-medium">
-              Estado de pago
-            </label>
-            <select
-              name="estadopago"
-              value={inputs.estadopago}
-              onChange={handleChange}
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
-            >
-              {PAGO_OPCIONES.map((p) => (
-                <option key={p} value={p}>
-                  {p === "pago" ? "Pagado" : "Crédito / Sin pagar"}
-                </option>
-              ))}
-            </select>
-            {id && (
-              <p className="text-xs text-neutral-600 mt-1">
-                {fechapagoView ? (
-                  <>
-                    Fecha de pago registrada:{" "}
-                    <span className="font-medium">
-                      {formatDateTime(fechapagoView)}
-                    </span>
-                  </>
-                ) : (
-                  "Aún en crédito / sin pagar"
-                )}
-              </p>
-            )}
-          </div>
-
-          {/* Precio total */}
-          <div>
-            <label className="block mb-1 text-sm font-medium">
-              Precio total
-            </label>
-            <div className="flex gap-2">
+            <div>
+              <label className="block mb-1 text-sm font-medium">
+                Cantidad de bolsas
+              </label>
               <input
                 type="text"
-                inputMode="decimal"
-                name="precio_total"
-                value={inputs.precio_total}
+                inputMode="numeric"
+                name="cantidadbolsas"
+                value={inputs.cantidadbolsas}
                 onChange={handleChange}
-                placeholder="Ej: 1500.00"
-                className="flex-1 p-2 rounded border border-neutral-300 bg-neutral-100"
+                onKeyDown={handleIntKeyDown}
+                onPaste={(e) => handleIntPaste(e, "cantidadbolsas")}
+                placeholder="Ej: 10"
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
               />
-              <button
-                type="button"
-                onClick={recalcPrecio}
-                className="px-3 py-2 rounded bg-neutral-200 hover:bg-neutral-300 text-sm"
-                title="Recalcular según cantidad y precio unitario"
-              >
-                Recalcular
-              </button>
             </div>
-            {!precioTouched &&
-              inputs.id_fuego_ya &&
-              inputs.cantidadbolsas !== "" && (
+
+            <div>
+              <label className="block mb-1 text-sm font-medium">
+                Estado de pago
+              </label>
+              <select
+                name="estadopago"
+                value={inputs.estadopago}
+                onChange={handleChange}
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
+              >
+                {PAGO_OPCIONES.map((p) => (
+                  <option key={p} value={p}>
+                    {p === "pago" ? "Pagado" : "Crédito / Sin pagar"}
+                  </option>
+                ))}
+              </select>
+              {id && (
                 <p className="text-xs text-neutral-600 mt-1">
-                  (Se calcula automáticamente por cantidad × precio unitario)
+                  {fechapagoView ? (
+                    <>
+                      Fecha de pago registrada:{" "}
+                      <span className="font-medium">
+                        {formatDateTime(fechapagoView)}
+                      </span>
+                    </>
+                  ) : (
+                    "Aún en crédito / sin pagar"
+                  )}
                 </p>
               )}
-          </div>
+            </div>
 
-          {/* Foto */}
-          <div>
-            <label className="block mb-1 text-sm font-medium">
-              Foto (opcional)
-            </label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleFile}
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
-            />
-
-            {previewUrl && (
-              <div className="relative mt-2 inline-block">
-                <img
-                  src={previewUrl}
-                  alt="Foto"
-                  className="max-h-48 rounded border"
+            <div>
+              <label className="block mb-1 text-sm font-medium">
+                Precio total
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  name="precio_total"
+                  value={inputs.precio_total}
+                  onChange={handleChange}
+                  onKeyDown={handleDecimalKeyDown}
+                  onPaste={handleDecimalPaste}
+                  placeholder="Ej: 1500.00"
+                  className="flex-1 p-2 rounded border border-neutral-300 bg-neutral-100"
                 />
                 <button
                   type="button"
-                  onClick={clearPhoto}
-                  className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-black/60 text-white text-lg leading-7 text-center hover:bg-black/80"
-                  title="Quitar foto"
-                  aria-label="Quitar foto"
+                  onClick={recalcPrecio}
+                  disabled={unitPrice == null || inputs.id_fuego_ya === ""}
+                  className="px-3 py-2 rounded bg-neutral-200 hover:bg-neutral-300 disabled:opacity-60 text-sm"
+                  title="Recalcular según cantidad y precio unitario"
                 >
-                  ×
+                  Recalcular
                 </button>
               </div>
-            )}
-          </div>
+              {!precioTouched &&
+                inputs.id_fuego_ya &&
+                inputs.cantidadbolsas !== "" && (
+                  <p className="text-xs text-neutral-600 mt-1">
+                    (Se calcula automáticamente por cantidad × precio unitario)
+                  </p>
+                )}
+            </div>
 
-          {/* Mensajes */}
+            <div>
+              <label className="block mb-1 text-sm font-medium">
+                Foto (opcional)
+              </label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFile}
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
+              />
+              {previewUrl && (
+                <div className="relative mt-2 inline-block">
+                  <img
+                    src={previewUrl}
+                    alt="Foto"
+                    className="max-h-48 rounded border"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={clearPhoto}
+                    className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-black/60 text-white text-lg leading-7 text-center hover:bg-black/80"
+                    title="Quitar foto"
+                    aria-label="Quitar foto"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block mb-1 text-sm font-medium">
+                Comentarios
+              </label>
+              <textarea
+                name="comentarios"
+                value={inputs.comentarios}
+                onChange={handleChange}
+                placeholder="Comentarios adicionales"
+                rows={3}
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
+              />
+            </div>
+          </fieldset>
+
           {err && (
             <div className="mb-3">
               <Alert
@@ -587,12 +612,40 @@ const VentaFuegoYaForm = () => {
             </div>
           )}
 
-          {/* Botón */}
           <button
             type="submit"
-            className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+            disabled={submitting}
+            className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {id ? "Guardar Cambios" : "Crear Venta"}
+            {submitting && (
+              <svg
+                className="h-4 w-4 animate-spin"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                />
+              </svg>
+            )}
+            {id
+              ? submitting
+                ? "Guardando..."
+                : "Guardar Cambios"
+              : submitting
+              ? "Creando..."
+              : "Crear Venta"}
           </button>
 
           <p className="mt-4 text-sm text-neutral-700 text-center">
@@ -603,18 +656,14 @@ const VentaFuegoYaForm = () => {
         </form>
       </div>
 
-      {/* Modal Agregar Cliente (inline) */}
       {showAddCliente && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* overlay */}
           <div
             className="absolute inset-0 bg-black/40"
             onClick={() => !savingCliente && setShowAddCliente(false)}
           />
           <div className="relative z-10 w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
-            <h3 className="text-lg font-semibold mb-3">
-              Nuevo cliente FuegoYa
-            </h3>
+            <h3 className="text-lg font-semibold mb-3">Nuevo cliente FuegoYa</h3>
 
             {clientErr && (
               <div className="mb-3">
@@ -626,9 +675,7 @@ const VentaFuegoYaForm = () => {
 
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Nombre *
-                </label>
+                <label className="block text-sm font-medium mb-1">Nombre *</label>
                 <input
                   type="text"
                   name="nombre"
@@ -640,9 +687,7 @@ const VentaFuegoYaForm = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">
-                  Teléfono
-                </label>
+                <label className="block text-sm font-medium mb-1">Teléfono</label>
                 <input
                   type="text"
                   name="telefono"
@@ -664,9 +709,7 @@ const VentaFuegoYaForm = () => {
                   placeholder="cliente@correo.com"
                 />
                 {newCliente.email &&
-                  emailsEnUso.has(
-                    (newCliente.email || "").trim().toLowerCase()
-                  ) && (
+                  emailsEnUso.has((newCliente.email || "").trim().toLowerCase()) && (
                     <p className="mt-1 text-xs text-red-600">
                       Ya existe un cliente con ese correo.
                     </p>

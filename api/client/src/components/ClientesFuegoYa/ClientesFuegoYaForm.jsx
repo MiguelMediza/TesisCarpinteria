@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { api } from "../../api";
 import bgImg from "../../assets/tablasBackground.jpg";
 import Alert from "../Modals/Alert";
+
 const ClientesFuegoYaForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ const ClientesFuegoYaForm = () => {
   const [inputs, setInputs] = useState(initialInputs);
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -46,6 +48,7 @@ const ClientesFuegoYaForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
 
     const v = validate();
     if (v) {
@@ -61,6 +64,7 @@ const ClientesFuegoYaForm = () => {
     };
 
     try {
+      setSubmitting(true);
       if (id) {
         await api.put(`/clientesfuegoya/${id}`, payload);
         setErr("Cliente FuegoYa actualizado correctamente.");
@@ -77,6 +81,8 @@ const ClientesFuegoYaForm = () => {
         "Error al guardar el cliente de FuegoYa.";
       setErr(msg);
       setMessageType("error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -98,48 +104,50 @@ const ClientesFuegoYaForm = () => {
           {id ? "Editar Cliente FuegoYa" : "Nuevo Cliente FuegoYa"}
         </h1>
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div>
-            <label className="block mb-1 text-sm font-medium text-neutral-800">
-              Nombre *
-            </label>
-            <input
-              type="text"
-              name="nombre"
-              value={inputs.nombre}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-              placeholder="Nombre"
-            />
-          </div>
+        <form className="space-y-4" onSubmit={handleSubmit} aria-busy={submitting}>
+          <fieldset disabled={submitting} className="space-y-4">
+            <div>
+              <label className="block mb-1 text-sm font-medium text-neutral-800">
+                Nombre *
+              </label>
+              <input
+                type="text"
+                name="nombre"
+                value={inputs.nombre}
+                onChange={handleChange}
+                className="w-full p-2 border rounded"
+                placeholder="Nombre"
+              />
+            </div>
 
-          <div>
-            <label className="block mb-1 text-sm font-medium text-neutral-800">
-              Teléfono
-            </label>
-            <input
-              type="text"
-              name="telefono"
-              value={inputs.telefono}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-              placeholder="099 000 000"
-            />
-          </div>
+            <div>
+              <label className="block mb-1 text-sm font-medium text-neutral-800">
+                Teléfono
+              </label>
+              <input
+                type="text"
+                name="telefono"
+                value={inputs.telefono}
+                onChange={handleChange}
+                className="w-full p-2 border rounded"
+                placeholder="099 000 000"
+              />
+            </div>
 
-          <div>
-            <label className="block mb-1 text-sm font-medium text-neutral-800">
-              Email
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={inputs.email}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-              placeholder="cliente@correo.com"
-            />
-          </div>
+            <div>
+              <label className="block mb-1 text-sm font-medium text-neutral-800">
+                Email
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={inputs.email}
+                onChange={handleChange}
+                className="w-full p-2 border rounded"
+                placeholder="cliente@correo.com"
+              />
+            </div>
+          </fieldset>
 
           {err && (
             <div className="mb-3">
@@ -157,9 +165,38 @@ const ClientesFuegoYaForm = () => {
 
           <button
             type="submit"
-            className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+            disabled={submitting}
+            className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {id ? "Guardar Cambios" : "Crear Cliente"}
+            {submitting && (
+              <svg
+                className="h-4 w-4 animate-spin"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                />
+              </svg>
+            )}
+            {id
+              ? submitting
+                ? "Actualizando..."
+                : "Guardar Cambios"
+              : submitting
+              ? "Agregando..."
+              : "Crear Cliente"}
           </button>
 
           <p className="mt-4 text-sm text-neutral-700 text-center">

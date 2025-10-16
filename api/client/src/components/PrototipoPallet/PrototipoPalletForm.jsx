@@ -3,12 +3,12 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import { api } from "../../api";
 import prototipoBg from "../../assets/tablasBackground.jpg";
 import Alert from "../Modals/Alert";
+
 const PrototipoPalletForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
-  // Cabecera
   const [inputs, setInputs] = useState({
     titulo: "",
     medidas: "",
@@ -43,6 +43,7 @@ const PrototipoPalletForm = () => {
 
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -151,6 +152,7 @@ const PrototipoPalletForm = () => {
     setFotoFile(f);
     setPreview(URL.createObjectURL(f));
   };
+
   const clearImage = () => {
     setFotoFile(null);
     setPreview(null);
@@ -218,9 +220,7 @@ const PrototipoPalletForm = () => {
         const r = rows[i];
         if (r[idField]) {
           if (!isValidQty(r[qtyField])) {
-            return `Ingrese una cantidad válida (> 0) para ${label} en la fila ${
-              i + 1
-            }`;
+            return `Ingrese una cantidad válida (> 0) para ${label} en la fila ${i + 1}`;
           }
         }
       }
@@ -259,6 +259,8 @@ const PrototipoPalletForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+
     const v = validar();
     if (v) {
       setErr(v);
@@ -266,6 +268,7 @@ const PrototipoPalletForm = () => {
       return;
     }
     try {
+      setSubmitting(true);
       const formData = new FormData();
 
       Object.entries(inputs).forEach(([k, v]) => formData.append(k, v ?? ""));
@@ -339,6 +342,8 @@ const PrototipoPalletForm = () => {
       console.error(e);
       setErr("Error al guardar el prototipo.");
       setMessageType("error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -364,336 +369,129 @@ const PrototipoPalletForm = () => {
           className="space-y-5"
           onSubmit={handleSubmit}
           encType="multipart/form-data"
+          aria-busy={submitting}
         >
-          {/* Título y medidas */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label className="block mb-1 text-sm font-medium">Título *</label>
-              <input
-                type="text"
-                name="titulo"
-                value={inputs.titulo}
-                onChange={handleChange}
-                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
-                placeholder="Ej: Pallet 120x100 EPAL"
-              />
-            </div>
-            <div>
-              <label className="block mb-1 text-sm font-medium">Medidas</label>
-              <input
-                type="text"
-                name="medidas"
-                value={inputs.medidas}
-                onChange={handleChange}
-                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
-                placeholder="Ej: 120x100 cm"
-              />
-            </div>
-          </div>
-
-          {/* Cliente */}
-          <div>
-            <label className="block mb-1 text-sm font-medium">Cliente</label>
-            <select
-              name="id_cliente"
-              value={inputs.id_cliente}
-              onChange={handleChange}
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
-            >
-              <option value="">Seleccionar cliente (opcional)</option>
-              {clientes.map((c) => (
-                <option key={c.id_cliente} value={c.id_cliente}>
-                  {`${c.nombre} ${c.apellido || ""}`}
-                </option>
-              ))}
-            </select>
-          </div>
-
-
-
-          {/* Foto */}
-          <div>
-            <label className="block mb-1 text-sm font-medium">Foto</label>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              name="foto"
-              onChange={handleFotoChange}
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
-            />
-            {preview && (
-              <div className="relative mt-2">
-                <img
-                  src={preview}
-                  alt="Preview"
-                  className="w-full h-auto rounded"
+          <fieldset disabled={submitting} className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block mb-1 text-sm font-medium">Título *</label>
+                <input
+                  type="text"
+                  name="titulo"
+                  value={inputs.titulo}
+                  onChange={handleChange}
+                  className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
+                  placeholder="Ej: Pallet 120x100 EPAL"
                 />
-                <button
-                  type="button"
-                  onClick={clearImage}
-                  className="absolute top-1 right-1 bg-gray-800 bg-opacity-50 text-white rounded-full p-1 hover:bg-opacity-75"
-                >
-                  &times;
-                </button>
               </div>
-            )}
-          </div>
+              <div>
+                <label className="block mb-1 text-sm font-medium">Medidas</label>
+                <input
+                  type="text"
+                  name="medidas"
+                  value={inputs.medidas}
+                  onChange={handleChange}
+                  className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
+                  placeholder="Ej: 120x100 cm"
+                />
+              </div>
+            </div>
 
-          {/* Comentarios */}
-          <div>
-            <label className="block mb-1 text-sm font-medium">
-              Comentarios
-            </label>
-            <textarea
-              name="comentarios"
-              value={inputs.comentarios}
-              onChange={handleChange}
-              rows={3}
-              className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
-              placeholder="Notas opcionales del prototipo"
-            />
-          </div>
-
-          {/* ---------- Secciones dinámicas ---------- */}
-                    {/* Patines */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block mb-1 text-sm font-medium">
-                Tipo de patín
-              </label>
+              <label className="block mb-1 text-sm font-medium">Cliente</label>
               <select
-                name="id_tipo_patin"
-                value={inputs.id_tipo_patin}
+                name="id_cliente"
+                value={inputs.id_cliente}
                 onChange={handleChange}
                 className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
               >
-                <option value="">Sin patín</option>
-                {tipoPatines.map((tp) => (
-                  <option key={tp.id_tipo_patin} value={tp.id_tipo_patin}>
-                    {tp.titulo || `Patín #${tp.id_tipo_patin}`}
+                <option value="">Seleccionar cliente (opcional)</option>
+                {clientes.map((c) => (
+                  <option key={c.id_cliente} value={c.id_cliente}>
+                    {`${c.nombre} ${c.apellido || ""}`}
                   </option>
                 ))}
               </select>
             </div>
+
+            <div>
+              <label className="block mb-1 text-sm font-medium">Foto</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                name="foto"
+                onChange={handleFotoChange}
+                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
+              />
+              {preview && (
+                <div className="relative mt-2">
+                  <img
+                    src={preview}
+                    alt="Preview"
+                    className="w-full h-auto rounded"
+                  />
+                  <button
+                    type="button"
+                    onClick={clearImage}
+                    className="absolute top-1 right-1 bg-gray-800 bg-opacity-50 text-white rounded-full p-1 hover:bg-opacity-75"
+                  >
+                    &times;
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div>
               <label className="block mb-1 text-sm font-medium">
-                Cantidad de patines
+                Comentarios
               </label>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                inputMode="numeric"
-                pattern="\d*"
-                name="cantidad_patines"
-                value={inputs.cantidad_patines}
-                onChange={(e) => {
-                  const onlyDigits = e.target.value.replace(/\D/g, ""); // solo dígitos
-                  handleChange({
-                    target: { name: "cantidad_patines", value: onlyDigits },
-                  });
-                }}
-                onKeyDown={(e) => {
-                  if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
-                    e.preventDefault();
-                  }
-                }}
-                onPaste={(e) => {
-                  e.preventDefault();
-                  const pasted = (
-                    e.clipboardData.getData("text") || ""
-                  ).replace(/\D/g, "");
-                  handleChange({
-                    target: { name: "cantidad_patines", value: pasted },
-                  });
-                }}
+              <textarea
+                name="comentarios"
+                value={inputs.comentarios}
+                onChange={handleChange}
+                rows={3}
                 className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
-                placeholder="Ej: 3"
+                placeholder="Notas opcionales del prototipo"
               />
             </div>
-          </div>
-          {/* Tipo Tablas */}
-          <div>
-            <p className="text-sm font-semibold mb-2">Tipo de tablas</p>
-            {detTablas.map((r, i) => (
-              <div
-                key={`tt-${i}`}
-                className="grid grid-cols-1 md:grid-cols-12 gap-2 mb-2"
-              >
-                <select
-                  value={r.id_tipo_tabla}
-                  onChange={(e) =>
-                    handleTablas(i, "id_tipo_tabla", e.target.value)
-                  }
-                  className="md:col-span-6 p-2 border rounded bg-neutral-100"
-                >
-                  <option value="">Seleccionar tipo tabla</option>
-                  {tipoTablas.map((tt) => (
-                    <option key={tt.id_tipo_tabla} value={tt.id_tipo_tabla}>
-                      {tt.titulo} ({tt.largo_cm}×{tt.ancho_cm}×{tt.espesor_mm})
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  min="1"
-                  value={r.cantidad_lleva}
-                  inputMode="numeric"
-                  pattern="\d*"
-                  onChange={(e) => {
-                    const onlyDigits = e.target.value.replace(/\D/g, "");
-                    handleTablas(i, "cantidad_lleva", onlyDigits);
-                  }}
-                  onKeyDown={(e) => {
-                    if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
-                      e.preventDefault();
-                    }
-                  }}
-                  onPaste={(e) => {
-                    e.preventDefault();
-                    const pasted = (
-                      e.clipboardData.getData("text") || ""
-                    ).replace(/\D/g, "");
-                    handleTablas(i, "cantidad_lleva", pasted);
-                  }}
-                  placeholder="Cantidad"
-                  className="md:col-span-2 p-2 border rounded bg-neutral-100"
-                />
-                <input
-                  type="text"
-                  value={r.aclaraciones}
-                  onChange={(e) =>
-                    handleTablas(i, "aclaraciones", e.target.value)
-                  }
-                  placeholder="Aclaraciones (opcional)"
-                  className="md:col-span-3 p-2 border rounded bg-neutral-100"
-                />
-                <button
-                  type="button"
-                  onClick={() => delTabla(i)}
-                  className="md:col-span-1 text-red-600 font-bold"
-                >
-                  🗑️
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={addTabla}
-              className="mt-1 text-sm text-blue-600 font-medium"
-            >
-              + Agregar tipo tabla
-            </button>
-          </div>
 
-          {/* Tipo Tacos */}
-          <div>
-            <p className="text-sm font-semibold mb-2">Tipo de tacos</p>
-            {detTacos.map((r, i) => (
-              <div
-                key={`tk-${i}`}
-                className="grid grid-cols-1 md:grid-cols-12 gap-2 mb-2"
-              >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block mb-1 text-sm font-medium">
+                  Tipo de patín
+                </label>
                 <select
-                  value={r.id_tipo_taco}
-                  onChange={(e) =>
-                    handleTacos(i, "id_tipo_taco", e.target.value)
-                  }
-                  className="md:col-span-6 p-2 border rounded bg-neutral-100"
+                  name="id_tipo_patin"
+                  value={inputs.id_tipo_patin}
+                  onChange={handleChange}
+                  className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
                 >
-                  <option value="">Seleccionar tipo taco</option>
-                  {tipoTacos.map((tt) => (
-                    <option key={tt.id_tipo_taco} value={tt.id_tipo_taco}>
-                      {tt.titulo} ({tt.largo_cm}×{tt.ancho_cm}×{tt.espesor_mm})
+                  <option value="">Sin patín</option>
+                  {tipoPatines.map((tp) => (
+                    <option key={tp.id_tipo_patin} value={tp.id_tipo_patin}>
+                      {tp.titulo || `Patín #${tp.id_tipo_patin}`}
                     </option>
                   ))}
                 </select>
-                <input
-                  type="number"
-                  min="1"
-                  value={r.cantidad_lleva}
-                  inputMode="numeric"
-                  pattern="\d*"
-                  onChange={(e) => {
-                    const onlyDigits = e.target.value.replace(/\D/g, "");
-                    handleTacos(i, "cantidad_lleva", onlyDigits);
-                  }}
-                  onKeyDown={(e) => {
-                    if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
-                      e.preventDefault();
-                    }
-                  }}
-                  onPaste={(e) => {
-                    e.preventDefault();
-                    const pasted = (
-                      e.clipboardData.getData("text") || ""
-                    ).replace(/\D/g, "");
-                    handleTacos(i, "cantidad_lleva", pasted);
-                  }}
-                  placeholder="Cantidad"
-                  className="md:col-span-2 p-2 border rounded bg-neutral-100"
-                />
-                <input
-                  type="text"
-                  value={r.aclaraciones}
-                  onChange={(e) =>
-                    handleTacos(i, "aclaraciones", e.target.value)
-                  }
-                  placeholder="Aclaraciones (opcional)"
-                  className="md:col-span-3 p-2 border rounded bg-neutral-100"
-                />
-                <button
-                  type="button"
-                  onClick={() => delTaco(i)}
-                  className="md:col-span-1 text-red-600 font-bold"
-                >
-                  🗑️
-                </button>
               </div>
-            ))}
-            <button
-              type="button"
-              onClick={addTaco}
-              className="mt-1 text-sm text-blue-600 font-medium"
-            >
-              + Agregar tipo taco
-            </button>
-          </div>
-
-          {/* Clavos */}
-          <div>
-            <p className="text-sm font-semibold mb-2">Clavos</p>
-            {detClavos.map((r, i) => (
-              <div
-                key={`cl-${i}`}
-                className="grid grid-cols-1 md:grid-cols-12 gap-2 mb-2"
-              >
-                <select
-                  value={r.id_materia_prima}
-                  onChange={(e) =>
-                    handleClavos(i, "id_materia_prima", e.target.value)
-                  }
-                  className="md:col-span-6 p-2 border rounded bg-neutral-100"
-                >
-                  <option value="">Seleccionar clavo</option>
-                  {clavos.map((c) => (
-                    <option key={c.id_materia_prima} value={c.id_materia_prima}>
-                      {c.titulo} {c.medidas ? `(${c.medidas})` : ""}
-                    </option>
-                  ))}
-                </select>
+              <div>
+                <label className="block mb-1 text-sm font-medium">
+                  Cantidad de patines
+                </label>
                 <input
                   type="number"
-                  min="1"
+                  min="0"
                   step="1"
-                  placeholder="Cantidad"
-                  value={r.cantidad_lleva}
                   inputMode="numeric"
                   pattern="\d*"
+                  name="cantidad_patines"
+                  value={inputs.cantidad_patines}
                   onChange={(e) => {
                     const onlyDigits = e.target.value.replace(/\D/g, "");
-                    handleClavos(i, "cantidad_lleva", onlyDigits);
+                    handleChange({
+                      target: { name: "cantidad_patines", value: onlyDigits },
+                    });
                   }}
                   onKeyDown={(e) => {
                     if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
@@ -705,112 +503,316 @@ const PrototipoPalletForm = () => {
                     const pasted = (
                       e.clipboardData.getData("text") || ""
                     ).replace(/\D/g, "");
-                    handleClavos(i, "cantidad_lleva", pasted);
+                    handleChange({
+                      target: { name: "cantidad_patines", value: pasted },
+                    });
                   }}
-                  className="md:col-span-2 p-2 border rounded bg-neutral-100"
+                  className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
+                  placeholder="Ej: 3"
                 />
-                <input
-                  type="text"
-                  value={r.aclaraciones}
-                  onChange={(e) =>
-                    handleClavos(i, "aclaraciones", e.target.value)
-                  }
-                  placeholder="Aclaraciones (opcional)"
-                  className="md:col-span-3 p-2 border rounded bg-neutral-100"
-                />
-                <button
-                  type="button"
-                  onClick={() => delClavo(i)}
-                  className="md:col-span-1 text-red-600 font-bold"
-                >
-                  🗑️
-                </button>
               </div>
-            ))}
-            <button
-              type="button"
-              onClick={addClavo}
-              className="mt-1 text-sm text-blue-600 font-medium"
-            >
-              + Agregar clavo
-            </button>
-          </div>
+            </div>
 
-          {/* Fibras */}
-          <div>
-            <p className="text-sm font-semibold mb-2">Fibras</p>
-            {detFibras.map((r, i) => (
-              <div
-                key={`fb-${i}`}
-                className="grid grid-cols-1 md:grid-cols-12 gap-2 mb-2"
+            <div>
+              <p className="text-sm font-semibold mb-2">Tipo de tablas</p>
+              {detTablas.map((r, i) => (
+                <div
+                  key={`tt-${i}`}
+                  className="grid grid-cols-1 md:grid-cols-12 gap-2 mb-2"
+                >
+                  <select
+                    value={r.id_tipo_tabla}
+                    onChange={(e) =>
+                      handleTablas(i, "id_tipo_tabla", e.target.value)
+                    }
+                    className="md:col-span-6 p-2 border rounded bg-neutral-100"
+                  >
+                    <option value="">Seleccionar tipo tabla</option>
+                    {tipoTablas.map((tt) => (
+                      <option key={tt.id_tipo_tabla} value={tt.id_tipo_tabla}>
+                        {tt.titulo} ({tt.largo_cm}×{tt.ancho_cm}×{tt.espesor_mm})
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min="1"
+                    value={r.cantidad_lleva}
+                    inputMode="numeric"
+                    pattern="\d*"
+                    onChange={(e) => {
+                      const onlyDigits = e.target.value.replace(/\D/g, "");
+                      handleTablas(i, "cantidad_lleva", onlyDigits);
+                    }}
+                    onKeyDown={(e) => {
+                      if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const pasted = (
+                        e.clipboardData.getData("text") || ""
+                      ).replace(/\D/g, "");
+                      handleTablas(i, "cantidad_lleva", pasted);
+                    }}
+                    placeholder="Cantidad"
+                    className="md:col-span-2 p-2 border rounded bg-neutral-100"
+                  />
+                  <input
+                    type="text"
+                    value={r.aclaraciones}
+                    onChange={(e) =>
+                      handleTablas(i, "aclaraciones", e.target.value)
+                    }
+                    placeholder="Aclaraciones (opcional)"
+                    className="md:col-span-3 p-2 border rounded bg-neutral-100"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => delTabla(i)}
+                    className="md:col-span-1 text-red-600 font-bold"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addTabla}
+                className="mt-1 text-sm text-blue-600 font-medium"
               >
-                <select
-                  value={r.id_materia_prima}
-                  onChange={(e) =>
-                    handleFibras(i, "id_materia_prima", e.target.value)
-                  }
-                  className="md:col-span-6 p-2 border rounded bg-neutral-100"
-                >
-                  <option value="">Seleccionar fibra</option>
-                  {fibras.map((f) => (
-                    <option key={f.id_materia_prima} value={f.id_materia_prima}>
-                      {f.titulo}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="number"
-                  min="1"
-                  value={r.cantidad_lleva}
-                  inputMode="numeric"
-                  pattern="\d*"
-                  onChange={(e) => {
-                    const onlyDigits = e.target.value.replace(/\D/g, "");
-                    handleFibras(i, "cantidad_lleva", onlyDigits);
-                  }}
-                  onKeyDown={(e) => {
-                    if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
-                      e.preventDefault();
-                    }
-                  }}
-                  onPaste={(e) => {
-                    e.preventDefault();
-                    const pasted = (
-                      e.clipboardData.getData("text") || ""
-                    ).replace(/\D/g, "");
-                    handleFibras(i, "cantidad_lleva", pasted);
-                  }}
-                  placeholder="Cantidad"
-                  className="md:col-span-2 p-2 border rounded bg-neutral-100"
-                />
-                <input
-                  type="text"
-                  value={r.aclaraciones}
-                  onChange={(e) =>
-                    handleFibras(i, "aclaraciones", e.target.value)
-                  }
-                  placeholder="Aclaraciones (opcional)"
-                  className="md:col-span-3 p-2 border rounded bg-neutral-100"
-                />
-                <button
-                  type="button"
-                  onClick={() => delFibra(i)}
-                  className="md:col-span-1 text-red-600 font-bold"
-                >
-                  🗑️
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={addFibra}
-              className="mt-1 text-sm text-blue-600 font-medium"
-            >
-              + Agregar fibra
-            </button>
-          </div>
+                + Agregar tipo tabla
+              </button>
+            </div>
 
-          {/* Mensaje */}
+            <div>
+              <p className="text-sm font-semibold mb-2">Tipo de tacos</p>
+              {detTacos.map((r, i) => (
+                <div
+                  key={`tk-${i}`}
+                  className="grid grid-cols-1 md:grid-cols-12 gap-2 mb-2"
+                >
+                  <select
+                    value={r.id_tipo_taco}
+                    onChange={(e) =>
+                      handleTacos(i, "id_tipo_taco", e.target.value)
+                    }
+                    className="md:col-span-6 p-2 border rounded bg-neutral-100"
+                  >
+                    <option value="">Seleccionar tipo taco</option>
+                    {tipoTacos.map((tt) => (
+                      <option key={tt.id_tipo_taco} value={tt.id_tipo_taco}>
+                        {tt.titulo} ({tt.largo_cm}×{tt.ancho_cm}×{tt.espesor_mm})
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min="1"
+                    value={r.cantidad_lleva}
+                    inputMode="numeric"
+                    pattern="\d*"
+                    onChange={(e) => {
+                      const onlyDigits = e.target.value.replace(/\D/g, "");
+                      handleTacos(i, "cantidad_lleva", onlyDigits);
+                    }}
+                    onKeyDown={(e) => {
+                      if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const pasted = (
+                        e.clipboardData.getData("text") || ""
+                      ).replace(/\D/g, "");
+                      handleTacos(i, "cantidad_lleva", pasted);
+                    }}
+                    placeholder="Cantidad"
+                    className="md:col-span-2 p-2 border rounded bg-neutral-100"
+                  />
+                  <input
+                    type="text"
+                    value={r.aclaraciones}
+                    onChange={(e) =>
+                      handleTacos(i, "aclaraciones", e.target.value)
+                    }
+                    placeholder="Aclaraciones (opcional)"
+                    className="md:col-span-3 p-2 border rounded bg-neutral-100"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => delTaco(i)}
+                    className="md:col-span-1 text-red-600 font-bold"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addTaco}
+                className="mt-1 text-sm text-blue-600 font-medium"
+              >
+                + Agregar tipo taco
+              </button>
+            </div>
+
+            <div>
+              <p className="text-sm font-semibold mb-2">Clavos</p>
+              {detClavos.map((r, i) => (
+                <div
+                  key={`cl-${i}`}
+                  className="grid grid-cols-1 md:grid-cols-12 gap-2 mb-2"
+                >
+                  <select
+                    value={r.id_materia_prima}
+                    onChange={(e) =>
+                      handleClavos(i, "id_materia_prima", e.target.value)
+                    }
+                    className="md:col-span-6 p-2 border rounded bg-neutral-100"
+                  >
+                    <option value="">Seleccionar clavo</option>
+                    {clavos.map((c) => (
+                      <option
+                        key={c.id_materia_prima}
+                        value={c.id_materia_prima}
+                      >
+                        {c.titulo} {c.medidas ? `(${c.medidas})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    placeholder="Cantidad"
+                    value={r.cantidad_lleva}
+                    inputMode="numeric"
+                    pattern="\d*"
+                    onChange={(e) => {
+                      const onlyDigits = e.target.value.replace(/\D/g, "");
+                      handleClavos(i, "cantidad_lleva", onlyDigits);
+                    }}
+                    onKeyDown={(e) => {
+                      if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const pasted = (
+                        e.clipboardData.getData("text") || ""
+                      ).replace(/\D/g, "");
+                      handleClavos(i, "cantidad_lleva", pasted);
+                    }}
+                    className="md:col-span-2 p-2 border rounded bg-neutral-100"
+                  />
+                  <input
+                    type="text"
+                    value={r.aclaraciones}
+                    onChange={(e) =>
+                      handleClavos(i, "aclaraciones", e.target.value)
+                    }
+                    placeholder="Aclaraciones (opcional)"
+                    className="md:col-span-3 p-2 border rounded bg-neutral-100"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => delClavo(i)}
+                    className="md:col-span-1 text-red-600 font-bold"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addClavo}
+                className="mt-1 text-sm text-blue-600 font-medium"
+              >
+                + Agregar clavo
+              </button>
+            </div>
+
+            <div>
+              <p className="text-sm font-semibold mb-2">Fibras</p>
+              {detFibras.map((r, i) => (
+                <div
+                  key={`fb-${i}`}
+                  className="grid grid-cols-1 md:grid-cols-12 gap-2 mb-2"
+                >
+                  <select
+                    value={r.id_materia_prima}
+                    onChange={(e) =>
+                      handleFibras(i, "id_materia_prima", e.target.value)
+                    }
+                    className="md:col-span-6 p-2 border rounded bg-neutral-100"
+                  >
+                    <option value="">Seleccionar fibra</option>
+                    {fibras.map((f) => (
+                      <option
+                        key={f.id_materia_prima}
+                        value={f.id_materia_prima}
+                      >
+                        {f.titulo}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min="1"
+                    value={r.cantidad_lleva}
+                    inputMode="numeric"
+                    pattern="\d*"
+                    onChange={(e) => {
+                      const onlyDigits = e.target.value.replace(/\D/g, "");
+                      handleFibras(i, "cantidad_lleva", onlyDigits);
+                    }}
+                    onKeyDown={(e) => {
+                      if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      const pasted = (
+                        e.clipboardData.getData("text") || ""
+                      ).replace(/\D/g, "");
+                      handleFibras(i, "cantidad_lleva", pasted);
+                    }}
+                    placeholder="Cantidad"
+                    className="md:col-span-2 p-2 border rounded bg-neutral-100"
+                  />
+                  <input
+                    type="text"
+                    value={r.aclaraciones}
+                    onChange={(e) =>
+                      handleFibras(i, "aclaraciones", e.target.value)
+                    }
+                    placeholder="Aclaraciones (opcional)"
+                    className="md:col-span-3 p-2 border rounded bg-neutral-100"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => delFibra(i)}
+                    className="md:col-span-1 text-red-600 font-bold"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addFibra}
+                className="mt-1 text-sm text-blue-600 font-medium"
+              >
+                + Agregar fibra
+              </button>
+            </div>
+          </fieldset>
+
           {err && (
             <div className="mb-3">
               <Alert
@@ -825,12 +827,40 @@ const PrototipoPalletForm = () => {
             </div>
           )}
 
-          {/* Botón */}
           <button
             type="submit"
-            className="w-full py-2 bg-neutral-700 text-white rounded hover:bg-neutral-800 transition"
+            disabled={submitting}
+            className="w-full py-2 bg-neutral-700 text-white rounded hover:bg-neutral-800 transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {id ? "Guardar Cambios" : "Crear Prototipo"}
+            {submitting && (
+              <svg
+                className="h-4 w-4 animate-spin"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                />
+              </svg>
+            )}
+            {id
+              ? submitting
+                ? "Actualizando..."
+                : "Guardar Cambios"
+              : submitting
+              ? "Agregando..."
+              : "Crear Prototipo"}
           </button>
 
           <p className="mt-4 text-sm text-neutral-700 text-center">
