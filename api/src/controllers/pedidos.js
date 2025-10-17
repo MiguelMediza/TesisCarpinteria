@@ -428,7 +428,6 @@ export const deletePedido = async (req, res) => {
 
     await conn.beginTransaction();
 
-    // Marcar como eliminado (solo si no estaba eliminado)
     const [upd] = await conn.query(
       `UPDATE pedidos SET eliminado = TRUE WHERE id_pedido = ? AND eliminado = FALSE`,
       [id]
@@ -463,7 +462,6 @@ export const changeEstadoPedido = async (req, res) => {
       return res.status(400).json({ message: "Estado inválido." });
     }
 
-    // 1) Verifico que exista y leo estado actual
     const [[pedido]] = await conn.query(
       `SELECT id_pedido, estado, eliminado FROM pedidos WHERE id_pedido = ?`,
       [id]
@@ -474,14 +472,11 @@ export const changeEstadoPedido = async (req, res) => {
 
     const estadoActual = pedido.estado;
 
-    // Si va a 'cancelado' -> no verifico stock ni descuesto
     const requiereStock = (estadoActual === "pendiente") && (nuevoEstado !== "pendiente") && (nuevoEstado !== "cancelado");
 
     await conn.beginTransaction();
 
     if (requiereStock) {
-      // 2) Calcular requerimientos del pedido (cantidad por ítem * pallets)
-      //    Usamos tu vista vw_prototipo_bom_detalle
       const [reqs] = await conn.query(
         `
         SELECT
@@ -497,14 +492,8 @@ export const changeEstadoPedido = async (req, res) => {
         [id]
       );
 
-      // Si el pedido no tiene items, no hay nada que reservar/descontar
-      // (permitimos cambio de estado sin stock si literalmente no requiere insumos)
-      // pero es raro; si querés bloquear, podés chequear reqs.length === 0 y devolver 409.
-
-      // 3) Chequear stock (con locks para evitar carreras)
       const faltantes = [];
 
-      // Función auxiliar para obtener stock actual bloqueando la fil
       async function getStockBloqueado(cat, itemId) {
         if (cat === "tabla") {
           const [[r]] = await conn.query(`SELECT stock FROM tipo_tablas WHERE id_tipo_tabla = ? FOR UPDATE`, [itemId]);
@@ -542,7 +531,6 @@ export const changeEstadoPedido = async (req, res) => {
         });
       }
 
-      // 4) Descontar stock (seguro: todavía dentro de la transacción y con filas bloqueadas)
       async function descontar(cat, itemId, cant) {
         if (cat === "tabla") {
           const [r] = await conn.query(
@@ -576,7 +564,6 @@ export const changeEstadoPedido = async (req, res) => {
       }
     }
 
-    // 5) Actualizar estado (y registrar entrega si corresponde)
     await conn.query(
       `UPDATE pedidos SET estado = ? WHERE id_pedido = ? AND eliminado = FALSE`,
       [nuevoEstado, id]

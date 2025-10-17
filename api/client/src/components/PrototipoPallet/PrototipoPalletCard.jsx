@@ -77,7 +77,6 @@ const PrototipoPalletCard = ({ prototipo, onEdit, onDelete }) => {
     return () => {
       alive = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id_prototipo]);
 
   const grouped = useMemo(() => {
@@ -104,7 +103,6 @@ const PrototipoPalletCard = ({ prototipo, onEdit, onDelete }) => {
         flex flex-col
       "
     >
-      {/* HEADER con degradado y título centrado */}
       <div className="relative h-20 w-full bg-gradient-to-r from-sky-50 to-indigo-50">
         <h3
           className="
@@ -126,9 +124,7 @@ const PrototipoPalletCard = ({ prototipo, onEdit, onDelete }) => {
         </div>
       </div>
 
-      {/* CONTENIDO */}
       <div className="p-4">
-        {/* Chips debajo del header */}
         <div className="mt-1 flex flex-wrap gap-2 justify-center sm:justify-start">
           {medidas && (
             <Chip

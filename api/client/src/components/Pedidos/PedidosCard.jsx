@@ -1,4 +1,3 @@
-// PedidosCard.jsx
 import React, { useContext, useMemo, useState } from "react";
 import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
@@ -115,7 +114,6 @@ const PedidosCard = ({ pedido, onEdit, onDelete, onEstadoChanged }) => {
         hover:-translate-y-0.5 hover:shadow-lg flex flex-col
       "
     >
-      {/* Header con degradado y título centrado */}
       <div className="relative h-20 w-full bg-gradient-to-r from-sky-50 to-indigo-50">
         <h3
           className="
@@ -127,9 +125,7 @@ const PedidosCard = ({ pedido, onEdit, onDelete, onEstadoChanged }) => {
           Pedido #{id_pedido}
         </h3>
 
-        {/* Acciones del header (PDF + estado) */}
         <div className="absolute top-3 right-3 flex items-center gap-2">
-          {/* Botón/acción PDF inline (tu componente) */}
           <PedidoPDFInline pedido={pedido} />
 
           <span
@@ -141,9 +137,7 @@ const PedidosCard = ({ pedido, onEdit, onDelete, onEstadoChanged }) => {
         </div>
       </div>
 
-      {/* Contenido */}
       <div className="p-4">
-        {/* Chip de cliente */}
         <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
           <span
             className={`${chipBase} bg-amber-50 text-amber-700 ring-amber-200`}
@@ -154,7 +148,6 @@ const PedidosCard = ({ pedido, onEdit, onDelete, onEstadoChanged }) => {
           </span>
         </div>
 
-        {/* Fechas en cards suaves */}
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
             <p className="text-[12px] text-slate-500">Fecha realizado</p>
@@ -170,7 +163,6 @@ const PedidosCard = ({ pedido, onEdit, onDelete, onEstadoChanged }) => {
           </div>
         </div>
 
-        {/* Comentarios */}
         {comentarios?.toString().trim() && (
           <div className="mt-3 rounded-xl border border-slate-100 bg-white p-3">
             <p className="text-[12px] text-slate-500 mb-1">Comentarios</p>
@@ -178,7 +170,6 @@ const PedidosCard = ({ pedido, onEdit, onDelete, onEstadoChanged }) => {
           </div>
         )}
 
-        {/* Ítems */}
         <div className="mt-3 rounded-xl border border-slate-100 bg-white p-3">
           <p className="text-[12px] text-slate-500 mb-2">🧱 Ítems del pedido</p>
           <ul className="list-disc pl-5 text-sm text-slate-800 space-y-2">
@@ -226,7 +217,6 @@ const PedidosCard = ({ pedido, onEdit, onDelete, onEstadoChanged }) => {
           </ul>
         </div>
 
-        {/* Precio (solo admin) */}
         {currentUser?.tipo === "admin" && (
           <div className="mt-3 flex items-center justify-between">
             <p className="text-sm text-slate-600">Precio total (materiales actuales)</p>
@@ -234,7 +224,6 @@ const PedidosCard = ({ pedido, onEdit, onDelete, onEstadoChanged }) => {
           </div>
         )}
 
-        {/* Footer: selector de estado + acciones */}
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <label className="text-sm text-slate-700">Estado:</label>

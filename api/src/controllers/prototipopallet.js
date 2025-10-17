@@ -313,7 +313,7 @@ export const deletePrototipo = async (req, res) => {
 
     await conn.beginTransaction();
 
-    // Borrado lógico: desactivar
+
     await conn.query(
       `UPDATE prototipo_pallet SET estado = FALSE WHERE id_prototipo = ?`,
       [id]

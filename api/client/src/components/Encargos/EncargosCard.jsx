@@ -39,7 +39,7 @@ const EncargosCard = ({
   onMarkReceived,
   marking = false,
 }) => {
-  const { currentUser } = useContext(AuthContext); // (por si lo necesitás luego)
+  const { currentUser } = useContext(AuthContext); 
 
   const {
     id_encargo,
@@ -61,7 +61,6 @@ const EncargosCard = ({
         flex flex-col min-h-[280px]
       "
     >
-      {/* Header con gradiente, avatar y pill de estado */}
       <div className="relative">
         <div className="h-16 w-full bg-gradient-to-r from-amber-50 to-sky-50" />
         <div
@@ -84,13 +83,11 @@ const EncargosCard = ({
         </div>
       </div>
 
-      {/* Contenido */}
       <div className="flex-1 p-4 pt-6 flex flex-col">
         <h3 className="text-base font-semibold text-slate-900 leading-snug pr-14">
           Encargo #{id_encargo}
         </h3>
 
-        {/* Proveedor + Fechas */}
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
             <p className="text-[12px] text-slate-500">Proveedor</p>
@@ -115,7 +112,6 @@ const EncargosCard = ({
           </div>
         </div>
 
-        {/* Comentarios */}
         <div className="mt-3 rounded-xl border border-slate-100 bg-white p-3">
           <p className="text-[12px] text-slate-500">Comentarios</p>
           <p className="text-sm text-slate-800">
@@ -123,7 +119,6 @@ const EncargosCard = ({
           </p>
         </div>
 
-        {/* Detalle de materias primas */}
         <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50/60 p-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-slate-800">
@@ -163,7 +158,6 @@ const EncargosCard = ({
           )}
         </div>
 
-        {/* Acciones (siempre al fondo) */}
         <div className="mt-auto pt-4 flex flex-col sm:flex-row gap-2">
           {estado === "realizado" && (
             <button

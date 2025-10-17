@@ -1,4 +1,3 @@
-// StatsTopClientesFY.jsx
 import { useEffect, useMemo, useState } from "react";
 import { Doughnut } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from "chart.js";
@@ -15,7 +14,7 @@ const currencyUYU = (n) =>
 function rangeForYear(y) {
   const now = new Date();
   const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth(); // 0..11
+  const currentMonth = now.getMonth(); 
   const desde = `${y}-01-01`;
   const hasta =
     y < currentYear
@@ -42,7 +41,6 @@ const COLORS = [
   "#c4b5fd",
 ];
 
-// 👇 helper para partir el título del tooltip en varias líneas
 const wrapTooltipTitle = (text, max = 28) => {
   if (!text) return [];
   const words = String(text).split(/\s+/);
@@ -146,12 +144,10 @@ const StatsTopClientesFY = ({
 
   return (
     <div className="flex flex-col">
-      {/* Gráfico centrado */}
       <div className="h-[340px] lg:h-[420px] flex items-center justify-center">
         <Doughnut data={model.chartData} options={model.options} />
       </div>
 
-      {/* Leyenda custom debajo con nombre en múltiples líneas y monto siempre visible */}
       <div className="mt-4 flex flex-wrap items-start justify-center gap-2">
         {model.labels.map((label, i) => (
           <div
@@ -164,11 +160,9 @@ const StatsTopClientesFY = ({
               style={{ backgroundColor: model.colors[i] }}
             />
             <div className="flex flex-col leading-tight">
-              {/* nombre: permite salto de línea y corte por palabra */}
               <span className="text-sm text-gray-700 whitespace-normal break-words max-w-[70vw] sm:max-w-[22rem]">
                 {label}
               </span>
-              {/* monto: siempre visible en segunda línea */}
               <span className="text-sm font-semibold text-gray-900">
                 {currencyUYU(model.values[i])}
               </span>

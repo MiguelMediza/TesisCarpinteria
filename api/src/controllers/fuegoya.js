@@ -1,4 +1,3 @@
-// controllers/fuegoya.js
 import { pool } from "../db.js";
 import { r2Delete } from "../lib/r2.js";
 
@@ -45,7 +44,6 @@ export const createFuegoYa = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Obtener un Fuego Ya por ID
 export const getFuegoYaById = async (req, res) => {
   try {
@@ -80,7 +78,6 @@ export const getFuegoYaById = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Modificar un Fuego Ya existente
 export const updateFuegoYa = async (req, res) => {
   const connection = await pool.getConnection();
@@ -255,7 +252,6 @@ export const deleteFuegoYa = async (req, res) => {
 };
 
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Listar todos los Fuego Ya
 export const listFuegoYa = async (req, res) => {
   try {

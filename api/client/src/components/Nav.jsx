@@ -68,7 +68,7 @@ const Nav = () => {
       }
     }
 
-    // Solo registramos el dropdown principal de Materia Prima
+
     const registerDD = (menuId, triggerId, opts = {}) => {
       if (dropdownsRef.current[menuId]) return;
       const trigger = document.getElementById(triggerId);
@@ -101,7 +101,6 @@ const Nav = () => {
     if (link) handleNavigate();
   };
 
-  // Ítems de Materia Prima -> van directo al listado
   const MP_ITEMS = [
     { label: "Tablas",       list: "/tablas/listar" },
     { label: "Tirantes",        list: "/palos/listar" },
@@ -171,7 +170,6 @@ const Nav = () => {
               </Link>
             </li>
 
-            {/* Materia Prima (dropdown simple con links directos al listado) */}
             <li className="relative">
               <button
                 id="dropdownMateriaPrimaButton"

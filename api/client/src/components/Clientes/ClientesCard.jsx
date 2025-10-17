@@ -37,7 +37,6 @@ const ClientesCard = ({ cliente, onEdit, onDelete }) => {
         flex flex-col min-h-[260px]
       "
     >
-      {/* Header */}
       <div className="relative">
         <div className="h-16 w-full bg-gradient-to-r from-sky-50 to-indigo-50" />
         <div
@@ -59,13 +58,11 @@ const ClientesCard = ({ cliente, onEdit, onDelete }) => {
         </div>
       </div>
 
-      {/* Contenido */}
-      <div className="flex-1 p-4 pt-6 flex flex-col">{/* ← clave: flex flex-col */}
+      <div className="flex-1 p-4 pt-6 flex flex-col">
         <h3 className="text-base font-semibold text-slate-900 leading-snug pr-14">
           {(nombre || "") + (apellido ? ` ${apellido}` : "") || nombre_empresa || "Cliente"}
         </h3>
 
-        {/* Chips */}
         <div className="mt-3 flex flex-wrap gap-2">
           <a
             href={telefono ? `tel:${telefono}` : undefined}
@@ -104,7 +101,6 @@ const ClientesCard = ({ cliente, onEdit, onDelete }) => {
           </a>
         </div>
 
-        {/* Empresa: evita que React pinte 0 */}
         {Boolean(es_empresa) && (
           <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50/60 p-3">
             {nombre_empresa && (
@@ -128,7 +124,6 @@ const ClientesCard = ({ cliente, onEdit, onDelete }) => {
           </div>
         )}
 
-        {/* Acciones siempre al fondo */}
         <div className="mt-auto pt-4 flex gap-2">
           <button
             type="button"

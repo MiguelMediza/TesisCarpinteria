@@ -163,7 +163,6 @@ export const listarClientesSelect = async (req, res) => {
        ORDER BY nombre_empresa, nombre, apellido`
     );
 
-    // Si me pasaron incluir_id y no está en activos, lo traigo apart
     let extra = [];
     if (incluir_id) {
       const yaEsta = activos.some(c => String(c.id_cliente) === String(incluir_id));
@@ -174,11 +173,10 @@ export const listarClientesSelect = async (req, res) => {
            WHERE id_cliente = ?`,
           [incluir_id]
         );
-        if (fila.length) extra = fila; // puede venir con estado = FALSE
+        if (fila.length) extra = fila; 
       }
     }
 
-    // Armar display + flag eliminado
     const mapDisplay = (c) => ({
       id_cliente: c.id_cliente,
       display: c.es_empresa

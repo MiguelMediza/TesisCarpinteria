@@ -1,4 +1,3 @@
-// routes/clavos.routes.js
 import { Router } from "express";
 import multer from "multer";
 import {
@@ -34,7 +33,6 @@ const uploadToR2 = (folder) => async (req, res, next) => {
   }
 };
 
-// Crear (foto opcional)
 router.post("/agregar", upload.single("foto"), uploadToR2("clavos"), createClavo);
 
 // Listar

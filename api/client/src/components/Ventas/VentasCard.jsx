@@ -1,4 +1,3 @@
-// VentasCard.jsx
 import React from "react";
 import { Image } from "antd";
 
@@ -30,10 +29,10 @@ const VentasCard = ({ venta, onEdit, onDelete }) => {
     nombre_cliente,
     apellido_cliente,
     foto,
-    foto_url,          // por si lo tenés disponible
+    foto_url,         
     comentarios,
     cliente_display,
-    cliente_eliminado, // boolean opcional
+    cliente_eliminado, 
   } = venta || {};
 
   const imgSrc =
@@ -52,7 +51,6 @@ const VentasCard = ({ venta, onEdit, onDelete }) => {
         hover:-translate-y-0.5 hover:shadow-lg flex flex-col
       "
     >
-      {/* Header con degradado y título centrado */}
       <div className="relative h-20 w-full bg-gradient-to-r from-sky-50 to-indigo-50">
         <h3
           className="
@@ -64,7 +62,6 @@ const VentasCard = ({ venta, onEdit, onDelete }) => {
           Venta #{id_venta}
         </h3>
 
-        {/* Etiqueta de cliente eliminado si aplica */}
         {cliente_eliminado && (
           <span
             className="
@@ -78,9 +75,7 @@ const VentasCard = ({ venta, onEdit, onDelete }) => {
         )}
       </div>
 
-      {/* Contenido */}
       <div className="p-4">
-        {/* Imagen (antd) */}
         {imgSrc && (
           <div className="w-full h-44 rounded-xl overflow-hidden bg-slate-50 ring-1 ring-slate-200">
             <Image
@@ -101,7 +96,6 @@ const VentasCard = ({ venta, onEdit, onDelete }) => {
           </div>
         )}
 
-        {/* Chips info */}
         <div className="mt-3 flex flex-wrap gap-2">
           <span
             className={`${chipBase} bg-emerald-50 text-emerald-700 ring-emerald-200`}
@@ -130,7 +124,6 @@ const VentasCard = ({ venta, onEdit, onDelete }) => {
           </span>
         </div>
 
-        {/* Comentarios */}
         {comentarios?.toString().trim() && (
           <div className="mt-3 rounded-xl border border-slate-100 bg-white p-3">
             <p className="text-[12px] text-slate-500 mb-1">Comentarios</p>
@@ -138,7 +131,6 @@ const VentasCard = ({ venta, onEdit, onDelete }) => {
           </div>
         )}
 
-        {/* Acciones */}
         <div className="mt-4 flex gap-2">
           <button
             type="button"

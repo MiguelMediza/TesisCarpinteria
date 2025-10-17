@@ -1,4 +1,3 @@
-// controllers/tipotacos.js
 import { pool } from "../db.js";
 import { r2Delete } from "../lib/r2.js";
 const MARGIN = 0.5; //Margen en cm entre piezas al cortar
@@ -186,7 +185,6 @@ export const updateTipoTaco = async (req, res) => {
       await connection.rollback();
       return res.status(400).json({ message: "El largo solicitado supera al del palo padre." });
     }
-    // Por sanidad histórica
     if (piecesOld < 1 && oldStock > 0) {
       await connection.rollback();
       return res.status(400).json({ message: "Datos previos inválidos (piecesOld < 1 con stock existente)." });
@@ -198,7 +196,6 @@ export const updateTipoTaco = async (req, res) => {
     const delta   = usedNew - usedOld;
 
     if (delta > 0) {
-      // Necesito consumir MÁS palos padres → valido y descuento con guardia
       if (parentStock < delta) {
         await connection.rollback();
         return res.status(409).json({
@@ -225,10 +222,7 @@ export const updateTipoTaco = async (req, res) => {
         });
       }
     }
-    // Importante: si delta < 0, **no** devolvemos stock al padre.
-    // (Si quisieras devolver, aquí iría un UPDATE sumando |delta|.)
 
-    // Update del tipo de taco
     await connection.query(
       `UPDATE tipo_tacos SET
          titulo        = ?,

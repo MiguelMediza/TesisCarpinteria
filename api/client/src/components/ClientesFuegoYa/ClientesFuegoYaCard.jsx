@@ -9,7 +9,6 @@ import { createPortal } from "react-dom";
 import { api } from "../../api";
 import { AuthContext } from "../../context/authContext";
 
-/* ===== utilidades ===== */
 const formatMoney = (n) =>
   Number(n ?? 0).toLocaleString("es-UY", {
     style: "currency",
@@ -39,7 +38,6 @@ const getInitials = (nombre = "", apellido = "") => {
     .join("");
 };
 
-/* bloquear scroll del body cuando hay modal  */
 function useBodyScrollLock(locked) {
   useEffect(() => {
     if (!locked) return;
@@ -51,7 +49,6 @@ function useBodyScrollLock(locked) {
   }, [locked]);
 }
 
-/* MODAL: Registrar Entrega */
 const EntregaModal = ({
   open,
   onClose,
@@ -193,7 +190,6 @@ const EntregaModal = ({
   return createPortal(node, document.body);
 };
 
-/* MODAL: Listado de Pagos  */
 const PagosModal = ({ open, onClose, idCliente }) => {
   useBodyScrollLock(open);
 
@@ -233,18 +229,15 @@ const PagosModal = ({ open, onClose, idCliente }) => {
         if (e.target === e.currentTarget) onClose?.();
       }}
     >
-      {/* Dialog */}
       <div
         className="
           w-full max-w-xl rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-xl
           flex flex-col overflow-hidden
         "
-        // Altura máx siempre menor a la pantalla (svh para móviles + fallback vh)
         style={{ maxHeight: "min(90svh, 90vh)" }}
         role="dialog"
         aria-modal="true"
       >
-        {/* Header sticky */}
         <div className="sticky top-0 z-10">
           <div className="relative">
             <div className="h-16 w-full bg-gradient-to-r from-emerald-50 to-sky-50" />
@@ -266,7 +259,6 @@ const PagosModal = ({ open, onClose, idCliente }) => {
           </div>
         </div>
 
-        {/* Contenido con scroll interno */}
         <div className="flex-1 min-h-0 overflow-y-auto p-4">
           {loading && <p className="text-sm text-slate-600">Cargando pagos…</p>}
           {err && <p className="text-sm text-red-600">{err}</p>}
@@ -339,7 +331,6 @@ const PagosModal = ({ open, onClose, idCliente }) => {
           )}
         </div>
 
-        {/* Footer fijo visible */}
         <div className="shrink-0 border-t px-4 py-3 bg-white">
           <div className="flex justify-end">
             <button
@@ -357,7 +348,6 @@ const PagosModal = ({ open, onClose, idCliente }) => {
   return createPortal(node, document.body);
 };
 
-/* ========== CARD ========== */
 const ClientesFuegoYaCard = ({ cliente, onEdit, onDelete }) => {
   const { currentUser } = useContext(AuthContext);
   const isAdmin = currentUser?.tipo === "admin";
@@ -510,7 +500,6 @@ const ClientesFuegoYaCard = ({ cliente, onEdit, onDelete }) => {
         flex flex-col min-h-[260px]
       "
     >
-      {/* Header */}
       <div className="relative">
         <div className="h-16 w-full bg-gradient-to-r from-emerald-50 to-sky-50" />
         <div
@@ -532,13 +521,11 @@ const ClientesFuegoYaCard = ({ cliente, onEdit, onDelete }) => {
         </div>
       </div>
 
-      {/* Contenido */}
       <div className="flex-1 p-4 pt-6 flex flex-col">
         <h3 className="text-base font-semibold text-slate-900 leading-snug pr-14">
           {(nombre || "Cliente") + (apellido ? ` ${apellido}` : "")}
         </h3>
 
-        {/* Chips contacto */}
         <div className="mt-3 flex flex-wrap gap-2">
           <a
             href={cliente?.telefono ? `tel:${cliente.telefono}` : undefined}
@@ -742,7 +729,7 @@ const ClientesFuegoYaCard = ({ cliente, onEdit, onDelete }) => {
         </div>
       </div>
 
-      {/* Modales (PORTAL) */}
+      {/* Modales */}
       <EntregaModal
         open={modalOpen}
         onClose={() => (savingEntrega ? null : setModalOpen(false))}

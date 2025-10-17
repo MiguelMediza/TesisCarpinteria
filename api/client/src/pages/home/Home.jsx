@@ -1,4 +1,3 @@
-// Home.jsx
 import { useState, useEffect, useContext } from "react";
 import { api } from "../../api";
 import StockBajo from "../../components/StockBajo/StockBajo";

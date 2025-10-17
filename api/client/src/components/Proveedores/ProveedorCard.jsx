@@ -36,7 +36,6 @@ const ProveedorCard = ({ proveedor, onEdit, onDelete }) => {
         flex flex-col
       "
     >
-      {/* Header con degradado + avatar + pill */}
       <div className="relative">
         <div className="h-16 w-full bg-gradient-to-r from-sky-50 to-indigo-50" />
         <div
@@ -58,14 +57,11 @@ const ProveedorCard = ({ proveedor, onEdit, onDelete }) => {
         </div>
       </div>
 
-      {/* Contenido */}
       <div className="p-4 pt-6 flex flex-col">
-        {/* Título principal */}
         <h3 className="text-base font-semibold text-slate-900 leading-snug pr-16">
           {nombre_empresa || nombre || "Proveedor"}
         </h3>
 
-        {/* Chips de contacto */}
         <div className="mt-3 flex flex-wrap gap-2">
           <a
             href={telefono ? `tel:${telefono}` : undefined}
@@ -110,7 +106,6 @@ const ProveedorCard = ({ proveedor, onEdit, onDelete }) => {
           )}
         </div>
 
-        {/* Fichas rápidas */}
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
           {nombre && (
             <div className="rounded-xl border border-slate-100 bg-white p-3">
@@ -127,7 +122,6 @@ const ProveedorCard = ({ proveedor, onEdit, onDelete }) => {
           )}
         </div>
 
-        {/* Comentarios */}
         {comentarios && (
           <div className="mt-3 rounded-xl border border-slate-100 bg-white p-3">
             <p className="text-[12px] text-slate-500">Comentarios</p>
@@ -135,7 +129,6 @@ const ProveedorCard = ({ proveedor, onEdit, onDelete }) => {
           </div>
         )}
 
-        {/* Acciones (siempre al fondo) */}
         <div className="mt-4 flex gap-2">
           <button
             type="button"

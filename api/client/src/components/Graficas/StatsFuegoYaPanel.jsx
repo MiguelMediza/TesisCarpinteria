@@ -13,7 +13,6 @@ const StatsFuegoYaPanel = () => {
 
   return (
     <div className="rounded-2xl bg-white shadow-xl p-6 md:p-7">
-      {/* Barra superior con título + selector */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-5">
         <div>
           <h2 className="text-xl font-semibold text-slate-900">
@@ -24,7 +23,6 @@ const StatsFuegoYaPanel = () => {
           </p>
         </div>
 
-        {/* Selector de año (custom select con chevron) */}
         <div className="flex items-center gap-2">
           <label
             htmlFor="fy-year"
@@ -46,7 +44,6 @@ const StatsFuegoYaPanel = () => {
                 </option>
               ))}
             </select>
-            {/* Chevron */}
             <svg
               className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400"
               viewBox="0 0 20 20"
@@ -63,9 +60,7 @@ const StatsFuegoYaPanel = () => {
         </div>
       </div>
 
-      {/* Grilla de gráficos */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Card: Ventas mensuales */}
         <div className="rounded-2xl bg-white shadow-md p-4 lg:p-6">
           <VentasFYMensual
             endpoint="/ventafuegoya/stats/mensual"
@@ -74,7 +69,6 @@ const StatsFuegoYaPanel = () => {
           />
         </div>
 
-        {/* Card: Top clientes (donut) */}
         <div className="rounded-2xl bg-white shadow-md p-4 lg:p-6">
           <StatsTopClientesFY
             endpoint="/ventafuegoya/stats/topclientes" 

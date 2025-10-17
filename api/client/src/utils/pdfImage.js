@@ -1,4 +1,3 @@
-// /src/utils/pdfImage.js
 import { api } from "../api";
 
 const CDN_ORIGIN = "https://cdn.imanodstock.es";

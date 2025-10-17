@@ -24,9 +24,8 @@ const VentaFuegoYaList = () => {
   const [ventas, setVentas] = useState([]);
   const [error, setError]   = useState("");
 
-  // 🔄 Nuevo: lista de clientes + selección
   const [clientes, setClientes] = useState([]);
-  const [clienteId, setClienteId] = useState(""); // "" = todos
+  const [clienteId, setClienteId] = useState(""); 
 
   const [estadopago, setEstadopago] = useState("");
 
@@ -45,14 +44,13 @@ const VentaFuegoYaList = () => {
 
   const navigate = useNavigate();
 
-  // 🔄 Cargar clientes para el select
+  // Cargar clientes para el select
   useEffect(() => {
     (async () => {
       try {
         const { data } = await api.get("/clientesfuegoya/listar");
         setClientes(Array.isArray(data) ? data : []);
       } catch {
-        // No frenamos la UI si falla: sólo no habrá opciones
         setClientes([]);
       }
     })();
@@ -62,7 +60,6 @@ const VentaFuegoYaList = () => {
     try {
       const params = new URLSearchParams();
 
-      // Si hay cliente seleccionado, usamos su nombre para el filtro existente (?cliente=)
       if (clienteId) {
         const c = clientes.find(
           (x) => String(x.id_cliente) === String(clienteId)

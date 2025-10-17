@@ -64,7 +64,6 @@ const TipoTablasCard = ({ tipoTabla, onEdit, onDelete }) => {
         </div>
       )}
 
-      {/* Pill de stock */}
       <div
         className={`
           absolute top-3 right-3 px-2 py-0.5 text-[11px] font-medium
@@ -75,13 +74,11 @@ const TipoTablasCard = ({ tipoTabla, onEdit, onDelete }) => {
         Stock: {Number(stock ?? 0)}
       </div>
 
-      {/* Contenido */}
       <div className="p-4">
         <h3 className="text-base font-semibold text-slate-900 leading-snug line-clamp-2">
           {titulo || "Tipo de tabla"}
         </h3>
 
-        {/* Fichas rápidas */}
         <div className="mt-3 grid grid-cols-2 gap-3">
           <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
             <p className="text-[12px] text-slate-500">Dimensiones (cm)</p>
@@ -112,7 +109,6 @@ const TipoTablasCard = ({ tipoTabla, onEdit, onDelete }) => {
           )}
         </div>
 
-        {/* Acciones */}
         <div className="mt-4 flex gap-2">
           <button
             type="button"

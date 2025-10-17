@@ -38,7 +38,6 @@ const FibrasCard = ({ fibra, onEdit, onDelete }) => {
         hover:-translate-y-0.5 hover:shadow-lg
       "
     >
-      {/* Imagen (antd) */}
       {foto_url ? (
         <div className="relative h-36 w-full overflow-hidden">
           <Image
@@ -56,7 +55,6 @@ const FibrasCard = ({ fibra, onEdit, onDelete }) => {
         </div>
       )}
 
-      {/* Pill de stock */}
       <div
         className={`absolute top-3 right-3 px-2 py-0.5 text-[11px] font-medium rounded-full ring-1 shadow-sm ${colorByStock(stock)}`}
         title="Stock disponible"
@@ -64,7 +62,6 @@ const FibrasCard = ({ fibra, onEdit, onDelete }) => {
         Stock: {Number(stock ?? 0)}
       </div>
 
-      {/* Contenido */}
       <div className="p-4">
         <h3 className="text-base font-semibold text-slate-900 leading-snug line-clamp-2">
           {titulo || "Fibra"}

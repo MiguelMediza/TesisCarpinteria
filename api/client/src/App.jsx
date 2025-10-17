@@ -58,7 +58,7 @@ function App() {
   const { darkMode } = useContext(DarkModeContext);
 
 const Layout = ({ darkMode }) => {
-  const [navH, setNavH] = useState(72); // fallback razonable
+  const [navH, setNavH] = useState(72); 
 
   useEffect(() => {
     const el = document.getElementById("app-navbar");
@@ -66,8 +66,7 @@ const Layout = ({ darkMode }) => {
 
     const update = () => setNavH(el.offsetHeight || 72);
 
-    update(); // inicial
-    // Recalcula si cambia el tamaño (colapso mobile, etc.)
+    update(); 
     const ro = new ResizeObserver(update);
     ro.observe(el);
     window.addEventListener("resize", update);

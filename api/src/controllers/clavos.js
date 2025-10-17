@@ -1,4 +1,3 @@
-// controllers/clavos.js
 import { pool } from "../db.js";
 import { r2Delete } from "../lib/r2.js";
 
@@ -6,7 +5,7 @@ import { r2Delete } from "../lib/r2.js";
 const PUBLIC_BASE = process.env.R2_PUBLIC_BASE_URL || ""; 
 const urlFromKey = (key) => (key ? `${PUBLIC_BASE}/${key}` : null);
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // Crear un nuevo clavo
 export const createClavo = async (req, res) => {
   try {
@@ -20,7 +19,6 @@ export const createClavo = async (req, res) => {
       material,
     } = req.body;
 
-    // req.fileR2 = { key, url } si se subió archivo
     const fotoKey = req.fileR2?.key || null;
 
     // Inserción en materiaprima
@@ -61,7 +59,6 @@ export const createClavo = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Obtener un clavo por ID (id_materia_prima)
 export const getClavoById = async (req, res) => {
   try {
@@ -101,7 +98,6 @@ export const getClavoById = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Modificar un clavo existente 
 export const updateClavo = async (req, res) => {
   const connection = await pool.getConnection();
@@ -115,7 +111,7 @@ export const updateClavo = async (req, res) => {
       tipo,
       medidas,
       material,
-      foto_remove,        // <— viene como "1" si el usuario quitó la foto sin subir una nueva
+      foto_remove,        
     } = req.body;
 
     const newFotoKey = req.fileR2?.key || null;
@@ -132,7 +128,6 @@ export const updateClavo = async (req, res) => {
 
     await connection.beginTransaction();
 
-    // ====== UPDATE materiaprima (SET dinámico, sin coma colgando) ======
     const setParts = [
       `titulo = ?`,
       `precio_unidad = ?`,
@@ -146,10 +141,6 @@ export const updateClavo = async (req, res) => {
       comentarios || null,
     ];
 
-    // Lógica de foto:
-    // - Si sube nueva => set foto = ?
-    // - Sino, si pide borrar => set foto = NULL
-    // - Sino, no tocar la foto
     if (newFotoKey) {
       setParts.push(`foto = ?`);
       setVals.push(newFotoKey);
@@ -165,7 +156,6 @@ export const updateClavo = async (req, res) => {
     setVals.push(id);
     await connection.query(updateMP, setVals);
 
-    // ====== UPDATE clavos (detalle) ======
     const updateCl = `
       UPDATE clavos
          SET tipo = ?, medidas = ?, material = ?
@@ -175,9 +165,6 @@ export const updateClavo = async (req, res) => {
 
     await connection.commit();
 
-    // ====== Borrado en R2 (si corresponde) ======
-    // - Si subió nueva: borrar la anterior
-    // - Si no subió nueva pero pidió borrar: borrar la anterior
     const mustDeleteOld =
       (newFotoKey && oldFotoKey && newFotoKey !== oldFotoKey) ||
       (!newFotoKey && String(foto_remove) === "1" && oldFotoKey);
@@ -190,7 +177,6 @@ export const updateClavo = async (req, res) => {
       }
     }
 
-    // Respuesta con la key/URL actual (si subiste nueva, la nueva; si borraste, null)
     const PUBLIC_BASE = process.env.R2_PUBLIC_BASE_URL || "";
     const urlFromKey = (key) => (key ? `${PUBLIC_BASE}/${key}` : null);
 
@@ -214,9 +200,6 @@ export const updateClavo = async (req, res) => {
 };
 
 
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Eliminar un clavo y su imagen
 export const deleteClavo = async (req, res) => {
   const connection = await pool.getConnection();
   try {
@@ -316,8 +299,6 @@ export const deleteClavo = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Listar todos los clavos
 export const listClavos = async (req, res) => {
   try {
     const [rows] = await pool.query(
@@ -340,7 +321,6 @@ export const listClavos = async (req, res) => {
       `
     );
 
-    // Agregar foto_url calculada
     const withUrls = rows.map((r) => ({
       ...r,
       foto_url: urlFromKey(r.foto),

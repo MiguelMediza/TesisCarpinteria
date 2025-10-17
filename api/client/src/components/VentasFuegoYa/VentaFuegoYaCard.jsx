@@ -1,4 +1,3 @@
-// VentaFuegoYaCard.jsx
 import React, { useContext, useMemo, useState } from "react";
 import { Image } from "antd";
 import { api } from "../../api";
@@ -28,13 +27,11 @@ const formatDateTime = (s) => {
   });
 };
 
-// badge estilo pro en el header
 const badgePagoLook = (estado) =>
   estado === "pago"
     ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
     : "bg-amber-50 text-amber-800 ring-amber-200";
 
-// botón toggle pago (verde para marcar pagado, rojo para volver a crédito)
 const toggleBtnClasses = (estado, disabled) => {
   if (disabled) {
     return "bg-slate-200 text-slate-600 cursor-not-allowed";
@@ -94,7 +91,6 @@ const VentaFuegoYaCard = ({ venta, onEdit, onDelete, onPagoChanged }) => {
       onPagoChanged?.(id_ventaFuegoya, nuevo, nuevo === "pago" ? nowISO : null);
     } catch (err) {
       console.error("Error cambiando estado de pago:", err);
-      // revertir
       setEstadopago(prevEstado);
       setFechaPagoLocal(prevFecha);
       alert("No se pudo actualizar el estado de pago.");
@@ -111,7 +107,6 @@ const VentaFuegoYaCard = ({ venta, onEdit, onDelete, onPagoChanged }) => {
         hover:-translate-y-0.5 hover:shadow-lg flex flex-col
       "
     >
-      {/* Header degradado con título centrado y badge de estado */}
       <div className="relative h-20 w-full bg-gradient-to-r from-sky-50 to-indigo-50">
         <h3
           className="
@@ -134,9 +129,8 @@ const VentaFuegoYaCard = ({ venta, onEdit, onDelete, onPagoChanged }) => {
         </span>
       </div>
 
-      {/* Contenido */}
       <div className="p-4">
-        {/* Imagen (antd) */}
+
         {imgSrc ? (
           <div className="w-full h-44 rounded-xl overflow-hidden bg-slate-50 ring-1 ring-slate-200">
             <Image
@@ -154,7 +148,6 @@ const VentaFuegoYaCard = ({ venta, onEdit, onDelete, onPagoChanged }) => {
           </div>
         )}
 
-        {/* Cliente + tipo */}
         <div className="mt-3 text-sm text-slate-600">
           <span className="font-medium text-slate-800">Cliente:</span>{" "}
           <span className="text-slate-800">
@@ -163,7 +156,6 @@ const VentaFuegoYaCard = ({ venta, onEdit, onDelete, onPagoChanged }) => {
           {fuego_ya_tipo ? <span className="text-slate-500"> • {fuego_ya_tipo}</span> : null}
         </div>
 
-        {/* Chips informativos */}
         <div className="mt-3 flex flex-wrap gap-2">
           {/* Cantidad bolsas */}
           {(cantidadbolsas ?? null) !== null && (
@@ -188,7 +180,6 @@ const VentaFuegoYaCard = ({ venta, onEdit, onDelete, onPagoChanged }) => {
           )}
         </div>
 
-        {/* Fechas */}
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
             <p className="text-[12px] text-slate-500">Fecha realizada</p>
@@ -204,7 +195,6 @@ const VentaFuegoYaCard = ({ venta, onEdit, onDelete, onPagoChanged }) => {
           </div>
         </div>
 
-        {/* Comentarios */}
         {(comentarios ?? "").toString().trim() && (
           <div className="mt-3 rounded-xl border border-slate-100 bg-white p-3">
             <p className="text-[12px] text-slate-500">Comentarios</p>
@@ -212,7 +202,6 @@ const VentaFuegoYaCard = ({ venta, onEdit, onDelete, onPagoChanged }) => {
           </div>
         )}
 
-        {/* Acciones */}
         <div className="mt-4 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-end">
           <button
             onClick={handleTogglePago}

@@ -69,7 +69,6 @@ export const createTabla = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Obtener una tabla por ID (id_materia_prima)
 export const getTablaById = async (req, res) => {
   try {
@@ -112,7 +111,6 @@ export const getTablaById = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Modificar una tabla existente
 export const updateTabla = async (req, res) => {
   const connection = await pool.getConnection();
@@ -316,7 +314,6 @@ export const deleteTabla = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Listar todas las tabla
 export const listTablas = async (req, res) => {
   try {

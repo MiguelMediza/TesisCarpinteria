@@ -155,7 +155,7 @@ export const updateEncargo = async (req, res) => {
       fecha_prevista_llegada,
       comentarios,
       id_proveedor,
-      materias_primas // array: [{ id_materia_prima, cantidad }]
+      materias_primas 
     } = req.body;
 
     console.log("🔔 updateEncargo hit:", req.body);
@@ -235,7 +235,7 @@ export const listarMateriasPrimas = async (req, res) => {
 export const markEncargoRecibido = async (req, res) => {
   const connection = await pool.getConnection();
   try {
-    const { id } = req.params; // id_encargo
+    const { id } = req.params; 
     await connection.beginTransaction();
 
     //Verificar existencia y estado actual

@@ -1,4 +1,3 @@
-// StatsVentasFYMensual.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bar } from "react-chartjs-2";
 import {
@@ -41,10 +40,8 @@ const VentasFYMensual = ({
   const [loading, setLoading] = useState(false);
   const [isNarrow, setIsNarrow] = useState(false);
 
-  // ⬇️ ref del contenedor scrolleable
   const scrollRef = useRef(null);
 
-  // Detecta mobile (para altura)
   useEffect(() => {
     const mq = window.matchMedia?.("(max-width: 640px)");
     const onChange = (e) => setIsNarrow(e.matches);
@@ -92,7 +89,6 @@ const VentasFYMensual = ({
     const labels = months.map((m) => MESES_ES[m - 1]);
     const values = months.map((m) => byMonth.get(m) || 0);
 
-    // Colores: último (mes actual) diferenciado
     const bg = months.map((_, idx) =>
       idx === months.length - 1 ? "rgba(34,197,94,0.75)" : "rgba(59,130,246,0.7)"
     );
@@ -100,7 +96,6 @@ const VentasFYMensual = ({
       idx === months.length - 1 ? "rgba(22,163,74,1)" : "rgba(59,130,246,1)"
     );
 
-    // Tamaños: ancho mínimo por barra para evitar “filerear” en móvil
     const BAR_PX = 36;
     const GAP_PX = 18;
     const minWidth = Math.max(360, months.length * (BAR_PX + GAP_PX));
@@ -160,7 +155,6 @@ const VentasFYMensual = ({
     };
   }, [rows, year, isNarrow]);
 
-  // ⬇️ centramos el scroll cuando cambian datos/año o el contenedor cambia de tamaño
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -170,7 +164,6 @@ const VentasFYMensual = ({
       if (max > 0) el.scrollLeft = Math.floor(max / 2);
     };
 
-    // esperar a que el canvas calcule tamaño
     requestAnimationFrame(center);
     const t = setTimeout(center, 60);
 
@@ -187,7 +180,6 @@ const VentasFYMensual = ({
   if (err) return <div className="text-red-600">{err}</div>;
 
   return (
-    // ⬇️ Wrapper scrolleable, centrado por defecto
     <div
       ref={scrollRef}
       className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent"

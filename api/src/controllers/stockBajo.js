@@ -1,4 +1,3 @@
-// routes/stockBajo.controller.js
 import { pool } from "../db.js";
 
 const PUBLIC_BASE = process.env.R2_PUBLIC_BASE_URL || "";

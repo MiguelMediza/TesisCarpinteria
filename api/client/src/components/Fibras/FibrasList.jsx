@@ -28,12 +28,10 @@ const FibrasList = () => {
     navigate(`/fibras/${id}`);
   };
 
-  // Abrir modal
   const handleDeleteClick = (fibra) => {
     setToDelete(fibra);
   };
 
-  // Confirmar borrado
   const confirmDelete = async () => {
     try {
       await api.delete(`/fibras/${toDelete.id_materia_prima}`);
@@ -46,12 +44,10 @@ const FibrasList = () => {
     }
   };
 
-  // Cancelar borrado
   const cancelDelete = () => {
     setToDelete(null);
   };
 
-  // Filtrar por título
   const filteredFibras = fibras.filter(f =>
     (f.titulo || "").toLowerCase().includes(searchTerm.toLowerCase())
   );

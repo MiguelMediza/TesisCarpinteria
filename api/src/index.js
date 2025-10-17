@@ -70,19 +70,6 @@ if (!isProd) {
   );
 }
 
-app.use("/images/tablas", express.static(path.join(__dirname, "images", "tablas")));
-app.use("/images/palos", express.static(path.join(__dirname, "images", "palos")));
-app.use("/images/clavos", express.static(path.join(__dirname, "images", "clavos")));
-app.use("/images/fibras", express.static(path.join(__dirname, "images", "fibras")));
-app.use("/images/tipo_tablas", express.static(path.join(__dirname, "images", "tipo_tablas")));
-app.use("/images/tipo_tacos", express.static(path.join(__dirname, "images", "tipo_tacos")));
-app.use("/images/tipo_patines", express.static(path.join(__dirname, "images", "tipo_patines")));
-app.use("/images/fuego_ya", express.static(path.join(__dirname, "images", "fuego_ya")));
-app.use("/images/pellets", express.static(path.join(__dirname, "images", "pellets")));
-app.use("/images/ventas", express.static(path.join(__dirname, "images", "ventas")));
-app.use("/images/prototipos", express.static(path.join(__dirname, "images", "prototipos")));
-app.use("/images/venta_fuegoya", express.static(path.join(__dirname, "images", "venta_fuegoya")));
-
 
 app.use(express.static(clientDist));
 app.use(

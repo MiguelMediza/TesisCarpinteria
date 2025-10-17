@@ -38,14 +38,12 @@ const ClavosCard = ({ clavo, onEdit, onDelete }) => {
         hover:-translate-y-0.5 hover:shadow-lg
       "
     >
-      {/* Imagen (antd) */}
       {imgSrc ? (
         <div className="relative h-36 w-full overflow-hidden">
           <Image
             src={imgSrc}
             alt={titulo || "Clavos"}
             preview={{ mask: "Ver" }}
-            // estilos para que se adapte como <img class="object-cover">
             style={{ width: "100%", height: "100%", objectFit: "cover" }}
             rootClassName="!block"
             className="!w-full !h-full !object-cover transition-transform duration-300 group-hover:scale-[1.02]"
@@ -57,7 +55,6 @@ const ClavosCard = ({ clavo, onEdit, onDelete }) => {
         </div>
       )}
 
-      {/* Pill de stock */}
       <div
         className={`absolute top-3 right-3 px-2 py-0.5 text-[11px] font-medium rounded-full ring-1 shadow-sm ${colorByStock(stock)}`}
         title="Stock disponible"

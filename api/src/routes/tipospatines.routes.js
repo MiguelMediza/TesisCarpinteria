@@ -1,4 +1,3 @@
-// routes/tipopatines.js
 import { Router } from "express";
 import multer from "multer";
 import { createTipoPatin, deleteTipoPatin, getTipoPatinById, listTipoPatines, updateTipoPatin, listTipoPatinesSelect } from "../controllers/tipopatines.js";

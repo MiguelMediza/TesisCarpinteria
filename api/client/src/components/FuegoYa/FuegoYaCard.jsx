@@ -31,7 +31,6 @@ const FuegoYaCard = ({ fuegoya, onEdit, onDelete }) => {
         hover:-translate-y-0.5 hover:shadow-lg flex flex-col
       "
     >
-      {/* Header con degradado y título centrado */}
       <div className="relative h-20 w-full bg-gradient-to-r from-sky-50 to-indigo-50">
         <h3
           className="
@@ -43,7 +42,6 @@ const FuegoYaCard = ({ fuegoya, onEdit, onDelete }) => {
           {tipo || "Fuego Ya"}
         </h3>
 
-        {/* Badge de categoría (arriba a la derecha) */}
         <span
           className="
             absolute top-3 right-3 px-2 py-0.5 text-[11px] font-medium
@@ -54,9 +52,7 @@ const FuegoYaCard = ({ fuegoya, onEdit, onDelete }) => {
         </span>
       </div>
 
-      {/* Contenido */}
       <div className="p-4">
-        {/* Imagen (antd) */}
         {imgSrc ? (
           <div className="w-full h-44 rounded-xl overflow-hidden bg-slate-50 ring-1 ring-slate-200">
             <Image
@@ -81,7 +77,6 @@ const FuegoYaCard = ({ fuegoya, onEdit, onDelete }) => {
           </div>
         )}
 
-        {/* Chips de info */}
         <div className="mt-3 flex flex-wrap gap-2">
           <span
             className={`${chipBase} ${colorByStock(stock)}`}
@@ -102,7 +97,6 @@ const FuegoYaCard = ({ fuegoya, onEdit, onDelete }) => {
           )}
         </div>
 
-        {/* Acciones */}
         <div className="mt-4 flex gap-2">
           <button
             type="button"

@@ -29,7 +29,6 @@ const TipoPatinesCard = ({ tipoPatin, onEdit, onDelete }) => {
     comentarios,
   } = tipoPatin || {};
 
-  // Construcción de URL de imagen (R2 o absoluta)
   const R2 = (import.meta.env.VITE_R2_PUBLIC_BASE || "").replace(/\/+$/, "");
   const key = String(logo || "").replace(/^\/+/, "");
   const imageUrl = logo_url || (key ? `${R2}/${key}` : null);
@@ -50,7 +49,6 @@ const TipoPatinesCard = ({ tipoPatin, onEdit, onDelete }) => {
             src={imageUrl}
             alt={titulo || "Tipo de patín"}
             preview={{ mask: "Ver" }}
-            // logos suelen ser horizontales: usamos contain para que no se deformen
             style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
             rootClassName="!block"
             className="transition-transform duration-300 group-hover:scale-[1.02]"
@@ -62,7 +60,6 @@ const TipoPatinesCard = ({ tipoPatin, onEdit, onDelete }) => {
         </div>
       )}
 
-      {/* Pill de stock */}
       <div
         className={`
           absolute top-3 right-3 px-2 py-0.5 text-[11px] font-medium
@@ -73,13 +70,11 @@ const TipoPatinesCard = ({ tipoPatin, onEdit, onDelete }) => {
         Stock: {Number(stock ?? 0)}
       </div>
 
-      {/* Contenido */}
       <div className="p-4">
         <h3 className="text-base font-semibold text-slate-900 leading-snug line-clamp-2">
           {titulo || "Tipo de patín"}
         </h3>
 
-        {/* Chips de dependencias (tabla / taco) */}
         <div className="mt-2 flex flex-wrap gap-2">
           <span
             className="
@@ -103,7 +98,6 @@ const TipoPatinesCard = ({ tipoPatin, onEdit, onDelete }) => {
           </span>
         </div>
 
-        {/* Fichas rápidas */}
         <div className="mt-3 grid grid-cols-2 gap-3">
           <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
             <p className="text-[12px] text-slate-500">Medidas</p>
@@ -120,7 +114,6 @@ const TipoPatinesCard = ({ tipoPatin, onEdit, onDelete }) => {
           )}
         </div>
 
-        {/* Comentarios */}
         {comentarios && (
           <div className="mt-3 rounded-xl border border-slate-100 bg-white p-3">
             <p className="text-[12px] text-slate-500">Comentarios</p>
@@ -128,7 +121,6 @@ const TipoPatinesCard = ({ tipoPatin, onEdit, onDelete }) => {
           </div>
         )}
 
-        {/* Acciones */}
         <div className="mt-4 flex gap-2">
           <button
             type="button"

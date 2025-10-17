@@ -1,4 +1,3 @@
-// PelletsCard.jsx
 import React, { useContext } from "react";
 import { Image } from "antd";
 import { AuthContext } from "../../context/authContext";
@@ -36,7 +35,6 @@ const PelletsCard = ({ pellet, onEdit, onDelete }) => {
         hover:-translate-y-0.5 hover:shadow-lg flex flex-col
       "
     >
-      {/* Header con degradado y título centrado */}
       <div className="relative h-20 w-full bg-gradient-to-r from-sky-50 to-indigo-50">
         <h3
           className="
@@ -58,9 +56,7 @@ const PelletsCard = ({ pellet, onEdit, onDelete }) => {
         </span>
       </div>
 
-      {/* Contenido */}
       <div className="p-4">
-        {/* Imagen (antd) */}
         {imgSrc ? (
           <div className="w-full h-44 rounded-xl overflow-hidden bg-slate-50 ring-1 ring-slate-200">
             <Image
@@ -85,7 +81,6 @@ const PelletsCard = ({ pellet, onEdit, onDelete }) => {
           </div>
         )}
 
-        {/* Chips info */}
         <div className="mt-3 flex flex-wrap gap-2">
           <span
             className={`${chipBase} bg-amber-50 text-amber-700 ring-amber-200`}
@@ -114,7 +109,6 @@ const PelletsCard = ({ pellet, onEdit, onDelete }) => {
           )}
         </div>
 
-        {/* Acciones */}
         <div className="mt-4 flex gap-2">
           <button
             type="button"

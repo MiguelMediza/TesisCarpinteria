@@ -27,17 +27,14 @@ const PrototipoPalletList = () => {
     fetchPrototipos();
   }, [fetchPrototipos]);
 
-  // Editar
   const handleEdit = (id) => {
     navigate(`/prototipos/${id}`);
   };
 
-  // Borrar (abrir modal)
   const handleDeleteClick = (prototipo) => {
     setToDelete(prototipo);
   };
 
-  // Confirmar borrado
   const confirmDelete = async () => {
     try {
       await api.delete(`/prototipos/${toDelete.id_prototipo}`);
@@ -58,10 +55,8 @@ const PrototipoPalletList = () => {
     }
   };
 
-  // Cancelar modal
   const cancelDelete = () => setToDelete(null);
 
-  // Filtro por título o cliente
   const filtered = prototipos.filter(p => {
     const hay = (s) => (s || "").toLowerCase().includes(searchTerm.toLowerCase());
     return hay(p.titulo) || hay(p.cliente_empresa) || hay(`${p.cliente_nombre || ""} ${p.cliente_apellido || ""}`);
@@ -94,7 +89,6 @@ const PrototipoPalletList = () => {
         />
       </div>
 
-      {/* Grid responsivo */}
       <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(260px,1fr))]">
         {filtered.map((p) => (
           <PrototipoPalletCard

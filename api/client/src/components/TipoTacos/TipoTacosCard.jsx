@@ -28,7 +28,6 @@ const TipoTacosCard = ({ tipoTaco, onEdit, onDelete }) => {
     stock,
   } = tipoTaco || {};
 
-  // URL de imagen (R2 o absoluta)
   const R2 = (import.meta.env.VITE_R2_PUBLIC_BASE || "").replace(/\/+$/, "");
   let imageUrl = null;
   if (foto_url) imageUrl = foto_url;
@@ -52,7 +51,6 @@ const TipoTacosCard = ({ tipoTaco, onEdit, onDelete }) => {
         flex flex-col
       "
     >
-      {/* Imagen (antd) */}
       {imageUrl ? (
         <div className="relative h-36 w-full overflow-hidden">
           <Image
@@ -70,7 +68,6 @@ const TipoTacosCard = ({ tipoTaco, onEdit, onDelete }) => {
         </div>
       )}
 
-      {/* Pill de stock */}
       <div
         className={`
           absolute top-3 right-3 px-2 py-0.5 text-[11px] font-medium
@@ -81,13 +78,11 @@ const TipoTacosCard = ({ tipoTaco, onEdit, onDelete }) => {
         Stock: {Number(stock ?? 0)}
       </div>
 
-      {/* Contenido */}
       <div className="p-4">
         <h3 className="text-base font-semibold text-slate-900 leading-snug line-clamp-2">
           {titulo || "Tipo de taco"}
         </h3>
 
-        {/* Fichas rápidas */}
         <div className="mt-3 grid grid-cols-2 gap-3">
           <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
             <p className="text-[12px] text-slate-500">Dimensiones (cm × cm × cm)</p>
@@ -104,7 +99,6 @@ const TipoTacosCard = ({ tipoTaco, onEdit, onDelete }) => {
           )}
         </div>
 
-        {/* Acciones */}
         <div className="mt-4 flex gap-2">
           <button
             type="button"

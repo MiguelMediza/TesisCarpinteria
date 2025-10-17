@@ -1,4 +1,3 @@
-// lib/r2.js
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import path from "path";
 

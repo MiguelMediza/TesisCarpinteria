@@ -300,7 +300,7 @@ CREATE TABLE fuegoya_pago_aplicaciones (
   INDEX ix_aplicaciones_venta (id_ventaFuegoya)
 );
 
--- (Opcional pero útil) Vista de pendiente por venta
+--  Vista de pendiente por venta
 DROP VIEW IF EXISTS vw_vfy_pendiente;
 CREATE VIEW vw_vfy_pendiente AS
 SELECT
@@ -317,11 +317,11 @@ LEFT JOIN fuegoya_pago_aplicaciones a
   ON a.id_ventaFuegoya = v.id_ventaFuegoya
 GROUP BY v.id_ventaFuegoya, v.id_cliente, v.fecha_realizada, v.precio_total, v.estadopago, v.fechapago;
 
--- (Opcional) Índice para buscar rápido las ventas “a crédito” más antiguas
+--  Índice para buscar rápido las ventas “a crédito” más antiguas
 CREATE INDEX ix_vfy_cliente_estado_fecha
 ON venta_fuegoya (id_cliente, estadopago, fecha_realizada, id_ventaFuegoya);
 
-/* VIEW para listar las materias primas con stock bajo 'menor a 100' */
+/* VIEW para listar las materias primas con stock bajo 'menor a 500' */
 CREATE VIEW stock_bajo AS
 SELECT 'materiaprima' AS origen, id_materia_prima AS id, titulo, stock
 FROM materiaprima WHERE stock < 500
@@ -341,7 +341,7 @@ CREATE INDEX ix_prototipo_clavos_parent ON prototipo_clavos (id_materia_prima);
 CREATE INDEX ix_ptt_taco ON prototipo_tipo_tacos (id_tipo_taco);
 CREATE INDEX ix_patines_taco ON tipo_patines (id_tipo_taco);
 CREATE INDEX ix_pp_patin ON prototipo_pallet (id_tipo_patin);
--- 1) BOM detallado (incluye PATÍN con cantidad)
+
 
 DROP VIEW IF EXISTS vw_prototipo_bom_detalle;
 CREATE VIEW vw_prototipo_bom_detalle AS
@@ -401,7 +401,7 @@ FROM prototipo_fibras pf
 JOIN materiaprima mp ON mp.id_materia_prima = pf.id_materia_prima
 
 UNION ALL
-/* ====== PATÍN (usa cantidad_patines del prototipo) ====== */
+/* ====== PATÍN ====== */
 SELECT
   pp.id_prototipo,
   'patin'                           AS categoria,
@@ -416,9 +416,8 @@ JOIN tipo_patines tp ON tp.id_tipo_patin = pp.id_tipo_patin
 WHERE pp.id_tipo_patin IS NOT NULL
   AND COALESCE(pp.cantidad_patines, 0) > 0;
 
--- ===========================================
--- 2) Costo total por prototipo (suma el BOM)
--- ===========================================
+--2) Costo total por prototipo (suma el BOM)
+
 DROP VIEW IF EXISTS vw_prototipo_costo_total;
 CREATE VIEW vw_prototipo_costo_total AS
 SELECT 

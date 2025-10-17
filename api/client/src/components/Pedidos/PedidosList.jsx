@@ -11,13 +11,11 @@ const PedidosList = () => {
   const [clientes, setClientes] = useState([]);
   const [error, setError] = useState("");
 
-  // filtros
   const [estado, setEstado] = useState("");
-  const [idCliente, setIdCliente] = useState(""); // string desde el <select>
+  const [idCliente, setIdCliente] = useState(""); 
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
 
-  // delete modal
   const [toDelete, setToDelete] = useState(null);
 
   const navigate = useNavigate();
@@ -35,9 +33,7 @@ const PedidosList = () => {
 
   const fetchPedidos = useCallback(async () => {
     try {
-      // armamos params con axios (más robusto)
       const params = {
-        // si querés seguir soportando q, agregalo acá cuando tengas input
         estado: estado || undefined,
         id_cliente: idCliente ? Number(idCliente) : undefined,
         desde: desde || undefined,
@@ -74,7 +70,6 @@ const PedidosList = () => {
     }
   };
 
-  // nombre correcto que espera PedidosCard: onEstadoChanged
   const handleEstadoChanged = async (id_pedido, newStatus) => {
     try {
       setPedidos(curr =>
@@ -86,7 +81,7 @@ const PedidosList = () => {
     } catch (e) {
       console.error(e);
       setError("No se pudo cambiar el estado del pedido.");
-      fetchPedidos(); // rollback
+      fetchPedidos();
     }
   };
 
@@ -97,7 +92,6 @@ const PedidosList = () => {
     setHasta("");
   };
 
-  // 🛡️ Filtro en el cliente como red de seguridad por si el backend ignora algo
   const pedidosFiltrados = useMemo(() => {
     let arr = [...pedidos];
 
@@ -114,7 +108,6 @@ const PedidosList = () => {
       arr = arr.filter(p => (p.fecha_realizado || p.fecha_realizada || "") <= hasta);
     }
 
-    // opcional: ordená por fecha más reciente primero
     arr.sort((a, b) => String(b.fecha_realizado || b.fecha_realizada || "").localeCompare(String(a.fecha_realizado || a.fecha_realizada || "")));
 
     return arr;
@@ -179,7 +172,6 @@ const PedidosList = () => {
           <button
             onClick={() => {
               resetFiltros();
-              // refresco desde servidor con filtros limpios
               setTimeout(fetchPedidos, 0);
             }}
             className="px-4 py-2 bg-neutral-200 text-neutral-800 rounded hover:bg-neutral-300 transition"
@@ -199,7 +191,7 @@ const PedidosList = () => {
             pedido={p}
             onEdit={handleEdit}
             onDelete={() => handleDeleteClick(p)}
-            onEstadoChanged={handleEstadoChanged}  // <- nombre correcto
+            onEstadoChanged={handleEstadoChanged} 
           />
         ))}
         {pedidosFiltrados.length === 0 && (

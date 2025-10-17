@@ -55,7 +55,6 @@ const StockBajo = ({ item }) => {
         focus-visible:ring-2 focus-visible:ring-blue-500/70
       "
     >
-      {/* Imagen / placeholder */}
       <div className="relative h-32 md:h-36 bg-slate-100">
         {imgSrc ? (
           <img
@@ -73,7 +72,6 @@ const StockBajo = ({ item }) => {
           </div>
         )}
 
-        {/* Origen (pill) */}
         <div className="absolute left-2 top-2">
           <span className="
             inline-flex items-center gap-1 rounded-full
@@ -85,7 +83,6 @@ const StockBajo = ({ item }) => {
         </div>
       </div>
 
-      {/* Contenido */}
       <div className="p-4">
         <h3 className="text-sm font-semibold text-slate-900 line-clamp-2">
           {titulo}
@@ -94,7 +91,6 @@ const StockBajo = ({ item }) => {
         <div className="mt-3 flex items-center justify-between">
           <span className="text-xs text-slate-500">Stock</span>
           <div className="flex items-center gap-2">
-            {/* Severidad por stock */}
             <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${severityPill(stock)}`}>
               {stock < 100 ? "Crítico" : stock < 250 ? "Bajo" : "Atención"}
             </span>

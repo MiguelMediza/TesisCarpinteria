@@ -1,4 +1,3 @@
-// TablaCard.jsx
 import React, { useContext } from "react";
 import { Image } from "antd";
 import { AuthContext } from "../../context/authContext";
@@ -45,7 +44,6 @@ const TablaCard = ({ tabla, onEdit, onDelete }) => {
         flex flex-col
       "
     >
-      {/* Imagen (antd) */}
       {foto_url ? (
         <div className="relative h-36 w-full overflow-hidden">
           <Image
@@ -63,7 +61,6 @@ const TablaCard = ({ tabla, onEdit, onDelete }) => {
         </div>
       )}
 
-      {/* Pill de stock */}
       <div
         className={`
           absolute top-3 right-3 px-2 py-0.5 text-[11px] font-medium
@@ -74,20 +71,17 @@ const TablaCard = ({ tabla, onEdit, onDelete }) => {
         Stock: {Number(stock ?? 0)}
       </div>
 
-      {/* Contenido */}
       <div className="p-4">
         <h3 className="text-base font-semibold text-slate-900 leading-snug line-clamp-2">
           {titulo || "Tabla"}
         </h3>
 
-        {/* Meta breve */}
         <p className="mt-1 text-[12px] text-slate-500">
           {[tipo_madera, cepilladas != null ? (cepilladas ? "Cepilladas" : "Sin cepillar") : null]
             .filter(Boolean)
             .join(" · ")}
         </p>
 
-        {/* Fichas rápidas */}
         <div className="mt-3 grid grid-cols-2 gap-3">
           <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
             <p className="text-[12px] text-slate-500">Dimensiones</p>

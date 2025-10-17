@@ -1,4 +1,3 @@
-// controllers/fibras.js
 import { pool } from "../db.js";
 import { r2Delete } from "../lib/r2.js";
 
@@ -142,7 +141,7 @@ export const updateFibra = async (req, res) => {
       precio_unidad != null ? parseFloat(precio_unidad) : 0,
       stock != null ? parseInt(stock, 10) : 0,
       comentarios || null,
-      newFotoKey, // si es null, mantiene la anterior
+      newFotoKey, 
       id,
     ]);
 

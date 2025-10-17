@@ -102,7 +102,6 @@ async function autoAplicarSaldoAFavor(conn, idCliente, idVenta) {
   return { aplicado: aplicadoTotal, pendiente_final: pendiente };
 }
 
-/* ========================= CREATE ============================== */
 export const createVentaFuegoya = async (req, res) => {
   const conn = await pool.getConnection();
   try {
@@ -222,7 +221,7 @@ export const createVentaFuegoya = async (req, res) => {
   }
 };
 
-/* ======================== GET BY ID ============================ */
+
 export const getVentaFuegoyaById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -258,7 +257,6 @@ export const getVentaFuegoyaById = async (req, res) => {
   }
 };
 
-/* =========================== UPDATE ============================ */
 export const updateVentaFuegoya = async (req, res) => {
   const conn = await pool.getConnection();
   try {
@@ -411,7 +409,6 @@ export const updateVentaFuegoya = async (req, res) => {
   }
 };
 
-/* ============================ DELETE =========================== */
 export const deleteVentaFuegoya = async (req, res) => {
   const conn = await pool.getConnection();
   try {
@@ -534,7 +531,6 @@ export const deleteVentaFuegoya = async (req, res) => {
 };
 
 
-/* ============================= LIST ============================ */
 export const listVentaFuegoya = async (req, res) => {
   try {
     const { desde, hasta, cliente, estadopago } = req.query;
@@ -589,7 +585,6 @@ export const listVentaFuegoya = async (req, res) => {
   }
 };
 
-/* =========== CHANGE ESTADO PAGO  =========== */
 export const changeEstadoPagoVentaFuegoya = async (req, res) => {
   const conn = await pool.getConnection();
   try {
