@@ -64,7 +64,6 @@ const Register = () => {
       />
 
       <div className="relative z-10 w-full sm:max-w-md p-6 bg-white bg-opacity-80 rounded-lg shadow-md">
-        {/* 👇 Logo arriba del título */}
         <img
           src={logoImanod}
           alt="Imanod"

@@ -108,12 +108,12 @@ export const createVentaFuegoya = async (req, res) => {
     const {
       fecha_realizada,
       precio_total,
-      id_cliente,       
+      id_cliente,
       id_fuego_ya,
       cantidadbolsas,
       comentarios,
-      estadopago,       
-      fechapago,        
+      estadopago,
+      fechapago,
     } = req.body;
 
     const fotoKey = req.fileR2?.key || null;
@@ -165,6 +165,7 @@ export const createVentaFuegoya = async (req, res) => {
     }
 
     const fechapagoSQL = toMySQLDateTime(fechapago);
+    const isPagoInit = estadopago === "pago";
 
     const [ins] = await conn.query(
       `
@@ -181,7 +182,7 @@ export const createVentaFuegoya = async (req, res) => {
         fotoKey,
         comentarios || null,
         estadopago || null,
-        fechapagoSQL,
+        fechapagoSQL, 
       ]
     );
     const idVenta = ins.insertId;
@@ -190,6 +191,13 @@ export const createVentaFuegoya = async (req, res) => {
       `UPDATE fuego_ya SET stock = stock - ? WHERE id_fuego_ya = ?`,
       [cb, id_fuego_ya]
     );
+
+    if (isPagoInit && !fechapagoSQL) {
+      await conn.query(
+        `UPDATE venta_fuegoya SET fechapago = NOW() WHERE id_ventaFuegoya = ?`,
+        [idVenta]
+      );
+    }
 
     let aplicado_auto = 0;
     let estado_final = estadopago || null;
@@ -204,9 +212,10 @@ export const createVentaFuegoya = async (req, res) => {
 
     return res.status(201).json({
       id_ventaFuegoya: idVenta,
-      message: aplicado_auto > 0
-        ? "Venta creada y cubierta parcial/total con saldo a favor."
-        : "Venta Fuegoya creada exitosamente!",
+      message:
+        aplicado_auto > 0
+          ? "Venta creada y cubierta parcial/total con saldo a favor."
+          : "Venta Fuegoya creada exitosamente!",
       aplicado_auto,
       estadopago_final: estado_final,
       foto_key: fotoKey,
@@ -220,6 +229,7 @@ export const createVentaFuegoya = async (req, res) => {
     conn.release();
   }
 };
+
 
 
 export const getVentaFuegoyaById = async (req, res) => {
