@@ -345,3 +345,145 @@ export const deleteTipoTaco = async (req, res) => {
     connection.release();
   }
 };
+
+export const ajustarStockTipoTaco = async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    let { id_tipo_taco, cantidad, descontarPadre } = req.body;
+
+    const idTaco = parseInt(id_tipo_taco, 10);
+    const cant   = parseInt(cantidad, 10);
+
+    if (!Number.isInteger(idTaco) || idTaco <= 0) {
+      return res.status(400).json({ message: "ID de tipo de taco inválido." });
+    }
+
+    if (!Number.isInteger(cant) || cant <= 0) {
+      return res.status(400).json({ message: "Cantidad a agregar inválida (debe ser > 0)." });
+    }
+
+    const descPadre =
+      descontarPadre === true ||
+      descontarPadre === "true" ||
+      descontarPadre === 1 ||
+      descontarPadre === "1";
+
+    await connection.beginTransaction();
+
+    // 1) Traigo el tipo de taco y bloqueo
+    const [[taco]] = await connection.query(
+      `SELECT id_materia_prima, largo_cm, stock
+       FROM tipo_tacos
+       WHERE id_tipo_taco = ?
+       FOR UPDATE`,
+      [idTaco]
+    );
+
+    if (!taco) {
+      await connection.rollback();
+      return res.status(404).json({ message: "Tipo de taco no encontrado!" });
+    }
+
+    const { id_materia_prima, largo_cm, stock: oldStock } = taco;
+    const largoTaco = parseFloat(largo_cm);
+
+    if (!Number.isFinite(largoTaco) || largoTaco <= 0) {
+      await connection.rollback();
+      return res.status(400).json({ message: "Datos de largo del tipo de taco inválidos." });
+    }
+
+    let palosConsumidos = 0;
+
+    // 2) Si corresponde, descuento stock del palo padre
+    if (descPadre) {
+      const [[parent]] = await connection.query(
+        `SELECT p.largo_cm AS parentLargo, mp.stock AS parentStock
+         FROM palos AS p
+         JOIN materiaprima AS mp ON p.id_materia_prima = mp.id_materia_prima
+         WHERE p.id_materia_prima = ?
+         FOR UPDATE`,
+        [id_materia_prima]
+      );
+
+      if (!parent) {
+        await connection.rollback();
+        return res.status(404).json({ message: "Palo padre no encontrado!" });
+      }
+
+      const parentLargo = parseFloat(parent.parentLargo);
+      const parentStock = parseInt(parent.parentStock, 10);
+
+      if (!Number.isFinite(parentLargo) || parentLargo <= 0) {
+        await connection.rollback();
+        return res.status(400).json({ message: "Datos de largo de palo padre inválidos." });
+      }
+
+      const piezasPorPalo = Math.floor(parentLargo / (largoTaco + MARGIN));
+      if (piezasPorPalo < 1) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "El largo del taco excede al del palo padre (no se puede cortar).",
+        });
+      }
+
+      palosConsumidos = Math.ceil(cant / piezasPorPalo);
+
+      if (parentStock < palosConsumidos) {
+        await connection.rollback();
+        return res.status(409).json({
+          code: "STOCK_INSUFICIENTE",
+          message: "Stock insuficiente de palos padre.",
+          detalles: {
+            requerido_adicional: palosConsumidos,
+            disponible: parentStock,
+            piezas_por_palo: piezasPorPalo,
+          },
+        });
+      }
+
+      const [updParent] = await connection.query(
+        `UPDATE materiaprima
+         SET stock = stock - ?
+         WHERE id_materia_prima = ? AND stock >= ?`,
+        [palosConsumidos, id_materia_prima, palosConsumidos]
+      );
+
+      if (updParent.affectedRows !== 1) {
+        await connection.rollback();
+        return res.status(409).json({
+          message:
+            "Stock insuficiente de palos padre (carrera detectada). Intenta nuevamente.",
+        });
+      }
+    }
+
+    // 3) Actualizo stock del tipo de taco
+    const newStock = parseInt(oldStock, 10) + cant;
+
+    await connection.query(
+      `UPDATE tipo_tacos
+       SET stock = ?
+       WHERE id_tipo_taco = ?`,
+      [newStock, idTaco]
+    );
+
+    await connection.commit();
+
+    return res.status(200).json({
+      message: "Stock de tipo de taco actualizado correctamente!",
+      detalles: {
+        id_tipo_taco: idTaco,
+        agregado: cant,
+        nuevo_stock: newStock,
+        descontarPadre: !!descPadre,
+        palosConsumidos,
+      },
+    });
+  } catch (err) {
+    try { await connection.rollback(); } catch {}
+    console.error("❌ Error en ajustarStockTipoTaco:", err);
+    return res.status(500).json({ error: "Internal server error", details: err.message });
+  } finally {
+    connection.release();
+  }
+};

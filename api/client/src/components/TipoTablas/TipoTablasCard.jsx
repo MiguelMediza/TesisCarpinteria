@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import { Image } from "antd";
 import { AuthContext } from "../../context/authContext";
 
@@ -12,7 +12,7 @@ const colorByStock = (stock) => {
   return "bg-emerald-50 text-emerald-700 ring-emerald-200";
 };
 
-const TipoTablasCard = ({ tipoTabla, onEdit, onDelete }) => {
+const TipoTablasCard = ({ tipoTabla, onEdit, onDelete, onAddStock }) => {
   const { currentUser } = useContext(AuthContext);
   const isAdmin = currentUser?.tipo === "admin";
 
@@ -36,6 +36,46 @@ const TipoTablasCard = ({ tipoTabla, onEdit, onDelete }) => {
     [largo_cm, ancho_cm, espesor_mm].some((v) => v != null)
       ? `${largo_cm ?? "—"} × ${ancho_cm ?? "—"} × ${espesor_mm ?? "—"}`
       : "—";
+
+  // --- NUEVO: estados para suma de stock ---
+  const [cantidadStock, setCantidadStock] = useState("");
+  const [descontarPadre, setDescontarPadre] = useState(true);
+  const [loadingStock, setLoadingStock] = useState(false);
+  const [errorStock, setErrorStock] = useState("");
+  const [successStock, setSuccessStock] = useState("");
+
+  const handleAddStock = async () => {
+    setErrorStock("");
+    setSuccessStock("");
+
+    const n = Number(cantidadStock);
+    if (!n || n <= 0) {
+      setErrorStock("Ingrese una cantidad mayor a 0.");
+      return;
+    }
+
+    if (!id_tipo_tabla) {
+      setErrorStock("No se encontró el ID del tipo de tabla.");
+      return;
+    }
+
+    try {
+      setLoadingStock(true);
+
+      // El padre define qué hacer con esto (API, refrescar lista, etc.)
+      if (typeof onAddStock === "function") {
+        await onAddStock(id_tipo_tabla, n, descontarPadre);
+      }
+
+      setCantidadStock("");
+      setSuccessStock("Stock actualizado correctamente.");
+    } catch (err) {
+      console.error(err);
+      setErrorStock("Ocurrió un error al actualizar el stock.");
+    } finally {
+      setLoadingStock(false);
+    }
+  };
 
   return (
     <div
@@ -109,6 +149,7 @@ const TipoTablasCard = ({ tipoTabla, onEdit, onDelete }) => {
           )}
         </div>
 
+        {/* Botones editar / eliminar */}
         <div className="mt-4 flex gap-2">
           <button
             type="button"
@@ -137,6 +178,60 @@ const TipoTablasCard = ({ tipoTabla, onEdit, onDelete }) => {
             Eliminar
           </button>
         </div>
+
+        {/* --- NUEVO: sección para sumar stock --- */}
+        {isAdmin && (
+          <div className="mt-4 border-t border-slate-100 pt-3 space-y-2">
+            <p className="text-center text-[12px] font-medium text-slate-600">
+              Ajustar stock
+            </p>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min="1"
+                value={cantidadStock}
+                onChange={(e) => setCantidadStock(e.target.value)}
+                className="
+                  w-24 rounded-lg border border-slate-200 px-2 py-1 text-sm
+                  focus:outline-none focus:ring-2 focus:ring-blue-400
+                "
+                placeholder="+ unidades"
+              />
+
+              <label className="inline-flex items-center gap-1 text-[12px] text-slate-600">
+                <input
+                  type="checkbox"
+                  className="rounded border-slate-300"
+                  checked={descontarPadre}
+                  onChange={(e) => setDescontarPadre(e.target.checked)}
+                />
+                <span>Descontar de tabla padre</span>
+              </label>
+
+              <button
+                type="button"
+                onClick={handleAddStock}
+                disabled={loadingStock}
+                className="
+                  ml-auto inline-flex items-center justify-center rounded-lg
+                  bg-emerald-600 text-white px-3 py-1.5 text-[12px] font-medium
+                  shadow-sm hover:bg-emerald-700 disabled:opacity-60
+                  focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400
+                "
+              >
+                {loadingStock ? "Guardando..." : "Aplicar"}
+              </button>
+            </div>
+
+            {errorStock && (
+              <p className="text-[11px] text-red-600">{errorStock}</p>
+            )}
+            {successStock && (
+              <p className="text-[11px] text-emerald-600">{successStock}</p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -8,7 +8,6 @@ export const createPalo = async (req, res) => {
   try {
     const {
       titulo,
-      precio_unidad,
       stock,
       comentarios,
       largo_cm,
@@ -18,16 +17,20 @@ export const createPalo = async (req, res) => {
 
     const fotoKey = req.fileR2?.key || null;
 
+    const toFloatOrNull = (v) =>
+      v !== undefined && v !== "" ? parseFloat(v) : null;
+    const toIntOrZero = (v) =>
+      v !== undefined && v !== "" ? parseInt(v, 10) : 0;
+
     const insertMP = `
       INSERT INTO materiaprima
-        (categoria, titulo, precio_unidad, stock, foto, comentarios)
-      VALUES (?, ?, ?, ?, ?, ?)
+        (categoria, titulo, stock, foto, comentarios)
+      VALUES (?, ?, ?, ?, ?)
     `;
     const [mpResult] = await pool.query(insertMP, [
       "palo",
       titulo,
-      parseFloat(precio_unidad),
-      parseInt(stock, 10),
+      toIntOrZero(stock),
       fotoKey,
       comentarios || null,
     ]);
@@ -41,9 +44,9 @@ export const createPalo = async (req, res) => {
     `;
     await pool.query(insertPalo, [
       id_materia_prima,
-      parseFloat(largo_cm),
-      parseFloat(diametro_mm),
-      tipo_madera,
+      toFloatOrNull(largo_cm),
+      toFloatOrNull(diametro_mm),
+      tipo_madera || null,
     ]);
 
     return res.status(201).json({
@@ -67,7 +70,6 @@ export const getPaloById = async (req, res) => {
         mp.id_materia_prima,
         mp.categoria,
         mp.titulo,
-        mp.precio_unidad,
         mp.stock,
         mp.foto,
         mp.comentarios AS comentarios_mp,
@@ -102,14 +104,15 @@ export const updatePalo = async (req, res) => {
     const { id } = req.params;
     const {
       titulo,
-      precio_unidad,
       stock,
       comentarios,
       largo_cm,
       diametro_mm,
       tipo_madera,
+      foto_remove, // 👈 NUEVO: bandera para borrar imagen sin subir otra
     } = req.body;
 
+    // Obtener foto actual
     const [exists] = await connection.query(
       "SELECT foto FROM materiaprima WHERE id_materia_prima = ?",
       [id]
@@ -117,29 +120,41 @@ export const updatePalo = async (req, res) => {
     if (exists.length === 0) {
       return res.status(404).json("Palo no encontrado!");
     }
-    const oldFotoKey = exists[0].foto;
+    const oldFotoKey = exists[0].foto || null;
+
+    // Si se subió nueva imagen a R2, viene en req.fileR2.key
     const newFotoKey = req.fileR2?.key || null;
 
     await connection.beginTransaction();
 
-    const updateMP = `
-      UPDATE materiaprima SET
-        titulo = ?,
-        precio_unidad = ?,
-        stock = ?,
-        comentarios = ?,
-        foto = COALESCE(?, foto)
-      WHERE id_materia_prima = ?
-    `;
-    await connection.query(updateMP, [
+    // ----- Actualizar materiaprima (sin precio) -----
+    const mpSet = [
+      "titulo = ?",
+      "stock = ?",
+      "comentarios = ?",
+    ];
+    const mpVals = [
       titulo,
-      parseFloat(precio_unidad),
-      parseInt(stock, 10),
+      stock != null ? parseInt(stock, 10) : null,
       comentarios || null,
-      newFotoKey,
-      id,
-    ]);
+    ];
 
+    if (newFotoKey) {
+      mpSet.push("foto = ?");
+      mpVals.push(newFotoKey);
+    } else if (String(foto_remove) === "1") {
+      mpSet.push("foto = NULL");
+    }
+
+    const updateMP = `
+      UPDATE materiaprima
+         SET ${mpSet.join(", ")}
+       WHERE id_materia_prima = ?
+    `;
+    mpVals.push(id);
+    await connection.query(updateMP, mpVals);
+
+    // ----- Actualizar palos -----
     const updateP = `
       UPDATE palos SET
         largo_cm = ?,
@@ -148,15 +163,20 @@ export const updatePalo = async (req, res) => {
       WHERE id_materia_prima = ?
     `;
     await connection.query(updateP, [
-      parseFloat(largo_cm),
-      parseFloat(diametro_mm),
-      tipo_madera,
+      largo_cm != null ? parseFloat(largo_cm) : null,
+      diametro_mm != null ? parseFloat(diametro_mm) : null,
+      tipo_madera || null,
       id,
     ]);
 
     await connection.commit();
 
-    if (newFotoKey && oldFotoKey) {
+    // ----- Borrar imagen anterior en R2 si corresponde -----
+    const mustDeleteOld =
+      (newFotoKey && oldFotoKey && newFotoKey !== oldFotoKey) ||
+      (!newFotoKey && String(foto_remove) === "1" && oldFotoKey);
+
+    if (mustDeleteOld) {
       try {
         await r2Delete(oldFotoKey);
       } catch (e) {
@@ -164,9 +184,19 @@ export const updatePalo = async (req, res) => {
       }
     }
 
-    return res.status(200).json("Palo modificado exitosamente!");
+    // (Opcional) Devolver url actualizada:
+    const PUBLIC_BASE = process.env.R2_PUBLIC_BASE_URL || "";
+    const urlFromKey = (key) => (key ? `${PUBLIC_BASE}/${key}` : null);
+    const currentKey =
+      newFotoKey ? newFotoKey : String(foto_remove) === "1" ? null : oldFotoKey;
+
+    return res.status(200).json({
+      message: "Palo modificado exitosamente!",
+      foto_key: currentKey,
+      foto_url: urlFromKey(currentKey),
+    });
   } catch (err) {
-    await connection.rollback();
+    try { await connection.rollback(); } catch {}
     console.error("❌ Error en updatePalo:", err);
     return res
       .status(500)
@@ -175,6 +205,7 @@ export const updatePalo = async (req, res) => {
     connection.release();
   }
 };
+
 
 export const deletePalo = async (req, res) => {
   const connection = await pool.getConnection();
@@ -281,7 +312,6 @@ export const listPalos = async (req, res) => {
         mp.id_materia_prima,
         mp.categoria,
         mp.titulo,
-        mp.precio_unidad,
         mp.stock,
         mp.foto,
         mp.comentarios AS comentarios_mp,
@@ -295,7 +325,7 @@ export const listPalos = async (req, res) => {
       ORDER BY mp.titulo ASC
       `
     );
- 
+
     const data = rows.map((r) => ({
       ...r,
       foto_url: urlFor(r.foto),

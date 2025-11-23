@@ -11,7 +11,7 @@ const TipoTablasList = () => {
   const [toDelete, setToDelete] = useState(null);
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState(""); 
+  const [deleteError, setDeleteError] = useState("");
   const R2 = (import.meta.env.VITE_R2_PUBLIC_BASE || "").replace(/\/+$/, "");
   const imgFrom = (row) =>
     row?.foto_url ?? (row?.foto ? `${R2}/${String(row.foto).replace(/^\/+/, "")}` : null);
@@ -29,45 +29,79 @@ const TipoTablasList = () => {
   }, []);
 
   const handleEdit = (id) => navigate(`/tipotablas/${id}`);
-const handleDeleteClick = (tipo) => {
-  setDeleteError("");
-  setToDelete(tipo);
-};
-  const confirmDelete = async () => {
-  if (!toDelete) return;
-  setDeleting(true);
-  setDeleteError("");
 
-  try {
-    await api.delete(`/tipotablas/${toDelete.id_tipo_tabla}`);
-    
-    setTipos(prev => prev.filter(t => t.id_tipo_tabla !== toDelete.id_tipo_tabla));
-    
-    setToDelete(null);
-  } catch (error) {               
-    let msg = "Error al eliminar el tipo de tabla.";
-    const data = error?.response?.data;
-    if (data) {
-      if (typeof data === "string") {
-        msg = data;
-      } else if (data.message) {
-        msg = data.message;  
-        
-     if (Array.isArray(data.prototipos) && data.prototipos.length) {
-       msg += "\nUsado en:\n - " + data.prototipos.join("\n - ");
-     }     
+  const handleDeleteClick = (tipo) => {
+    setDeleteError("");
+    setToDelete(tipo);
+  };
+
+  const confirmDelete = async () => {
+    if (!toDelete) return;
+    setDeleting(true);
+    setDeleteError("");
+
+    try {
+      await api.delete(`/tipotablas/${toDelete.id_tipo_tabla}`);
+
+      setTipos((prev) => prev.filter((t) => t.id_tipo_tabla !== toDelete.id_tipo_tabla));
+
+      setToDelete(null);
+    } catch (error) {
+      let msg = "Error al eliminar el tipo de tabla.";
+      const data = error?.response?.data;
+      if (data) {
+        if (typeof data === "string") {
+          msg = data;
+        } else if (data.message) {
+          msg = data.message;
+
+          if (Array.isArray(data.prototipos) && data.prototipos.length) {
+            msg += "\nUsado en:\n - " + data.prototipos.join("\n - ");
+          }
+        }
       }
+      setDeleteError(msg);
+    } finally {
+      setDeleting(false);
     }
-    setDeleteError(msg);
-  } finally {
-    setDeleting(false);
-  }
-};
+  };
+
   const cancelDelete = () => {
-  if (deleting) return;
-  setDeleteError("");
-  setToDelete(null);
-};
+    if (deleting) return;
+    setDeleteError("");
+    setToDelete(null);
+  };
+
+  // 🔹 NUEVO: función que usa el endpoint para ajustar stock
+  const handleAddStockTipoTabla = async (id_tipo_tabla, cantidad, descontarPadre) => {
+    try {
+      const res = await api.post("/tipotablas/ajustar-stock", {
+        id_tipo_tabla,
+        cantidad,
+        descontarPadre,
+      });
+
+      const nuevoStock = res?.data?.detalles?.nuevo_stock;
+
+      // Actualizamos el estado local para que la card muestre el stock actualizado
+      setTipos((prev) =>
+        prev.map((t) =>
+          t.id_tipo_tabla === id_tipo_tabla
+            ? {
+                ...t,
+                stock:
+                  nuevoStock !== undefined
+                    ? nuevoStock
+                    : Number(t.stock ?? 0) + Number(cantidad ?? 0),
+              }
+            : t
+        )
+      );
+    } catch (err) {
+      // Re-lanzamos para que la card lo capture y muestre su mensaje de error genérico
+      throw err;
+    }
+  };
 
   const filteredTipos = tipos.filter((t) =>
     (t.titulo || "").toLowerCase().includes(searchTerm.toLowerCase())
@@ -103,14 +137,20 @@ const handleDeleteClick = (tipo) => {
             key={t.id_tipo_tabla}
             tipoTabla={{
               ...t,
-              foto_url: t.foto_url ?? (t.foto ? `${R2}/${String(t.foto).replace(/^\/+/, "")}` : null),
+              foto_url:
+                t.foto_url ??
+                (t.foto ? `${R2}/${String(t.foto).replace(/^\/+/, "")}` : null),
             }}
             onEdit={handleEdit}
             onDelete={() => handleDeleteClick(t)}
+            // 🔹 NUEVO: pasamos la función a la card
+            onAddStock={handleAddStockTipoTabla}
           />
         ))}
         {filteredTipos.length === 0 && (
-          <p className="col-span-full text-center text-gray-500">No se encontraron tipos de tabla.</p>
+          <p className="col-span-full text-center text-gray-500">
+            No se encontraron tipos de tabla.
+          </p>
         )}
       </div>
 

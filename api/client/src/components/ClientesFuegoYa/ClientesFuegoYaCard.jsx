@@ -252,8 +252,7 @@ const PagosModal = ({ open, onClose, idCliente }) => {
               title="Cerrar"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M6.225 4.811l12.964 12.964-1.414 1.414L4.811 6.225l1.414-1.414z" />
-                <path d="M19.189 6.225L6.225 19.189l-1.414-1.414L17.775 4.811l1.414 1.414z" />
+                <path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z" />
               </svg>
             </button>
           </div>
@@ -350,7 +349,8 @@ const PagosModal = ({ open, onClose, idCliente }) => {
 
 const ClientesFuegoYaCard = ({ cliente, onEdit, onDelete }) => {
   const { currentUser } = useContext(AuthContext);
-  const isAdmin = currentUser?.tipo === "admin";
+  const isAdmin =
+    currentUser?.tipo === "admin" || currentUser?.tipo === "fuegoya";
 
   const { id_cliente, nombre, apellido } = cliente || {};
 
@@ -588,7 +588,7 @@ const ClientesFuegoYaCard = ({ cliente, onEdit, onDelete }) => {
           </div>
         )}
 
-        {/* Crédito (solo admin) */}
+        {/* Crédito (ahora admin o fuegoya) */}
         {isAdmin && (
           <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50/60 p-3">
             <div className="flex items-center justify-between gap-2">
@@ -612,22 +612,21 @@ const ClientesFuegoYaCard = ({ cliente, onEdit, onDelete }) => {
                   </button>
                 )}
 
-                  <button
-                    type="button"
-                    onClick={() => setModalOpen(true)}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 text-white px-2.5 py-1.5 text-xs font-medium shadow-sm hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
-                    title="Registrar una nueva entrega"
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 text-white px-2.5 py-1.5 text-xs font-medium shadow-sm hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+                  title="Registrar una nueva entrega"
+                >
+                  <svg
+                    className="w-3.5 h-3.5"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
                   >
-                    <svg
-                      className="w-3.5 h-3.5"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                    >
-                      <path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2h6z" />
-                    </svg>
-                    Entrega
-                  </button>
-
+                    <path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2h6z" />
+                  </svg>
+                  Entrega
+                </button>
               </div>
             </div>
 
@@ -687,7 +686,6 @@ const ClientesFuegoYaCard = ({ cliente, onEdit, onDelete }) => {
                       Sin crédito pendiente.
                     </p>
 
-                    
                     {saldoAFavor > 0 && (
                       <p className="mt-2 inline-flex items-center gap-2 rounded-lg bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200 px-3 py-1.5 text-sm font-medium">
                         <svg

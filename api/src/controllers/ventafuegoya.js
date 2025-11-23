@@ -239,10 +239,19 @@ export const getVentaFuegoyaById = async (req, res) => {
     const [rows] = await pool.query(
       `
       SELECT
-        v.*,
-        cf.nombre        AS cf_nombre,
-        cf.estado        AS cf_activo,
-        fy.tipo          AS fuego_ya_tipo
+        v.id_ventaFuegoya,
+        DATE_FORMAT(v.fecha_realizada, '%Y-%m-%d') AS fecha_realizada,
+        v.precio_total,
+        v.id_cliente,
+        v.id_fuego_ya,
+        v.cantidadbolsas,
+        v.foto,
+        v.comentarios,
+        v.estadopago,
+        v.fechapago,                                
+        cf.nombre AS cf_nombre,
+        cf.estado AS cf_activo,
+        fy.tipo   AS fuego_ya_tipo
       FROM venta_fuegoya v
       LEFT JOIN clientes_fuegoya cf ON cf.id_cliente = v.id_cliente
       LEFT JOIN fuego_ya        fy ON fy.id_fuego_ya = v.id_fuego_ya
@@ -266,6 +275,7 @@ export const getVentaFuegoyaById = async (req, res) => {
     return res.status(500).json({ error: "Error interno del servidor", details: err.message });
   }
 };
+
 
 export const updateVentaFuegoya = async (req, res) => {
   const conn = await pool.getConnection();
@@ -561,7 +571,16 @@ export const listVentaFuegoya = async (req, res) => {
 
     const sql = `
       SELECT
-        v.*,
+        v.id_ventaFuegoya,
+        DATE_FORMAT(v.fecha_realizada, '%Y-%m-%d') AS fecha_realizada,
+        v.precio_total,
+        v.id_cliente,
+        v.id_fuego_ya,
+        v.cantidadbolsas,
+        v.foto,
+        v.comentarios,
+        v.estadopago,
+        v.fechapago,                                 
         cf.nombre  AS cf_nombre,
         cf.estado  AS cf_activo,
         fy.tipo    AS fuego_ya_tipo
@@ -594,6 +613,7 @@ export const listVentaFuegoya = async (req, res) => {
     return res.status(500).json({ error: "Error interno del servidor", details: err.message });
   }
 };
+
 
 export const changeEstadoPagoVentaFuegoya = async (req, res) => {
   const conn = await pool.getConnection();

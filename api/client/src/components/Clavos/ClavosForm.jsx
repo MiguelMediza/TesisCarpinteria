@@ -1,12 +1,10 @@
-import React, { useEffect, useState, useRef, useContext } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { api } from "../../api";
-import { AuthContext } from "../../context/authContext";
 import tablasBackground from "../../assets/tablasBackground.jpg";
 import Alert from "../Modals/Alert";
 
 const ClavosForm = () => {
-  const { currentUser } = useContext(AuthContext);
   const { id } = useParams();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -16,7 +14,6 @@ const ClavosForm = () => {
     tipo: "",
     medidas: "",
     material: "",
-    precio_unidad: "",
     stock: "",
     comentarios: "",
   };
@@ -24,12 +21,11 @@ const ClavosForm = () => {
   const [inputs, setInputs] = useState(initialInputs);
   const [fotoFile, setFotoFile] = useState(null);
   const [preview, setPreview] = useState(null);
-  const [err, setErr] = useState("");
-  const [messageType, setMessageType] = useState("");
-
   const [serverFotoUrl, setServerFotoUrl] = useState(null);
   const [fotoRemove, setFotoRemove] = useState(false);
 
+  const [err, setErr] = useState("");
+  const [messageType, setMessageType] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -42,7 +38,6 @@ const ClavosForm = () => {
           tipo: data.tipo || "",
           medidas: data.medidas || "",
           material: data.material || "",
-          precio_unidad: data.precio_unidad?.toString() || "",
           stock: data.stock?.toString() || "",
           comentarios: data.comentarios || "",
         });
@@ -67,11 +62,6 @@ const ClavosForm = () => {
     if (!inputs.tipo?.trim()) return "El tipo es obligatorio.";
     if (!inputs.medidas) return "Las medidas son requeridas.";
     if (!inputs.material) return "El material es requerido.";
-    if (currentUser?.tipo !== "encargado") {
-      if (!inputs.precio_unidad) return "El precio unitario es requerido.";
-      if (isNaN(inputs.precio_unidad) || Number(inputs.precio_unidad) <= 0)
-        return "Ingresa un precio válido.";
-    }
     if (!inputs.stock) return "El stock es requerido.";
     if (!Number.isInteger(Number(inputs.stock)) || Number(inputs.stock) < 0)
       return "Ingresa un stock válido.";
@@ -80,7 +70,6 @@ const ClavosForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    if (name === "precio_unidad" && !/^[0-9]*\.?[0-9]*$/.test(value)) return;
     if (name === "stock" && !/^\d*$/.test(value)) return;
     setInputs((prev) => ({ ...prev, [name]: value }));
   };
@@ -93,9 +82,15 @@ const ClavosForm = () => {
     setFotoRemove(false);
   };
 
+  const handleClearImage = () => {
+    setFotoFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setPreview(null);
+    setFotoRemove(!!serverFotoUrl); 
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (submitting) return;
 
     const validationError = validateInputs();
@@ -109,19 +104,13 @@ const ClavosForm = () => {
       setSubmitting(true);
 
       const formData = new FormData();
-      formData.append("categoria", "clavo");
+      formData.append("categoria", "clavo"); 
 
       Object.entries(inputs).forEach(([key, value]) => {
-        if (key === "precio_unidad") {
-          const precio = currentUser?.tipo === "encargado" ? "0" : value || "0";
-          formData.append(key, precio);
-        } else {
-          formData.append(key, value ?? "");
-        }
+        formData.append(key, value ?? "");
       });
 
       if (fotoFile) formData.append("foto", fotoFile);
-
       if (id && !fotoFile && fotoRemove) {
         formData.append("foto_remove", "1");
       }
@@ -144,7 +133,6 @@ const ClavosForm = () => {
       setPreview(null);
       setServerFotoUrl(null);
       setFotoRemove(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
 
       setTimeout(() => navigate("/clavos/listar"), 500);
     } catch (error) {
@@ -157,7 +145,7 @@ const ClavosForm = () => {
       setMessageType("error");
       console.error(error);
     } finally {
-      setSubmitting(false); 
+      setSubmitting(false);
     }
   };
 
@@ -182,16 +170,11 @@ const ClavosForm = () => {
           className="space-y-4 md:space-y-6"
           onSubmit={handleSubmit}
           encType="multipart/form-data"
-          aria-busy={submitting} // 🆕 accesibilidad
+          aria-busy={submitting}
         >
-          
           <fieldset disabled={submitting} className="space-y-4 md:space-y-6">
-            {/* Título */}
             <div>
-              <label
-                htmlFor="titulo"
-                className="block mb-1 text-sm font-medium text-neutral-800"
-              >
+              <label htmlFor="titulo" className="block mb-1 text-sm font-medium text-neutral-800">
                 Título
               </label>
               <input
@@ -205,12 +188,8 @@ const ClavosForm = () => {
               />
             </div>
 
-            {/* Tipo */}
             <div>
-              <label
-                htmlFor="tipo"
-                className="block mb-1 text-sm font-medium text-neutral-800"
-              >
+              <label htmlFor="tipo" className="block mb-1 text-sm font-medium text-neutral-800">
                 Tipo
               </label>
               <select
@@ -226,12 +205,8 @@ const ClavosForm = () => {
               </select>
             </div>
 
-            {/* Medidas */}
             <div>
-              <label
-                htmlFor="medidas"
-                className="block mb-1 text-sm font-medium text-neutral-800"
-              >
+              <label htmlFor="medidas" className="block mb-1 text-sm font-medium text-neutral-800">
                 Medidas
               </label>
               <input
@@ -245,12 +220,8 @@ const ClavosForm = () => {
               />
             </div>
 
-            {/* Material */}
             <div>
-              <label
-                htmlFor="material"
-                className="block mb-1 text-sm font-medium text-neutral-800"
-              >
+              <label htmlFor="material" className="block mb-1 text-sm font-medium text-neutral-800">
                 Material
               </label>
               <input
@@ -264,34 +235,8 @@ const ClavosForm = () => {
               />
             </div>
 
-            {/* Precio unitario */}
-            {currentUser?.tipo !== "encargado" && (
-              <div>
-                <label
-                  htmlFor="precio_unidad"
-                  className="block mb-1 text-sm font-medium text-neutral-800"
-                >
-                  Precio Unitario
-                </label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  name="precio_unidad"
-                  id="precio_unidad"
-                  value={inputs.precio_unidad}
-                  onChange={handleChange}
-                  placeholder="Ej: 0.10"
-                  className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-                />
-              </div>
-            )}
-
-            {/* Stock */}
             <div>
-              <label
-                htmlFor="stock"
-                className="block mb-1 text-sm font-medium text-neutral-800"
-              >
+              <label htmlFor="stock" className="block mb-1 text-sm font-medium text-neutral-800">
                 Stock
               </label>
               <input
@@ -306,12 +251,8 @@ const ClavosForm = () => {
               />
             </div>
 
-            {/* Foto */}
             <div>
-              <label
-                htmlFor="foto"
-                className="block mb-1 text-sm font-medium text-neutral-800"
-              >
+              <label htmlFor="foto" className="block mb-1 text-sm font-medium text-neutral-800">
                 Foto
               </label>
               <input
@@ -325,19 +266,10 @@ const ClavosForm = () => {
               />
               {preview && (
                 <div className="relative mt-2">
-                  <img
-                    src={preview}
-                    alt="Preview"
-                    className="w-full h-auto rounded"
-                  />
+                  <img src={preview} alt="Preview" className="w-full h-auto rounded" />
                   <button
                     type="button"
-                    onClick={() => {
-                      setFotoFile(null);
-                      if (fileInputRef.current) fileInputRef.current.value = "";
-                      setPreview(null);
-                      setFotoRemove(!!serverFotoUrl);
-                    }}
+                    onClick={handleClearImage}
                     className="absolute top-1 right-1 bg-gray-800 bg-opacity-50 text-white rounded-full p-1 hover:bg-opacity-75"
                     title="Quitar imagen"
                   >
@@ -347,12 +279,8 @@ const ClavosForm = () => {
               )}
             </div>
 
-            {/* Comentarios */}
             <div>
-              <label
-                htmlFor="comentarios"
-                className="block mb-1 text-sm font-medium text-neutral-800"
-              >
+              <label htmlFor="comentarios" className="block mb-1 text-sm font-medium text-neutral-800">
                 Comentarios
               </label>
               <textarea
@@ -381,41 +309,18 @@ const ClavosForm = () => {
             </div>
           )}
 
-          {/* 🆕 Botón con spinner y deshabilitado */}
           <button
             type="submit"
             disabled={submitting}
             className="w-full py-2.5 text-white bg-neutral-700 hover:bg-neutral-800 rounded transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {submitting && (
-              <svg
-                className="h-4 w-4 animate-spin"
-                viewBox="0 0 24 24"
-                fill="none"
-                aria-hidden="true"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                />
+              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
               </svg>
             )}
-            {id
-              ? submitting
-                ? "Actualizando..."
-                : "Guardar Cambios"
-              : submitting
-                ? "Agregando..."
-                : "Crear Clavo"}
+            {id ? (submitting ? "Actualizando..." : "Guardar Cambios") : submitting ? "Agregando..." : "Crear Clavo"}
           </button>
 
           <p className="mt-4 text-sm text-neutral-700 text-center">

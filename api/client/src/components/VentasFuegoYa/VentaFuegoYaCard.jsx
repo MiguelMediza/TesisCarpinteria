@@ -12,18 +12,34 @@ const moneyUYU = (n) =>
 
 const formatDate = (s) => {
   if (!s) return "";
-  const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const str = String(s);
+
+  const m = str.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T].*)?$/);
+  if (m) {
+    const [, y, mo, d] = m;
+    return `${d}/${mo}/${y}`;
+  }
+
+  const dObj = new Date(str);
+  if (Number.isNaN(dObj.getTime())) return "";
+  return dObj.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
 };
 
 const formatDateTime = (s) => {
   if (!s) return "";
-  const d = new Date(s);
+  const str = String(s);
+
+  const m = str.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})$/);
+  const safe = m ? `${m[1]}T${m[2]}` : str;
+
+  const d = new Date(safe);
   if (Number.isNaN(d.getTime())) return "";
   return d.toLocaleString("es-ES", {
-    day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 };
 
@@ -46,7 +62,8 @@ const chipBase =
 
 const VentaFuegoYaCard = ({ venta, onEdit, onDelete, onPagoChanged }) => {
   const { currentUser } = useContext(AuthContext);
-  const isAdmin = currentUser?.tipo === "admin";
+  // Cambio mínimo: privilegios también para tipo "fuegoya"
+  const isAdmin = currentUser?.tipo === "admin" || currentUser?.tipo === "fuegoya";
 
   const {
     id_ventaFuegoya,
@@ -168,7 +185,7 @@ const VentaFuegoYaCard = ({ venta, onEdit, onDelete, onPagoChanged }) => {
             </span>
           )}
 
-          {/* Total (solo admin) */}
+          {/* Total (admin o fuegoya) */}
           {isAdmin && (
             <span
               className={`${chipBase} bg-blue-50 text-blue-700 ring-blue-200`}

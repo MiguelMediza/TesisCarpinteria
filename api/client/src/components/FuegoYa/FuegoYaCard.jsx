@@ -1,4 +1,3 @@
-
 import React, { useContext } from "react";
 import { Image } from "antd";
 import { AuthContext } from "../../context/authContext";
@@ -18,7 +17,8 @@ const chipBase =
 
 const FuegoYaCard = ({ fuegoya, onEdit, onDelete }) => {
   const { currentUser } = useContext(AuthContext);
-  const isAdmin = currentUser?.tipo === "admin";
+  // Cambio mínimo: privilegio si es admin o fuegoya
+  const isAdmin = currentUser?.tipo === "admin" || currentUser?.tipo === "fuegoya";
 
   const { id_fuego_ya, tipo, precio_unidad, stock, foto, foto_url } = fuegoya || {};
   const imgSrc = foto_url || foto || null;

@@ -6,38 +6,29 @@ const PUBLIC_BASE = process.env.R2_PUBLIC_BASE_URL || "";
 const urlFromKey = (key) => (key ? `${PUBLIC_BASE}/${key}` : null);
 
 
-// Crear un nuevo clavo
 export const createClavo = async (req, res) => {
   try {
-    const {
-      titulo,
-      precio_unidad,
-      stock,
-      comentarios,
-      tipo,
-      medidas,
-      material,
-    } = req.body;
-
+    const { titulo, stock, comentarios, tipo, medidas, material } = req.body;
     const fotoKey = req.fileR2?.key || null;
 
-    // Inserción en materiaprima
+    const toIntOrZero = (v) =>
+      v !== undefined && v !== "" ? parseInt(v, 10) : 0;
+
+    // SIN precio_unidad
     const insertMP = `
       INSERT INTO materiaprima
-        (categoria, titulo, precio_unidad, stock, foto, comentarios)
-      VALUES (?, ?, ?, ?, ?, ?)
+        (categoria, titulo, stock, foto, comentarios)
+      VALUES (?, ?, ?, ?, ?)
     `;
     const [mpResult] = await pool.query(insertMP, [
       "clavo",
       titulo,
-      precio_unidad != null ? parseFloat(precio_unidad) : null,
-      stock != null ? parseInt(stock, 10) : null,
+      toIntOrZero(stock),
       fotoKey,
       comentarios || null,
     ]);
     const id_materia_prima = mpResult.insertId;
 
-    // Inserción en clavos
     const insertCl = `
       INSERT INTO clavos
         (id_materia_prima, tipo, medidas, material)
@@ -53,13 +44,11 @@ export const createClavo = async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Error en createClavo:", err);
-    return res
-      .status(500)
-      .json({ error: "Internal server error", details: err.message });
+    return res.status(500).json({ error: "Internal server error", details: err.message });
   }
 };
 
-// Obtener un clavo por ID (id_materia_prima)
+
 export const getClavoById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -68,9 +57,8 @@ export const getClavoById = async (req, res) => {
       SELECT
         mp.id_materia_prima,
         mp.titulo,
-        mp.precio_unidad,
         mp.stock,
-        mp.foto,            -- guarda el KEY en R2
+        mp.foto,
         mp.comentarios,
         c.tipo,
         c.medidas,
@@ -82,7 +70,6 @@ export const getClavoById = async (req, res) => {
       `,
       [id]
     );
-
     if (rows.length === 0) return res.status(404).json("Clavo no encontrado!");
 
     const row = rows[0];
@@ -92,27 +79,16 @@ export const getClavoById = async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Error en getClavoById:", err);
-    return res
-      .status(500)
-      .json({ error: "Internal server error", details: err.message });
+    return res.status(500).json({ error: "Internal server error", details: err.message });
   }
 };
 
-// Modificar un clavo existente 
+
 export const updateClavo = async (req, res) => {
   const connection = await pool.getConnection();
   try {
     const { id } = req.params;
-    const {
-      titulo,
-      precio_unidad,
-      stock,
-      comentarios,
-      tipo,
-      medidas,
-      material,
-      foto_remove,        
-    } = req.body;
+    const { titulo, stock, comentarios, tipo, medidas, material, foto_remove } = req.body;
 
     const newFotoKey = req.fileR2?.key || null;
 
@@ -124,19 +100,17 @@ export const updateClavo = async (req, res) => {
     if (exists.length === 0) {
       return res.status(404).json("Clavo no encontrado!");
     }
-    const oldFotoKey = exists[0].foto;
+    const oldFotoKey = exists[0].foto || null;
 
     await connection.beginTransaction();
 
     const setParts = [
       `titulo = ?`,
-      `precio_unidad = ?`,
       `stock = ?`,
       `comentarios = ?`,
     ];
     const setVals = [
       titulo,
-      precio_unidad != null ? parseFloat(precio_unidad) : null,
       stock != null ? parseInt(stock, 10) : null,
       comentarios || null,
     ];
@@ -170,34 +144,25 @@ export const updateClavo = async (req, res) => {
       (!newFotoKey && String(foto_remove) === "1" && oldFotoKey);
 
     if (mustDeleteOld) {
-      try {
-        await r2Delete(oldFotoKey);
-      } catch (e) {
-        console.warn("No se pudo borrar la imagen antigua en R2:", oldFotoKey, e?.message);
-      }
+      try { await r2Delete(oldFotoKey); }
+      catch (e) { console.warn("No se pudo borrar la imagen antigua en R2:", oldFotoKey, e?.message); }
     }
 
-    const PUBLIC_BASE = process.env.R2_PUBLIC_BASE_URL || "";
-    const urlFromKey = (key) => (key ? `${PUBLIC_BASE}/${key}` : null);
-
-    const currentKey =
-      newFotoKey ? newFotoKey : String(foto_remove) === "1" ? null : oldFotoKey;
-
+    const currentKey = newFotoKey ? newFotoKey : String(foto_remove) === "1" ? null : oldFotoKey;
     return res.status(200).json({
       message: "Clavo modificado exitosamente!",
       foto_key: currentKey,
       foto_url: urlFromKey(currentKey),
     });
   } catch (err) {
-    await connection.rollback();
+    try { await connection.rollback(); } catch {}
     console.error("❌ Error en updateClavo:", err);
-    return res
-      .status(500)
-      .json({ error: "Internal server error", details: err.message });
+    return res.status(500).json({ error: "Internal server error", details: err.message });
   } finally {
     connection.release();
   }
 };
+
 
 
 export const deleteClavo = async (req, res) => {
@@ -306,9 +271,8 @@ export const listClavos = async (req, res) => {
       SELECT
         mp.id_materia_prima,
         mp.titulo,
-        mp.precio_unidad,
         mp.stock,
-        mp.foto,            -- KEY en R2
+        mp.foto,
         mp.comentarios,
         c.tipo,
         c.medidas,
@@ -329,8 +293,6 @@ export const listClavos = async (req, res) => {
     return res.status(200).json(withUrls);
   } catch (err) {
     console.error("❌ Error en listClavos:", err);
-    return res
-      .status(500)
-      .json({ error: "Internal server error", details: err.message });
+    return res.status(500).json({ error: "Internal server error", details: err.message });
   }
 };

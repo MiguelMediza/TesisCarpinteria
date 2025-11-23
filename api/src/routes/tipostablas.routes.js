@@ -6,7 +6,8 @@ import {
   listTipoTablas,
   getTipoTablaById,
   updateTipoTabla,
-  deleteTipoTabla
+  deleteTipoTabla,
+  ajustarStockTipoTabla
 } from "../controllers/tipotablas.js";
 import { r2Put } from "../lib/r2.js";
 
@@ -37,6 +38,8 @@ const uploadToR2 = (folder) => async (req, res, next) => {
 // Crear (foto opcional)
 router.post("/agregar", upload.single("foto"), uploadToR2("tipos_tablas"), createTipoTabla);
 
+router.post("/ajustar-stock", ajustarStockTipoTabla);
+
 // Listar
 router.get("/listar", listTipoTablas);
 
@@ -48,5 +51,6 @@ router.put("/:id", upload.single("foto"), uploadToR2("tipos_tablas"), updateTipo
 
 // Eliminar
 router.delete("/:id", deleteTipoTabla);
+
 
 export default router;

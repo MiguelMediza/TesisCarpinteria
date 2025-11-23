@@ -74,8 +74,38 @@ const TipoTacosList = () => {
     setToDelete(null);
   };
 
+  // 🔹 NUEVO: función para ajustar stock de tipo taco
+  const handleAddStockTipoTaco = async (id_tipo_taco, cantidad, descontarPadre) => {
+    try {
+      const res = await api.post("/tipotacos/ajustar-stock", {
+        id_tipo_taco,
+        cantidad,
+        descontarPadre,
+      });
+
+      const nuevoStock = res?.data?.detalles?.nuevo_stock;
+
+      // Actualizamos el estado local para que el stock cambie en la UI
+      setTipos((prev) =>
+        prev.map((t) =>
+          t.id_tipo_taco === id_tipo_taco
+            ? {
+                ...t,
+                stock:
+                  nuevoStock !== undefined
+                    ? nuevoStock
+                    : Number(t.stock ?? 0) + Number(cantidad ?? 0),
+              }
+            : t
+        )
+      );
+    } catch (err) {
+      throw err;
+    }
+  };
+
   const filteredTipos = tipos.filter((t) =>
-    t.titulo.toLowerCase().includes(searchTerm.toLowerCase())
+    (t.titulo || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const modalImg =
@@ -112,6 +142,7 @@ const TipoTacosList = () => {
             tipoTaco={t}
             onEdit={handleEdit}
             onDelete={() => handleDeleteClick(t)}
+            onAddStock={handleAddStockTipoTaco}
           />
         ))}
         {filteredTipos.length === 0 && (

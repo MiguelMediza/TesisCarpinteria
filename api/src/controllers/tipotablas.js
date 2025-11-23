@@ -370,3 +370,149 @@ export const listTipoTablas = async (req, res) => {
     return res.status(500).json({ error: "Internal server error", details: err.message });
   }
 };
+
+export const ajustarStockTipoTabla = async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    let { id_tipo_tabla, cantidad, descontarPadre } = req.body;
+
+    const idTipo = parseInt(id_tipo_tabla, 10);
+    const cant   = parseInt(cantidad, 10);
+
+    if (!Number.isInteger(idTipo) || idTipo <= 0) {
+      return res.status(400).json({ message: "ID de tipo de tabla inválido." });
+    }
+
+    if (!Number.isInteger(cant) || cant <= 0) {
+      return res.status(400).json({ message: "Cantidad a agregar inválida (debe ser > 0)." });
+    }
+
+    // Normalizo descontarPadre a booleano
+    const descPadre =
+      descontarPadre === true ||
+      descontarPadre === "true" ||
+      descontarPadre === 1 ||
+      descontarPadre === "1";
+
+    await connection.beginTransaction();
+
+    // 1) Traigo el tipo de tabla y lo bloqueo
+    const [[tipo]] = await connection.query(
+      `SELECT id_materia_prima, largo_cm, stock
+       FROM tipo_tablas
+       WHERE id_tipo_tabla = ?
+       FOR UPDATE`,
+      [idTipo]
+    );
+
+    if (!tipo) {
+      await connection.rollback();
+      return res.status(404).json({ message: "Tipo de tabla no encontrado." });
+    }
+
+    const { id_materia_prima, largo_cm, stock: oldStock } = tipo;
+    const largoTipo = parseFloat(largo_cm);
+
+    if (!Number.isFinite(largoTipo) || largoTipo <= 0) {
+      await connection.rollback();
+      return res.status(400).json({ message: "Datos de largo del tipo inválidos." });
+    }
+
+    let tablasConsumidas = 0;
+
+    // 2) Si corresponde, descuento stock de la tabla padre
+    if (descPadre) {
+      const [[parent]] = await connection.query(
+        `SELECT t.largo_cm AS parentLargo, mp.stock AS parentStock
+         FROM tablas t
+         JOIN materiaprima mp ON mp.id_materia_prima = t.id_materia_prima
+         WHERE t.id_materia_prima = ?
+         FOR UPDATE`,
+        [id_materia_prima]
+      );
+
+      if (!parent) {
+        await connection.rollback();
+        return res.status(404).json({ message: "Tabla padre no encontrada." });
+      }
+
+      const parentLargo = parseFloat(parent.parentLargo);
+      const parentStock = parseInt(parent.parentStock, 10);
+
+      if (!Number.isFinite(parentLargo) || parentLargo <= 0) {
+        await connection.rollback();
+        return res.status(400).json({ message: "Datos de largo de tabla padre inválidos." });
+      }
+
+      const piezasPorTabla = Math.floor(parentLargo / (largoTipo + MARGIN));
+
+      if (piezasPorTabla < 1) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: "El largo del tipo excede al de la tabla padre (no se puede cortar).",
+        });
+      }
+
+      // Cuántas tablas padre necesito para producir 'cant' piezas más
+      tablasConsumidas = Math.ceil(cant / piezasPorTabla);
+
+      if (parentStock < tablasConsumidas) {
+        await connection.rollback();
+        return res.status(409).json({
+          message: "Stock insuficiente de tablas padre.",
+          detalles: {
+            requerido_adicional: tablasConsumidas,
+            disponible: parentStock,
+            piezas_por_tabla: piezasPorTabla,
+          },
+        });
+      }
+
+      const [updParent] = await connection.query(
+        `UPDATE materiaprima
+         SET stock = stock - ?
+         WHERE id_materia_prima = ? AND stock >= ?`,
+        [tablasConsumidas, id_materia_prima, tablasConsumidas]
+      );
+
+      if (updParent.affectedRows !== 1) {
+        await connection.rollback();
+        return res.status(409).json({
+          message:
+            "Stock insuficiente de tablas padre (posible condición de carrera). Intente nuevamente.",
+        });
+      }
+    }
+
+    // 3) Actualizo el stock del tipo de tabla
+    const newStock = parseInt(oldStock, 10) + cant;
+
+    await connection.query(
+      `UPDATE tipo_tablas
+       SET stock = ?
+       WHERE id_tipo_tabla = ?`,
+      [newStock, idTipo]
+    );
+
+    await connection.commit();
+
+    return res.status(200).json({
+      message: "Stock de tipo de tabla actualizado correctamente.",
+      detalles: {
+        id_tipo_tabla: idTipo,
+        agregado: cant,
+        nuevo_stock: newStock,
+        descontarPadre: !!descPadre,
+        tablasConsumidas,
+      },
+    });
+  } catch (err) {
+    try {
+      await connection.rollback();
+    } catch {}
+    console.error("❌ ajustarStockTipoTabla error:", err);
+    return res.status(500).json({ error: "Internal server error", details: err.message });
+  } finally {
+    connection.release();
+  }
+};

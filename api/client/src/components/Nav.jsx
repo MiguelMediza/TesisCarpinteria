@@ -7,6 +7,8 @@ import { Link, useLocation } from "react-router-dom";
 const Nav = () => {
   const { currentUser, logout } = useContext(AuthContext);
 
+  const isFuegoYaUser = currentUser?.tipo === "fuegoya";
+
   const navRootRef = useRef(null);
   const dropdownsRef = useRef({});
   const collapseRef = useRef(null);
@@ -68,7 +70,6 @@ const Nav = () => {
       }
     }
 
-
     const registerDD = (menuId, triggerId, opts = {}) => {
       if (dropdownsRef.current[menuId]) return;
       const trigger = document.getElementById(triggerId);
@@ -103,11 +104,11 @@ const Nav = () => {
 
   const MP_ITEMS = [
     { label: "Tablas",       list: "/tablas/listar" },
-    { label: "Tirantes",        list: "/palos/listar" },
+    { label: "Tirantes",     list: "/palos/listar" },
     { label: "Clavos",       list: "/clavos/listar" },
     { label: "Fibras",       list: "/fibras/listar" },
-    { label: "Tipos de tablas", list: "/tipotablas/listar" },
-    { label: "Tipos de tacos",  list: "/tipotacos/listar" },
+    { label: "Tipos de tablas",  list: "/tipotablas/listar" },
+    { label: "Tipos de tacos",   list: "/tipotacos/listar" },
     { label: "Tipos de patines", list: "/tipopatines/listar" },
   ];
 
@@ -170,118 +171,123 @@ const Nav = () => {
               </Link>
             </li>
 
-            <li className="relative">
-              <button
-                id="dropdownMateriaPrimaButton"
-                data-dropdown-toggle="dropdownMateriaPrimaMenu"
-                type="button"
-                className="flex items-center justify-between w-full py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent"
-              >
-                Materia Prima
-                <svg
-                  className="w-2.5 h-2.5 ms-2.5"
-                  aria-hidden="true"
-                  fill="none"
-                  viewBox="0 0 10 6"
-                >
-                  <path
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="m1 1 4 4 4-4"
-                  />
-                </svg>
-              </button>
+            {!isFuegoYaUser && (
+              <>
+                <li className="relative">
+                  <button
+                    id="dropdownMateriaPrimaButton"
+                    data-dropdown-toggle="dropdownMateriaPrimaMenu"
+                    type="button"
+                    className="flex items-center justify-between w-full py-2 px-3 text-gray-900 rounded-sm hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-blue-700 md:p-0 dark:text-white md:dark:hover:text-blue-500 dark:hover:bg-gray-700 dark:hover:text-white md:dark:hover:bg-transparent"
+                  >
+                    Materia Prima
+                    <svg
+                      className="w-2.5 h-2.5 ms-2.5"
+                      aria-hidden="true"
+                      fill="none"
+                      viewBox="0 0 10 6"
+                    >
+                      <path
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="m1 1 4 4 4-4"
+                      />
+                    </svg>
+                  </button>
 
-              <div
-                id="dropdownMateriaPrimaMenu"
-                className="z-10 hidden font-normal bg-white divide-y divide-gray-100 rounded-lg shadow w-56 dark:bg-gray-700 dark:divide-gray-600"
-              >
-                <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
-                  {MP_ITEMS.map((item) => (
-                    <li key={item.list}>
-                      <Link
-                        to={item.list}
-                        onClick={handleNavigate}
-                        className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
-                      >
-                        {item.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </li>
+                  <div
+                    id="dropdownMateriaPrimaMenu"
+                    className="z-10 hidden font-normal bg-white divide-y divide-gray-100 rounded-lg shadow w-56 dark:bg-gray-700 dark:divide-gray-600"
+                  >
+                    <ul className="py-2 text-sm text-gray-700 dark:text-gray-200">
+                      {MP_ITEMS.map((item) => (
+                        <li key={item.list}>
+                          <Link
+                            to={item.list}
+                            onClick={handleNavigate}
+                            className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:hover:text-white"
+                          >
+                            {item.label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </li>
 
-            {/* Otros menús */}
-            <li>
-              <Link
-                to="/proveedores/listar"
-                onClick={handleNavigate}
-                className="block py-2 px-3 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
-              >
-                Proveedores
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/encargos/listar"
-                onClick={handleNavigate}
-                className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
-              >
-                Encargos
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/prototipos/listar"
-                onClick={handleNavigate}
-                className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
-              >
-                Prototipos
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/pedidos/listar"
-                onClick={handleNavigate}
-                className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
-              >
-                Pedidos
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/clientes/listar"
-                onClick={handleNavigate}
-                className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
-              >
-                Clientes
-              </Link>
-            </li>
+                {/* Otros menús */}
+                <li>
+                  <Link
+                    to="/proveedores/listar"
+                    onClick={handleNavigate}
+                    className="block py-2 px-3 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
+                  >
+                    Proveedores
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/encargos/listar"
+                    onClick={handleNavigate}
+                    className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
+                  >
+                    Encargos
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/prototipos/listar"
+                    onClick={handleNavigate}
+                    className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
+                  >
+                    Prototipos
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/pedidos/listar"
+                    onClick={handleNavigate}
+                    className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
+                  >
+                    Pedidos
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/clientes/listar"
+                    onClick={handleNavigate}
+                    className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
+                  >
+                    Clientes
+                  </Link>
+                </li>
 
-            {currentUser?.tipo !== "encargado" && (
-              <li>
-                <Link
-                  to="/ventas/listar"
-                  onClick={handleNavigate}
-                  className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
-                >
-                  Ventas
-                </Link>
-              </li>
+                {currentUser?.tipo !== "encargado" && (
+                  <li>
+                    <Link
+                      to="/ventas/listar"
+                      onClick={handleNavigate}
+                      className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
+                    >
+                      Ventas
+                    </Link>
+                  </li>
+                )}
+                <li>
+                  <Link
+                    to="/pellets/listar"
+                    onClick={handleNavigate}
+                    className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
+                  >
+                    Pellets
+                  </Link>
+                </li>
+              </>
             )}
-            <li>
-              <Link
-                to="/pellets/listar"
-                onClick={handleNavigate}
-                className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
-              >
-                Pellets
-              </Link>
-            </li>
-            {currentUser?.tipo !== "encargado" && (
+
+            {(isFuegoYaUser || currentUser?.tipo !== "encargado") && (
               <li>
                 <Link
                   to="/clientesfuegoya/listar"
@@ -293,7 +299,7 @@ const Nav = () => {
                 </Link>
               </li>
             )}
-            {currentUser?.tipo !== "encargado" && (
+            {(isFuegoYaUser || currentUser?.tipo !== "encargado") && (
               <li>
                 <Link
                   to="/fuegoya/listar"
@@ -305,7 +311,7 @@ const Nav = () => {
                 </Link>
               </li>
             )}
-            {currentUser?.tipo !== "encargado" && (
+            {(isFuegoYaUser || currentUser?.tipo !== "encargado") && (
               <li>
                 <Link
                   to="/ventafuegoya/listar"
@@ -317,6 +323,7 @@ const Nav = () => {
                 </Link>
               </li>
             )}
+
             <li>
               {currentUser && (
                 <button

@@ -126,44 +126,54 @@ export const updateTabla = async (req, res) => {
       espesor_mm,
       tipo_madera,
       cepilladas,
+      foto_remove,
     } = req.body;
 
-    // Verificar existencia y obtener foto anterior
-    const [exists] = await connection.query(
+    const newFotoKey = req.fileR2?.key || null;
+
+    const [[mp]] = await connection.query(
       "SELECT foto FROM materiaprima WHERE id_materia_prima = ?",
       [id]
     );
-    if (exists.length === 0) {
-      connection.release();
+    if (!mp) {
       return res.status(404).json("Tabla no encontrada!");
     }
-    const oldFotoKey = exists[0].foto || null;
-
-    // Si hay nueva imagen subida a R2, viene en req.fileR2.key
-    const newFotoKey = req.fileR2?.key || null;
+    const oldFotoKey = mp.foto || null;
 
     await connection.beginTransaction();
 
-    // Actualizar materiaprima
-    const updateMP = `
-      UPDATE materiaprima SET
-        titulo = ?,
-        precio_unidad = ?,
-        stock = ?,
-        comentarios = ?,
-        foto = COALESCE(?, foto)  -- sólo cambia si hay nueva foto
-      WHERE id_materia_prima = ?
-    `;
-    await connection.query(updateMP, [
+    const setParts = [
+      "titulo = ?",
+      "precio_unidad = ?",
+      "stock = ?",
+      "comentarios = ?",
+    ];
+    const setVals = [
       titulo,
       precio_unidad != null ? parseFloat(precio_unidad) : null,
       stock != null ? parseInt(stock, 10) : null,
       comentarios || null,
-      newFotoKey,
-      id,
-    ]);
+    ];
 
-    // Actualizar tablas
+    let currentKey = oldFotoKey;
+
+    if (newFotoKey) {
+      setParts.push("foto = ?");
+      setVals.push(newFotoKey);
+      currentKey = newFotoKey;
+    } else if (String(foto_remove) === "1" || String(foto_remove) === "true") {
+      setParts.push("foto = NULL");
+      currentKey = null;
+    }
+
+    const updateMP = `
+      UPDATE materiaprima
+         SET ${setParts.join(", ")}
+       WHERE id_materia_prima = ?
+    `;
+    setVals.push(id);
+    await connection.query(updateMP, setVals);
+
     const cepValue =
       cepilladas === "1" || cepilladas === 1 || cepilladas === true || cepilladas === "true"
         ? 1
@@ -189,30 +199,32 @@ export const updateTabla = async (req, res) => {
 
     await connection.commit();
 
-    // Si se subió nueva foto, borrar la anterior en R2
-    if (newFotoKey && oldFotoKey && newFotoKey !== oldFotoKey) {
-      try {
-        await r2Delete(oldFotoKey);
-      } catch (e) {
-        console.warn("⚠️ No se pudo borrar la imagen antigua en R2:", oldFotoKey, e?.message);
-      }
+    const mustDeleteOld =
+      (newFotoKey && oldFotoKey && newFotoKey !== oldFotoKey) ||
+      (!newFotoKey && (String(foto_remove) === "1" || String(foto_remove) === "true") && oldFotoKey);
+
+    if (mustDeleteOld) {
+      try { await r2Delete(oldFotoKey); }
+      catch (e) { console.warn("⚠️ No se pudo borrar la imagen antigua en R2:", oldFotoKey, e?.message); }
     }
+
+    const PUBLIC_BASE = process.env.R2_PUBLIC_BASE_URL || "";
+    const urlFromKey = (key) => (key ? `${PUBLIC_BASE}/${key}` : null);
 
     return res.status(200).json({
       message: "Tabla modificada exitosamente!",
-      foto_key: newFotoKey || oldFotoKey || null,
-      foto_url: urlFromKey(newFotoKey || oldFotoKey),
+      foto_key: currentKey,
+      foto_url: urlFromKey(currentKey),
     });
   } catch (err) {
-    await connection.rollback();
+    try { await connection.rollback(); } catch {}
     console.error("❌ Error en updateTabla:", err);
-    return res
-      .status(500)
-      .json({ error: "Internal server error", details: err.message });
+    return res.status(500).json({ error: "Internal server error", details: err.message });
   } finally {
     connection.release();
   }
 };
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 export const deleteTabla = async (req, res) => {

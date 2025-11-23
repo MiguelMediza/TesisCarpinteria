@@ -16,7 +16,6 @@ const PalosForm = () => {
     largo_cm: "",
     diametro_mm: "",
     tipo_madera: "",
-    precio_unidad: "",
     stock: "",
     comentarios: "",
   };
@@ -24,6 +23,9 @@ const PalosForm = () => {
   const [inputs, setInputs] = useState(initialInputs);
   const [fotoFile, setFotoFile] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [serverFotoUrl, setServerFotoUrl] = useState(null);
+  const [fotoRemove, setFotoRemove] = useState(false);
+
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -38,13 +40,18 @@ const PalosForm = () => {
           largo_cm: data.largo_cm?.toString() || "",
           diametro_mm: data.diametro_mm?.toString() || "",
           tipo_madera: data.tipo_madera || "",
-          precio_unidad: data.precio_unidad?.toString() || "",
           stock: data.stock?.toString() || "",
-          comentarios: data.comentarios_mp || "",
+          comentarios: data.comentarios ?? data.comentarios_mp ?? "",
         });
+
         if (data.foto_url) {
           setPreview(data.foto_url);
+          setServerFotoUrl(data.foto_url);
+        } else {
+          setPreview(null);
+          setServerFotoUrl(null);
         }
+        setFotoRemove(false);
       })
       .catch(() => {
         setErr("No se pudo cargar el tirante.");
@@ -57,15 +64,10 @@ const PalosForm = () => {
     if (!inputs.largo_cm) return "El largo es requerido.";
     if (isNaN(inputs.largo_cm) || Number(inputs.largo_cm) <= 0)
       return "Ingresa un largo válido.";
-    if (!inputs.diametro_mm) return "El diámetro es requerido.";
+    if (!inputs.diametro_mm) return "El espesor es requerido.";
     if (isNaN(inputs.diametro_mm) || Number(inputs.diametro_mm) <= 0)
-      return "Ingresa un diámetro válido.";
+      return "Ingresa un espesor válido.";
     if (!inputs.tipo_madera) return "El tipo de madera es requerido.";
-    if (currentUser?.tipo !== "encargado") {
-      if (!inputs.precio_unidad) return "El precio unitario es requerido.";
-      if (isNaN(inputs.precio_unidad) || Number(inputs.precio_unidad) <= 0)
-        return "Ingresa un precio válido.";
-    }
     if (!inputs.stock) return "El stock es requerido.";
     if (!Number.isInteger(Number(inputs.stock)) || Number(inputs.stock) < 0)
       return "Ingresa un stock válido.";
@@ -74,7 +76,7 @@ const PalosForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    if (["largo_cm", "diametro_mm", "precio_unidad"].includes(name)) {
+    if (["largo_cm", "diametro_mm"].includes(name)) {
       if (!/^[0-9]*\.?[0-9]*$/.test(value)) return;
     }
     if (name === "stock") {
@@ -88,12 +90,14 @@ const PalosForm = () => {
     if (!file) return;
     setFotoFile(file);
     setPreview(URL.createObjectURL(file));
+    setFotoRemove(false); 
   };
 
   const clearImage = () => {
     setFotoFile(null);
     setPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+    setFotoRemove(!!serverFotoUrl);
   };
 
   const handleSubmit = async (e) => {
@@ -106,18 +110,20 @@ const PalosForm = () => {
       setMessageType("error");
       return;
     }
+
     try {
       setSubmitting(true);
       const formData = new FormData();
+
       Object.entries(inputs).forEach(([key, value]) => {
-        if (key === "precio_unidad") {
-          const precio = currentUser?.tipo === "encargado" ? "0" : value;
-          formData.append(key, precio);
-        } else {
-          formData.append(key, value);
-        }
+        formData.append(key, value);
       });
+
       if (fotoFile) formData.append("foto", fotoFile);
+
+      if (id && !fotoFile && fotoRemove) {
+        formData.append("foto_remove", "1");
+      }
 
       if (id) {
         await api.put(`/palos/${id}`, formData, {
@@ -130,9 +136,14 @@ const PalosForm = () => {
         });
         setErr("Tirante creado exitosamente.");
       }
+
       setMessageType("success");
       setInputs(initialInputs);
-      clearImage();
+      setFotoFile(null);
+      setPreview(null);
+      setServerFotoUrl(null);
+      setFotoRemove(false);
+
       setTimeout(() => navigate("/palos/listar"), 500);
     } catch (error) {
       let msg = "Error al guardar el tirante.";
@@ -163,6 +174,7 @@ const PalosForm = () => {
         <h1 className="text-2xl font-bold text-neutral-900 text-center mb-4">
           {id ? "Editar Tirante" : "Nuevo Tirante"}
         </h1>
+
         <form
           className="space-y-4 md:space-y-6"
           onSubmit={handleSubmit}
@@ -212,7 +224,7 @@ const PalosForm = () => {
                 htmlFor="diametro_mm"
                 className="block mb-1 text-sm font-medium text-neutral-800"
               >
-                Diámetro (mm)
+                Espesor (pulgadas)
               </label>
               <input
                 type="text"
@@ -221,7 +233,7 @@ const PalosForm = () => {
                 id="diametro_mm"
                 value={inputs.diametro_mm}
                 onChange={handleChange}
-                placeholder="Ej: 50"
+                placeholder="Ej: 2"
                 className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
               />
             </div>
@@ -248,27 +260,6 @@ const PalosForm = () => {
                 <option value="álamo">Álamo</option>
               </select>
             </div>
-
-            {currentUser?.tipo !== "encargado" && (
-              <div>
-                <label
-                  htmlFor="precio_unidad"
-                  className="block mb-1 text-sm font-medium text-neutral-800"
-                >
-                  Precio Unitario
-                </label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  name="precio_unidad"
-                  id="precio_unidad"
-                  value={inputs.precio_unidad}
-                  onChange={handleChange}
-                  placeholder="Ej: 7.50"
-                  className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-                />
-              </div>
-            )}
 
             <div>
               <label

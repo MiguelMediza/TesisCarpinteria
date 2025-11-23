@@ -6,7 +6,8 @@ import {
     listTipoTacos,
     getTipoTacoById,
     updateTipoTaco,
-    deleteTipoTaco
+    deleteTipoTaco,
+    ajustarStockTipoTaco
 } from "../controllers/tipotacos.js";
 
 import { r2Put } from "../lib/r2.js";
@@ -37,6 +38,8 @@ const uploadToR2 = (folder) => async (req, res, next) => {
 
 // Crear (foto opcional)
 router.post("/agregar", upload.single("foto"), uploadToR2("tipos_tacos"), createTipoTaco);
+
+router.post("/ajustar-stock", ajustarStockTipoTaco);
 
 // Listar
 router.get("/listar", listTipoTacos);

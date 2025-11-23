@@ -165,7 +165,7 @@ const FuegoYaForm = () => {
                   Selecciona un tipo
                 </option>
                 <option value="Clasica 22">Clasica 22</option>
-                <option value="Pikolina">Pikolina</option>
+                <option value="Piccolina">Piccolina</option>
                 <option value="50mm">50mm Transparente</option>
                 <option value="Clasica 12 granel">Clasica de 12 Granel</option>
               </select>

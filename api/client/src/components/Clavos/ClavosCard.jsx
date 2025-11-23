@@ -9,8 +9,6 @@ const colorByStock = (stock) => {
   return "bg-emerald-50 text-emerald-700 ring-emerald-200";
 };
 
-const moneyUYU = (n) =>
-  Number(n ?? 0).toLocaleString("es-UY", { style: "currency", currency: "UYU" });
 
 const ClavosCard = ({ clavo, onEdit, onDelete }) => {
   const { currentUser } = useContext(AuthContext);
@@ -71,19 +69,6 @@ const ClavosCard = ({ clavo, onEdit, onDelete }) => {
           {[tipo, medidas, material].filter(Boolean).join(" · ")}
         </p>
 
-        {currentUser?.tipo === "admin" && precio_unidad != null && (
-          <div
-            className="
-              mt-3 inline-flex items-center gap-2 rounded-full
-              bg-blue-50 text-blue-700 ring-1 ring-blue-200
-              px-2.5 py-1 text-[12px] font-medium
-            "
-            title="Precio unitario"
-          >
-            <span className="inline-block size-2.5 rounded-full bg-blue-400" />
-            {moneyUYU(precio_unidad)} / unid.
-          </div>
-        )}
 
         {comentarios && (
           <div className="mt-3">

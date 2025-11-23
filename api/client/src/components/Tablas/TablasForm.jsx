@@ -1,12 +1,10 @@
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { useState, useEffect, useRef, useContext } from "react";
+import { useState, useEffect, useRef } from "react";
 import { api } from "../../api";
-import { AuthContext } from "../../context/authContext";
 import tablasBackground from "../../assets/tablasBackground.jpg";
 import Alert from "../Modals/Alert";
 
 const TablasForm = () => {
-  const { currentUser } = useContext(AuthContext);
   const { id } = useParams();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -18,7 +16,6 @@ const TablasForm = () => {
     espesor_mm: "",
     tipo_madera: "",
     cepilladas: "",
-    precio_unidad: "",
     stock: "",
     comentarios: "",
   };
@@ -29,6 +26,8 @@ const TablasForm = () => {
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [serverFotoUrl, setServerFotoUrl] = useState(null);
+  const [fotoRemove, setFotoRemove] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -42,13 +41,18 @@ const TablasForm = () => {
           espesor_mm: data.espesor_mm?.toString() || "",
           tipo_madera: data.tipo_madera || "",
           cepilladas: data.cepilladas === 1 ? "si" : "no",
-          precio_unidad: data.precio_unidad?.toString() || "",
           stock: data.stock?.toString() || "",
           comentarios: data.comentarios || "",
         });
+
         if (data.foto_url) {
           setPreview(data.foto_url);
+          setServerFotoUrl(data.foto_url);
+        } else {
+          setPreview(null);
+          setServerFotoUrl(null);
         }
+        setFotoRemove(false);
       })
       .catch(() => {
         setErr("No se pudo cargar la tabla.");
@@ -69,11 +73,6 @@ const TablasForm = () => {
       return "Ingresa un espesor válido.";
     if (!inputs.tipo_madera) return "El tipo de madera es requerido.";
     if (!inputs.cepilladas) return "Selecciona si está cepillada.";
-    if (currentUser?.tipo !== "encargado") {
-      if (!inputs.precio_unidad) return "El precio unitario es requerido.";
-      if (isNaN(inputs.precio_unidad) || Number(inputs.precio_unidad) <= 0)
-        return "Ingresa un precio válido.";
-    }
     if (!inputs.stock) return "El stock es requerido.";
     if (!Number.isInteger(Number(inputs.stock)) || Number(inputs.stock) < 0)
       return "Ingresa un stock válido.";
@@ -82,9 +81,7 @@ const TablasForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    if (
-      ["largo_cm", "ancho_cm", "espesor_mm", "precio_unidad"].includes(name)
-    ) {
+    if (["largo_cm", "ancho_cm", "espesor_mm"].includes(name)) {
       if (!/^[0-9]*\.?[0-9]*$/.test(value)) return;
     }
     if (name === "stock") {
@@ -98,37 +95,44 @@ const TablasForm = () => {
     if (!file) return;
     setFotoFile(file);
     setPreview(URL.createObjectURL(file));
+    setFotoRemove(false);
   };
 
   const clearImage = () => {
     setFotoFile(null);
     setPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+    setFotoRemove(!!serverFotoUrl);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (submitting) return;
+
     const validationError = validateInputs();
     if (validationError) {
       setErr(validationError);
       setMessageType("error");
       return;
     }
+
     try {
       setSubmitting(true);
       const formData = new FormData();
+
       Object.entries(inputs).forEach(([key, value]) => {
-        if (key === "precio_unidad") {
-          const precio = currentUser?.tipo === "encargado" ? "0" : value;
-          formData.append(key, precio);
-        } else if (key === "cepilladas") {
+        if (key === "cepilladas") {
           formData.append(key, value === "si" ? "1" : "0");
         } else {
           formData.append(key, value);
         }
       });
+
       if (fotoFile) formData.append("foto", fotoFile);
+
+      if (id && !fotoFile && fotoRemove) {
+        formData.append("foto_remove", "1");
+      }
 
       if (id) {
         await api.put(`/tablas/${id}`, formData, {
@@ -141,9 +145,15 @@ const TablasForm = () => {
         });
         setErr("Tabla creada exitosamente.");
       }
+
       setMessageType("success");
       setInputs(initialInputs);
-      clearImage();
+      setFotoFile(null);
+      setPreview(null);
+      setServerFotoUrl(null);
+      setFotoRemove(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+
       setTimeout(() => navigate("/tablas/listar"), 500);
     } catch (error) {
       let msg = "Error al guardar la tabla.";
@@ -300,27 +310,6 @@ const TablasForm = () => {
                 <option value="no">No</option>
               </select>
             </div>
-
-            {currentUser?.tipo !== "encargado" && (
-              <div>
-                <label
-                  htmlFor="precio_unidad"
-                  className="block mb-1 text-sm font-medium text-neutral-800"
-                >
-                  Precio Unitario
-                </label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  name="precio_unidad"
-                  id="precio_unidad"
-                  value={inputs.precio_unidad}
-                  onChange={handleChange}
-                  placeholder="Ej: 12.50"
-                  className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-                />
-              </div>
-            )}
 
             <div>
               <label
