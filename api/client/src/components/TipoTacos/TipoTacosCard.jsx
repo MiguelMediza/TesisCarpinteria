@@ -2,9 +2,6 @@ import React, { useContext, useState } from "react";
 import { Image } from "antd";
 import { AuthContext } from "../../context/authContext";
 
-const moneyUYU = (n) =>
-  Number(n ?? 0).toLocaleString("es-UY", { style: "currency", currency: "UYU" });
-
 const colorByStock = (stock) => {
   const n = Number(stock ?? 0);
   if (n < 100) return "bg-red-50 text-red-700 ring-red-200";
@@ -24,7 +21,6 @@ const TipoTacosCard = ({ tipoTaco, onEdit, onDelete, onAddStock }) => {
     espesor_mm,
     foto,
     foto_url,
-    precio_unidad,
     stock,
   } = tipoTaco || {};
 
@@ -42,7 +38,7 @@ const TipoTacosCard = ({ tipoTaco, onEdit, onDelete, onAddStock }) => {
       ? `${largo_cm ?? "—"} × ${ancho_cm ?? "—"} × ${espesor_mm ?? "—"}`
       : "—";
 
-  // --- NUEVO: estados para suma de stock ---
+  // --- estados para suma de stock ---
   const [cantidadStock, setCantidadStock] = useState("");
   const [descontarPadre, setDescontarPadre] = useState(true);
   const [loadingStock, setLoadingStock] = useState(false);
@@ -127,15 +123,6 @@ const TipoTacosCard = ({ tipoTaco, onEdit, onDelete, onAddStock }) => {
             <p className="text-[12px] text-slate-500">Dimensiones (cm × cm × cm)</p>
             <p className="text-sm font-medium text-slate-800">{dimensiones}</p>
           </div>
-
-          {isAdmin && (
-            <div className="rounded-xl border border-slate-100 bg-white p-3">
-              <p className="text-[12px] text-slate-500">Precio unitario</p>
-              <p className="text-sm text-slate-800">
-                {precio_unidad != null ? `${moneyUYU(precio_unidad)} / unid.` : "—"}
-              </p>
-            </div>
-          )}
         </div>
 
         <div className="mt-4 flex gap-2">
@@ -167,7 +154,7 @@ const TipoTacosCard = ({ tipoTaco, onEdit, onDelete, onAddStock }) => {
           </button>
         </div>
 
-        {/* --- NUEVO: sección para sumar stock --- */}
+        {/* Sección para sumar stock (solo admin) */}
         {isAdmin && (
           <div className="mt-4 border-t border-slate-100 pt-3 space-y-2">
             <p className="text-center text-[12px] font-medium text-slate-600">

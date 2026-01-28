@@ -2,9 +2,6 @@ import React, { useContext, useState } from "react";
 import { Image } from "antd";
 import { AuthContext } from "../../context/authContext";
 
-const moneyUYU = (n) =>
-  Number(n ?? 0).toLocaleString("es-UY", { style: "currency", currency: "UYU" });
-
 const colorByStock = (stock) => {
   const n = Number(stock ?? 0);
   if (n < 100) return "bg-red-50 text-red-700 ring-red-200";
@@ -14,7 +11,6 @@ const colorByStock = (stock) => {
 
 const TipoTablasCard = ({ tipoTabla, onEdit, onDelete, onAddStock }) => {
   const { currentUser } = useContext(AuthContext);
-  const isAdmin = currentUser?.tipo === "admin";
 
   const {
     id_tipo_tabla,
@@ -24,7 +20,6 @@ const TipoTablasCard = ({ tipoTabla, onEdit, onDelete, onAddStock }) => {
     espesor_mm,
     foto,
     foto_url,
-    precio_unidad,
     cepillada,
     stock,
   } = tipoTabla || {};
@@ -37,7 +32,7 @@ const TipoTablasCard = ({ tipoTabla, onEdit, onDelete, onAddStock }) => {
       ? `${largo_cm ?? "—"} × ${ancho_cm ?? "—"} × ${espesor_mm ?? "—"}`
       : "—";
 
-  // --- NUEVO: estados para suma de stock ---
+  // --- estados para suma de stock ---
   const [cantidadStock, setCantidadStock] = useState("");
   const [descontarPadre, setDescontarPadre] = useState(true);
   const [loadingStock, setLoadingStock] = useState(false);
@@ -62,7 +57,6 @@ const TipoTablasCard = ({ tipoTabla, onEdit, onDelete, onAddStock }) => {
     try {
       setLoadingStock(true);
 
-      // El padre define qué hacer con esto (API, refrescar lista, etc.)
       if (typeof onAddStock === "function") {
         await onAddStock(id_tipo_tabla, n, descontarPadre);
       }
@@ -131,22 +125,6 @@ const TipoTablasCard = ({ tipoTabla, onEdit, onDelete, onAddStock }) => {
               {Number(cepillada) ? "Sí" : "No"}
             </p>
           </div>
-
-          {isAdmin && (
-            <div className="col-span-2">
-              <div
-                className="
-                  inline-flex items-center gap-2 rounded-full
-                  bg-blue-50 text-blue-700 ring-1 ring-blue-200
-                  px-2.5 py-1 text-[12px] font-medium
-                "
-                title="Precio unitario"
-              >
-                <span className="inline-block size-2.5 rounded-full bg-blue-400" />
-                {precio_unidad != null ? `${moneyUYU(precio_unidad)} / unid.` : "—"}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Botones editar / eliminar */}
@@ -179,8 +157,6 @@ const TipoTablasCard = ({ tipoTabla, onEdit, onDelete, onAddStock }) => {
           </button>
         </div>
 
-        {/* --- NUEVO: sección para sumar stock --- */}
-        {isAdmin && (
           <div className="mt-4 border-t border-slate-100 pt-3 space-y-2">
             <p className="text-center text-[12px] font-medium text-slate-600">
               Ajustar stock
@@ -231,7 +207,6 @@ const TipoTablasCard = ({ tipoTabla, onEdit, onDelete, onAddStock }) => {
               <p className="text-[11px] text-emerald-600">{successStock}</p>
             )}
           </div>
-        )}
       </div>
     </div>
   );

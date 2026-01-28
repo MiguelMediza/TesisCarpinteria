@@ -1,9 +1,5 @@
-import React, { useContext } from "react";
+import React from "react";
 import { Image } from "antd";
-import { AuthContext } from "../../context/authContext";
-
-const moneyUYU = (n) =>
-  Number(n ?? 0).toLocaleString("es-UY", { style: "currency", currency: "UYU" });
 
 const colorByStock = (stock) => {
   const n = Number(stock ?? 0);
@@ -13,14 +9,10 @@ const colorByStock = (stock) => {
 };
 
 const TipoPatinesCard = ({ tipoPatin, onEdit, onDelete }) => {
-  const { currentUser } = useContext(AuthContext);
-  const isAdmin = currentUser?.tipo === "admin";
-
   const {
     id_tipo_patin,
     titulo,
     medidas,
-    precio_unidad,
     stock,
     logo,
     logo_url,
@@ -103,15 +95,6 @@ const TipoPatinesCard = ({ tipoPatin, onEdit, onDelete }) => {
             <p className="text-[12px] text-slate-500">Medidas</p>
             <p className="text-sm font-medium text-slate-800">{medidas || "—"}</p>
           </div>
-
-          {isAdmin && (
-            <div className="rounded-xl border border-slate-100 bg-white p-3">
-              <p className="text-[12px] text-slate-500">Precio unitario</p>
-              <p className="text-sm text-slate-800">
-                {precio_unidad != null ? moneyUYU(precio_unidad) : "—"}
-              </p>
-            </div>
-          )}
         </div>
 
         {comentarios && (

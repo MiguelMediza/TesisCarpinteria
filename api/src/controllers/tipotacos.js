@@ -1,6 +1,7 @@
 import { pool } from "../db.js";
 import { r2Delete } from "../lib/r2.js";
-const MARGIN = 0.5; //Margen en cm entre piezas al cortar
+
+const MARGIN = 0.5; // Margen en cm entre piezas al cortar
 const PUBLIC_BASE = process.env.R2_PUBLIC_BASE_URL || "";
 const urlFromKey = (key) => (key ? `${PUBLIC_BASE}/${key}` : null);
 
@@ -13,7 +14,7 @@ export const createTipoTaco = async (req, res) => {
       largo_cm,
       ancho_cm,
       espesor_mm,
-      precio_unidad,
+      // precio_unidad,  // 🔥 eliminado
       stock: cantidadDeseada,
     } = req.body;
     const fotoKey = req.fileR2?.key || null;
@@ -30,17 +31,21 @@ export const createTipoTaco = async (req, res) => {
     );
     if (!parent) throw new Error("Palo padre no encontrado");
 
-    const piezasPorPalo = Math.floor(parent.largo_cm / (parseFloat(largo_cm) + MARGIN));
-    if (piezasPorPalo <= 0) throw new Error("El largo del taco excede al del palo padre");
+    const piezasPorPalo = Math.floor(
+      parent.largo_cm / (parseFloat(largo_cm) + MARGIN)
+    );
+    if (piezasPorPalo <= 0)
+      throw new Error("El largo del taco excede al del palo padre");
 
     const qty = parseInt(cantidadDeseada, 10) || 0;
     const palosNecesarios = Math.ceil(qty / piezasPorPalo);
-    if (parent.stock < palosNecesarios) throw new Error("No hay stock suficiente de palos padre");
+    if (parent.stock < palosNecesarios)
+      throw new Error("No hay stock suficiente de palos padre");
 
     await connection.query(
       `INSERT INTO tipo_tacos
-         (id_materia_prima, titulo, largo_cm, ancho_cm, espesor_mm, foto, precio_unidad, stock)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+         (id_materia_prima, titulo, largo_cm, ancho_cm, espesor_mm, foto, stock)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         id_materia_prima,
         titulo,
@@ -48,7 +53,6 @@ export const createTipoTaco = async (req, res) => {
         parseFloat(ancho_cm),
         parseFloat(espesor_mm),
         fotoKey,
-        parseFloat(precio_unidad),
         qty,
       ]
     );
@@ -85,11 +89,16 @@ export const listTipoTacos = async (req, res) => {
          ON tt.id_materia_prima = mp.id_materia_prima
        ORDER BY tt.titulo ASC`
     );
-    const withUrls = rows.map((r) => ({ ...r, foto_url: urlFromKey(r.foto) }));
+    const withUrls = rows.map((r) => ({
+      ...r,
+      foto_url: urlFromKey(r.foto),
+    }));
     return res.status(200).json(withUrls);
   } catch (err) {
     console.error("❌ Error en listTipoTacos:", err);
-    return res.status(500).json({ error: "Internal server error", details: err.message });
+    return res
+      .status(500)
+      .json({ error: "Internal server error", details: err.message });
   }
 };
 
@@ -107,12 +116,18 @@ export const getTipoTacoById = async (req, res) => {
        WHERE tt.id_tipo_taco = ?`,
       [id]
     );
-    if (rows.length === 0) return res.status(404).json("Tipo de taco no encontrado!");
+    if (rows.length === 0)
+      return res.status(404).json("Tipo de taco no encontrado!");
     const row = rows[0];
-    return res.status(200).json({ ...row, foto_url: urlFromKey(row.foto) });
+    return res.status(200).json({
+      ...row,
+      foto_url: urlFromKey(row.foto),
+    });
   } catch (err) {
     console.error("❌ Error en getTipoTacoById:", err);
-    return res.status(500).json({ error: "Internal server error", details: err.message });
+    return res
+      .status(500)
+      .json({ error: "Internal server error", details: err.message });
   }
 };
 
@@ -125,19 +140,17 @@ export const updateTipoTaco = async (req, res) => {
       largo_cm: newLargoCm,
       ancho_cm,
       espesor_mm,
-      precio_unidad,
       stock: newStock,
+      borrar_foto,          // 👈 NUEVO: viene del form
     } = req.body;
     const newFotoKey = req.fileR2?.key || null;
 
+    const toFloatOrNull = (v) =>
+      v == null || v === "" ? null : parseFloat(v);
 
-    const toFloatOrNull = (v) => (v == null || v === "" ? null : parseFloat(v));
-    const toIntOrNull   = (v) => (v == null || v === "" ? null : parseInt(v, 10));
-
-    const newLargo  = parseFloat(newLargoCm);
-    const newAncho  = toFloatOrNull(ancho_cm);
-    const newEspesor= toFloatOrNull(espesor_mm);
-    const newPrecio = toFloatOrNull(precio_unidad);
+    const newLargo = parseFloat(newLargoCm);
+    const newAncho = toFloatOrNull(ancho_cm);
+    const newEspesor = toFloatOrNull(espesor_mm);
     const newStockI = parseInt(newStock, 10);
 
     if (!Number.isFinite(newLargo) || newLargo <= 0) {
@@ -159,7 +172,9 @@ export const updateTipoTaco = async (req, res) => {
     );
     if (!oldRec) {
       await connection.rollback();
-      return res.status(404).json({ message: "Tipo de taco no encontrado!" });
+      return res
+        .status(404)
+        .json({ message: "Tipo de taco no encontrado!" });
     }
     const { id_materia_prima, oldLargo, oldStock, oldFoto } = oldRec;
 
@@ -179,18 +194,24 @@ export const updateTipoTaco = async (req, res) => {
     const parentLargo = parseFloat(parent.parentLargo);
     const parentStock = parseInt(parent.parentStock, 10);
 
-    const piecesOld = Math.floor(parentLargo / (parseFloat(oldLargo) + MARGIN));
+    const piecesOld = Math.floor(
+      parentLargo / (parseFloat(oldLargo) + MARGIN)
+    );
     const piecesNew = Math.floor(parentLargo / (newLargo + MARGIN));
     if (piecesNew < 1) {
       await connection.rollback();
-      return res.status(400).json({ message: "El largo solicitado supera al del palo padre." });
+      return res
+        .status(400)
+        .json({ message: "El largo solicitado supera al del palo padre." });
     }
     if (piecesOld < 1 && oldStock > 0) {
       await connection.rollback();
-      return res.status(400).json({ message: "Datos previos inválidos (piecesOld < 1 con stock existente)." });
+      return res.status(400).json({
+        message: "Datos previos inválidos (piecesOld < 1 con stock existente).",
+      });
     }
 
-    // Tablas/palos usados antes vs después
+    // Palos usados antes vs después
     const usedOld = oldStock > 0 ? Math.ceil(oldStock / Math.max(piecesOld, 1)) : 0;
     const usedNew = newStockI > 0 ? Math.ceil(newStockI / Math.max(piecesNew, 1)) : 0;
     const delta   = usedNew - usedOld;
@@ -204,8 +225,8 @@ export const updateTipoTaco = async (req, res) => {
           detalles: {
             requerido_adicional: delta,
             disponible: parentStock,
-            piezas_por_palo_nueva: piecesNew
-          }
+            piezas_por_palo_nueva: piecesNew,
+          },
         });
       }
 
@@ -218,49 +239,81 @@ export const updateTipoTaco = async (req, res) => {
       if (upd.affectedRows !== 1) {
         await connection.rollback();
         return res.status(409).json({
-          message: "Stock insuficiente de palos padre (carrera detectada). Intenta nuevamente."
+          message:
+            "Stock insuficiente de palos padre (carrera detectada). Intenta nuevamente.",
         });
       }
     }
 
-    await connection.query(
-      `UPDATE tipo_tacos SET
-         titulo        = ?,
-         largo_cm      = ?,
-         ancho_cm      = COALESCE(?, ancho_cm),
-         espesor_mm    = COALESCE(?, espesor_mm),
-         precio_unidad = COALESCE(?, precio_unidad),
-         foto          = COALESCE(?, foto),
-         stock         = ?
-       WHERE id_tipo_taco = ?`,
-      [
-        titulo,
-        newLargo,
-        newAncho,
-        newEspesor,
-        newPrecio,
-        newFotoKey,
-        newStockI,
-        id,
-      ]
-    );
+    // 🔧 Armamos dinámicamente el UPDATE para manejar bien la foto (borrar / reemplazar / mantener)
+    const sets = [
+      "titulo = ?",
+      "largo_cm = ?",
+      "ancho_cm = COALESCE(?, ancho_cm)",
+      "espesor_mm = COALESCE(?, espesor_mm)",
+      "stock = ?",
+    ];
+    const vals = [titulo, newLargo, newAncho, newEspesor, newStockI];
+
+    if (borrar_foto === "1" && !newFotoKey) {
+      // Usuario pidió borrar la foto y no subió una nueva
+      sets.push("foto = NULL");
+    } else if (newFotoKey) {
+      // Usuario subió una nueva imagen
+      sets.push("foto = ?");
+      vals.push(newFotoKey);
+    }
+    const sql = `UPDATE tipo_tacos SET ${sets.join(", ")} WHERE id_tipo_taco = ?`;
+    vals.push(id);
+
+    await connection.query(sql, vals);
 
     await connection.commit();
 
     // Limpieza de foto vieja fuera de la tx
-    if (newFotoKey && oldFoto && newFotoKey !== oldFoto) {
-      try { await r2Delete(oldFoto); } catch (e) { console.warn("No se pudo borrar la foto antigua en R2:", oldFoto, e?.message); }
+    if (borrar_foto === "1" && oldFoto) {
+      // Borrado explícito
+      try {
+        await r2Delete(oldFoto);
+      } catch (e) {
+        console.warn(
+          "No se pudo borrar la foto antigua en R2 (borrar_foto):",
+          oldFoto,
+          e?.message
+        );
+      }
+    } else if (newFotoKey && oldFoto && newFotoKey !== oldFoto) {
+      // Reemplazo de imagen
+      try {
+        await r2Delete(oldFoto);
+      } catch (e) {
+        console.warn(
+          "No se pudo borrar la foto antigua en R2 (reemplazo):",
+          oldFoto,
+          e?.message
+        );
+      }
     }
 
     return res.status(200).json({
       message: "Tipo de taco actualizado exitosamente!",
-      foto_key: newFotoKey || oldFoto || null,
-      foto_url: urlFromKey(newFotoKey || oldFoto),
+      foto_key:
+        borrar_foto === "1" && !newFotoKey
+          ? null
+          : newFotoKey || oldFoto || null,
+      foto_url:
+        borrar_foto === "1" && !newFotoKey
+          ? null
+          : urlFromKey(newFotoKey || oldFoto),
     });
   } catch (err) {
-    try { await connection.rollback(); } catch {}
+    try {
+      await connection.rollback();
+    } catch {}
     console.error("❌ Error en updateTipoTaco:", err);
-    return res.status(500).json({ error: "Internal server error", details: err.message });
+    return res
+      .status(500)
+      .json({ error: "Internal server error", details: err.message });
   } finally {
     connection.release();
   }
@@ -276,7 +329,10 @@ export const deleteTipoTaco = async (req, res) => {
       `SELECT foto FROM tipo_tacos WHERE id_tipo_taco = ?`,
       [id]
     );
-    if (!row) return res.status(404).json({ message: "Tipo de taco no encontrado!" });
+    if (!row)
+      return res
+        .status(404)
+        .json({ message: "Tipo de taco no encontrado!" });
     const fotoKey = row.foto || null;
 
     const [refsProt] = await connection.query(
@@ -307,9 +363,10 @@ export const deleteTipoTaco = async (req, res) => {
     if (refsProt.length || refsPat.length) {
       return res.status(409).json({
         code: "ROW_REFERENCED",
-        message: "No se puede eliminar: el tipo de taco está referenciado por otros registros.",
-        prototipos: refsProt.map(r => r.titulo),  
-        patines: refsPat.map(r => r.titulo),      
+        message:
+          "No se puede eliminar: el tipo de taco está referenciado por otros registros.",
+        prototipos: refsProt.map((r) => r.titulo),
+        patines: refsPat.map((r) => r.titulo),
         count: refsProt.length + refsPat.length,
       });
     }
@@ -321,26 +378,42 @@ export const deleteTipoTaco = async (req, res) => {
     );
     if (del.affectedRows === 0) {
       await connection.rollback();
-      return res.status(404).json({ message: "Tipo de taco no encontrado!" });
+      return res
+        .status(404)
+        .json({ message: "Tipo de taco no encontrado!" });
     }
     await connection.commit();
 
     if (fotoKey) {
-      try { await r2Delete(fotoKey); }
-      catch (e) { console.warn("No se pudo borrar la foto en R2:", fotoKey, e?.message); }
+      try {
+        await r2Delete(fotoKey);
+      } catch (e) {
+        console.warn(
+          "No se pudo borrar la foto en R2:",
+          fotoKey,
+          e?.message
+        );
+      }
     }
 
-    return res.status(200).json({ message: "Tipo de taco eliminado exitosamente!" });
+    return res
+      .status(200)
+      .json({ message: "Tipo de taco eliminado exitosamente!" });
   } catch (err) {
-    try { await connection.rollback(); } catch {}
+    try {
+      await connection.rollback();
+    } catch {}
     if (err?.errno === 1451 || err?.code === "ER_ROW_IS_REFERENCED_2") {
       return res.status(409).json({
         code: "ROW_REFERENCED",
-        message: "No se puede eliminar: el tipo de taco está referenciado por otros registros.",
+        message:
+          "No se puede eliminar: el tipo de taco está referenciado por otros registros.",
       });
     }
     console.error("❌ Error en deleteTipoTaco:", err);
-    return res.status(500).json({ error: "Internal server error", details: err.message });
+    return res
+      .status(500)
+      .json({ error: "Internal server error", details: err.message });
   } finally {
     connection.release();
   }
@@ -352,14 +425,18 @@ export const ajustarStockTipoTaco = async (req, res) => {
     let { id_tipo_taco, cantidad, descontarPadre } = req.body;
 
     const idTaco = parseInt(id_tipo_taco, 10);
-    const cant   = parseInt(cantidad, 10);
+    const cant = parseInt(cantidad, 10);
 
     if (!Number.isInteger(idTaco) || idTaco <= 0) {
-      return res.status(400).json({ message: "ID de tipo de taco inválido." });
+      return res
+        .status(400)
+        .json({ message: "ID de tipo de taco inválido." });
     }
 
     if (!Number.isInteger(cant) || cant <= 0) {
-      return res.status(400).json({ message: "Cantidad a agregar inválida (debe ser > 0)." });
+      return res.status(400).json({
+        message: "Cantidad a agregar inválida (debe ser > 0).",
+      });
     }
 
     const descPadre =
@@ -381,7 +458,9 @@ export const ajustarStockTipoTaco = async (req, res) => {
 
     if (!taco) {
       await connection.rollback();
-      return res.status(404).json({ message: "Tipo de taco no encontrado!" });
+      return res
+        .status(404)
+        .json({ message: "Tipo de taco no encontrado!" });
     }
 
     const { id_materia_prima, largo_cm, stock: oldStock } = taco;
@@ -389,7 +468,9 @@ export const ajustarStockTipoTaco = async (req, res) => {
 
     if (!Number.isFinite(largoTaco) || largoTaco <= 0) {
       await connection.rollback();
-      return res.status(400).json({ message: "Datos de largo del tipo de taco inválidos." });
+      return res.status(400).json({
+        message: "Datos de largo del tipo de taco inválidos.",
+      });
     }
 
     let palosConsumidos = 0;
@@ -407,7 +488,9 @@ export const ajustarStockTipoTaco = async (req, res) => {
 
       if (!parent) {
         await connection.rollback();
-        return res.status(404).json({ message: "Palo padre no encontrado!" });
+        return res
+          .status(404)
+          .json({ message: "Palo padre no encontrado!" });
       }
 
       const parentLargo = parseFloat(parent.parentLargo);
@@ -415,14 +498,17 @@ export const ajustarStockTipoTaco = async (req, res) => {
 
       if (!Number.isFinite(parentLargo) || parentLargo <= 0) {
         await connection.rollback();
-        return res.status(400).json({ message: "Datos de largo de palo padre inválidos." });
+        return res.status(400).json({
+          message: "Datos de largo de palo padre inválidos.",
+        });
       }
 
       const piezasPorPalo = Math.floor(parentLargo / (largoTaco + MARGIN));
       if (piezasPorPalo < 1) {
         await connection.rollback();
         return res.status(400).json({
-          message: "El largo del taco excede al del palo padre (no se puede cortar).",
+          message:
+            "El largo del taco excede al del palo padre (no se puede cortar).",
         });
       }
 
@@ -480,9 +566,13 @@ export const ajustarStockTipoTaco = async (req, res) => {
       },
     });
   } catch (err) {
-    try { await connection.rollback(); } catch {}
+    try {
+      await connection.rollback();
+    } catch {}
     console.error("❌ Error en ajustarStockTipoTaco:", err);
-    return res.status(500).json({ error: "Internal server error", details: err.message });
+    return res
+      .status(500)
+      .json({ error: "Internal server error", details: err.message });
   } finally {
     connection.release();
   }

@@ -7,22 +7,7 @@ const urlFromKey = (key) => (key ? `${PUBLIC_BASE}/${key}` : null);
 const TABLES_PER_PATIN = 1;
 const TACOS_PER_PATIN = 3;
 
-const calcCostoPatin = async (conn, id_tipo_tabla, id_tipo_taco) => {
-  const [[tabla]] = await conn.query(
-    `SELECT precio_unidad FROM tipo_tablas WHERE id_tipo_tabla = ?`,
-    [id_tipo_tabla]
-  );
-  const [[taco]] = await conn.query(
-    `SELECT precio_unidad FROM tipo_tacos WHERE id_tipo_taco = ?`,
-    [id_tipo_taco]
-  );
-  const precioTabla = Number(tabla?.precio_unidad || 0);
-  const precioTaco  = Number(taco?.precio_unidad  || 0);
-  const costo = precioTabla * TABLES_PER_PATIN + precioTaco * TACOS_PER_PATIN;
-  return Number(costo.toFixed(2));
-};
-
-
+// 🔹 createTipoPatin SIN precio_unidad
 export const createTipoPatin = async (req, res) => {
   const connection = await pool.getConnection();
   const uploadedLogoKey = req.fileR2?.key || null;
@@ -67,19 +52,16 @@ export const createTipoPatin = async (req, res) => {
       return res.status(400).json("Stock insuficiente de tacos");
     }
 
-    const costoCalculado = await calcCostoPatin(connection, id_tipo_tabla, id_tipo_taco);
-
     const [ins] = await connection.query(
       `INSERT INTO tipo_patines 
-        (id_tipo_tabla, id_tipo_taco, titulo, medidas, logo, precio_unidad, comentarios, stock)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        (id_tipo_tabla, id_tipo_taco, titulo, medidas, logo, comentarios, stock)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         id_tipo_tabla,
         id_tipo_taco,
         titulo,
         medidas || "",
         uploadedLogoKey || null,
-        costoCalculado,
         comentarios || "",
         cantidad
       ]
@@ -120,11 +102,19 @@ export const createTipoPatin = async (req, res) => {
 
 export const updateTipoPatin = async (req, res) => {
   const connection = await pool.getConnection();
-  const newLogoKey = req.fileR2?.key || null; 
+  const newLogoKey = req.fileR2?.key || null;
 
   try {
     const { id } = req.params;
-    const { id_tipo_tabla, id_tipo_taco, titulo, medidas, comentarios, stock } = req.body;
+    const {
+      id_tipo_tabla,
+      id_tipo_taco,
+      titulo,
+      medidas,
+      comentarios,
+      stock,
+      borrar_logo,        
+    } = req.body;
 
     const newCantidad = parseInt(stock, 10);
     if (!Number.isInteger(newCantidad) || newCantidad < 0) {
@@ -134,7 +124,7 @@ export const updateTipoPatin = async (req, res) => {
     await connection.beginTransaction();
 
     const [[old]] = await connection.query(
-      `SELECT id_tipo_tabla, id_tipo_taco, stock, logo 
+      `SELECT id_tipo_tabla, id_tipo_taco, stock, logo
        FROM tipo_patines WHERE id_tipo_patin = ? FOR UPDATE`,
       [id]
     );
@@ -161,7 +151,6 @@ export const updateTipoPatin = async (req, res) => {
       return res.status(404).json("Tipo de taco padre no encontrado!");
     }
 
-
     const delta = newCantidad - old.stock;
     const tablasNecesarias = delta * TABLES_PER_PATIN;
     const tacosNecesarios  = delta * TACOS_PER_PATIN;
@@ -177,7 +166,6 @@ export const updateTipoPatin = async (req, res) => {
       }
     }
 
-
     if (tablasNecesarias !== 0) {
       await connection.query(
         `UPDATE tipo_tablas SET stock = stock - ? WHERE id_tipo_tabla = ?`,
@@ -191,42 +179,61 @@ export const updateTipoPatin = async (req, res) => {
       );
     }
 
-    const costoCalculado = await calcCostoPatin(connection, id_tipo_tabla, id_tipo_taco);
+    const sets = [
+      "id_tipo_tabla = ?",
+      "id_tipo_taco  = ?",
+      "titulo        = ?",
+      "medidas       = ?",
+      "comentarios   = ?",
+      "stock         = ?",
+    ];
+    const vals = [
+      id_tipo_tabla,
+      id_tipo_taco,
+      titulo,
+      medidas || "",
+      comentarios || "",
+      newCantidad,
+    ];
 
-    await connection.query(
-      `UPDATE tipo_patines SET 
-         id_tipo_tabla = ?, 
-         id_tipo_taco  = ?, 
-         titulo        = ?, 
-         medidas       = ?, 
-         logo          = COALESCE(?, logo), 
-         precio_unidad = ?, 
-         comentarios   = ?, 
-         stock         = ?
-       WHERE id_tipo_patin = ?`,
-      [
-        id_tipo_tabla,
-        id_tipo_taco,
-        titulo,
-        medidas || "",
-        newLogoKey,                
-        costoCalculado,
-        comentarios || "",
-        newCantidad,
-        id
-      ]
-    );
+    if (borrar_logo === "1" && !newLogoKey) {
+      sets.push("logo = NULL");
+    } else if (newLogoKey) {
+      sets.push("logo = ?");
+      vals.push(newLogoKey);
+    }
+
+    const sql = `UPDATE tipo_patines SET ${sets.join(", ")} WHERE id_tipo_patin = ?`;
+    vals.push(id);
+
+    await connection.query(sql, vals);
 
     await connection.commit();
 
-    if (newLogoKey && old.logo && newLogoKey !== old.logo) {
-      try { await r2Delete(old.logo); } catch {}
+    if (borrar_logo === "1" && old.logo) {
+      try {
+        await r2Delete(old.logo);
+      } catch (e) {
+        console.warn("No se pudo borrar el logo antiguo en R2 (borrar_logo):", old.logo, e?.message);
+      }
+    } else if (newLogoKey && old.logo && newLogoKey !== old.logo) {
+      try {
+        await r2Delete(old.logo);
+      } catch (e) {
+        console.warn("No se pudo borrar el logo antiguo en R2 (reemplazo):", old.logo, e?.message);
+      }
     }
 
     return res.status(200).json({
       message: "Tipo de patín actualizado exitosamente!",
-      logo_key: newLogoKey || old.logo || null,
-      logo_url: urlFromKey(newLogoKey || old.logo),
+      logo_key:
+        borrar_logo === "1" && !newLogoKey
+          ? null
+          : newLogoKey || old.logo || null,
+      logo_url:
+        borrar_logo === "1" && !newLogoKey
+          ? null
+          : urlFromKey(newLogoKey || old.logo),
     });
   } catch (err) {
     try { await connection.rollback(); } catch {}
@@ -238,6 +245,7 @@ export const updateTipoPatin = async (req, res) => {
     connection.release();
   }
 };
+
 
 
 export const getTipoPatinById = async (req, res) => {

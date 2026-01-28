@@ -7,6 +7,7 @@ import {
   updatePrototipo,
   deletePrototipo,
   listPrototipos,
+  ajustarStockPrototipo
 } from "../controllers/prototipopallet.js";
 import { r2Put } from "../lib/r2.js";
 
@@ -36,6 +37,8 @@ const uploadToR2 = (folder) => async (req, res, next) => {
 
 // Crear (foto opcional)
 router.post("/agregar", upload.single("foto"), uploadToR2("prototipos"), createPrototipo);
+
+router.post("/ajustarstock", ajustarStockPrototipo);
 
 // Listar
 router.get("/listar", listPrototipos);

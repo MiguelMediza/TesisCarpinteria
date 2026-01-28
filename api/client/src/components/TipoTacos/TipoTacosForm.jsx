@@ -1,12 +1,9 @@
-import React, { useEffect, useState, useRef, useContext } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { api } from "../../api";
-import { AuthContext } from "../../context/authContext";
 import tablasBackground from "../../assets/tablasBackground.jpg";
 import Alert from "../Modals/Alert";
-
 const TipoTacosForm = () => {
-  const { currentUser } = useContext(AuthContext);
   const { id } = useParams();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -17,7 +14,6 @@ const TipoTacosForm = () => {
     largo_cm: "",
     ancho_cm: "",
     espesor_mm: "",
-    precio_unidad: "",
     stock: "",
   };
 
@@ -25,14 +21,21 @@ const TipoTacosForm = () => {
   const [palos, setPalos] = useState([]);
   const [selectedPalo, setSelectedPalo] = useState(null);
   const [paloPreview, setPaloPreview] = useState(null);
+
   const [fotoFile, setFotoFile] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [hadServerFoto, setHadServerFoto] = useState(false);
+  const [borrarFoto, setBorrarFoto] = useState(false);
+
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    api.get("/palos/listar").then(({ data }) => setPalos(data)).catch(() => {});
+    api
+      .get("/palos/listar")
+      .then(({ data }) => setPalos(data))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -46,21 +49,38 @@ const TipoTacosForm = () => {
           largo_cm: data.largo_cm?.toString() || "",
           ancho_cm: data.ancho_cm?.toString() || "",
           espesor_mm: data.espesor_mm?.toString() || "",
-          precio_unidad: data.precio_unidad?.toString() || "",
           stock: data.stock?.toString() || "",
         });
-        const parent = palos.find((p) => p.id_materia_prima === data.id_materia_prima);
+
+        const parent = palos.find(
+          (p) => p.id_materia_prima === data.id_materia_prima
+        );
         if (parent) {
           setSelectedPalo(parent);
           const parentImg =
             parent.foto_url ||
-            (typeof parent.foto === "string" && /^https?:\/\//.test(parent.foto) ? parent.foto : null);
+            (typeof parent.foto === "string" &&
+            /^https?:\/\//.test(parent.foto)
+              ? parent.foto
+              : null);
           setPaloPreview(parentImg || null);
         }
+
         const ownImg =
           data.foto_url ||
-          (typeof data.foto === "string" && /^https?:\/\//.test(data.foto) ? data.foto : null);
-        if (ownImg) setPreview(ownImg);
+          (typeof data.foto === "string" && /^https?:\/\//.test(data.foto)
+            ? data.foto
+            : null);
+
+        if (ownImg) {
+          setPreview(ownImg);
+          setHadServerFoto(true);
+          setBorrarFoto(false);
+        } else {
+          setPreview(null);
+          setHadServerFoto(false);
+          setBorrarFoto(false);
+        }
       })
       .catch(() => {
         setErr("No se pudo cargar el tipo de taco.");
@@ -71,14 +91,18 @@ const TipoTacosForm = () => {
   const validate = () => {
     if (!inputs.id_materia_prima) return "Selecciona un tirante padre.";
     if (!inputs.titulo) return "El título es requerido.";
-    if (!inputs.largo_cm || isNaN(inputs.largo_cm) || +inputs.largo_cm <= 0) return "Largo inválido.";
-    if (!inputs.ancho_cm || isNaN(inputs.ancho_cm) || +inputs.ancho_cm <= 0) return "Ancho inválido.";
-    if (!inputs.espesor_mm || isNaN(inputs.espesor_mm) || +inputs.espesor_mm <= 0) return "Espesor inválido.";
-    if (currentUser?.tipo !== "encargado") {
-      if (!inputs.precio_unidad || isNaN(inputs.precio_unidad) || +inputs.precio_unidad <= 0)
-        return "Precio unitario inválido.";
-    }
-    if (!inputs.stock || !Number.isInteger(+inputs.stock) || +inputs.stock < 0) return "Stock inválido.";
+    if (!inputs.largo_cm || isNaN(inputs.largo_cm) || +inputs.largo_cm <= 0)
+      return "Largo inválido.";
+    if (!inputs.ancho_cm || isNaN(inputs.ancho_cm) || +inputs.ancho_cm <= 0)
+      return "Ancho inválido.";
+    if (
+      !inputs.espesor_mm ||
+      isNaN(inputs.espesor_mm) ||
+      +inputs.espesor_mm <= 0
+    )
+      return "Espesor inválido.";
+    if (!inputs.stock || !Number.isInteger(+inputs.stock) || +inputs.stock < 0)
+      return "Stock inválido.";
     return null;
   };
 
@@ -88,13 +112,16 @@ const TipoTacosForm = () => {
     const parent = palos.find((p) => p.id_materia_prima.toString() === pid);
     setSelectedPalo(parent || null);
     const parentImg =
-      parent?.foto_url || (parent?.foto && /^https?:\/\//.test(parent.foto) ? parent.foto : null);
+      parent?.foto_url ||
+      (parent?.foto && /^https?:\/\//.test(parent.foto)
+        ? parent.foto
+        : null);
     setPaloPreview(parentImg || null);
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    if (["largo_cm", "ancho_cm", "espesor_mm", "precio_unidad"].includes(name)) {
+    if (["largo_cm", "ancho_cm", "espesor_mm"].includes(name)) {
       if (!/^[0-9]*\.?[0-9]*$/.test(value)) return;
     }
     if (name === "stock" && !/^\d*$/.test(value)) return;
@@ -106,19 +133,29 @@ const TipoTacosForm = () => {
     if (!f) return;
     setFotoFile(f);
     setPreview(URL.createObjectURL(f));
+    // Si el usuario sube una nueva foto, ya no estamos "borrando" la del server
+    setBorrarFoto(false);
   };
 
   const clearImage = () => {
     setFotoFile(null);
     setPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+    // Si estamos editando y originalmente había foto en el server,
+    // marcamos que queremos borrarla
+    if (id && hadServerFoto) {
+      setBorrarFoto(true);
+    } else {
+      setBorrarFoto(false);
+    }
   };
 
   const MARGIN = 0.5;
   const piecesPerPalo =
     selectedPalo && inputs.largo_cm
       ? Math.floor(
-          (Number(selectedPalo.largo_cm || 0) + MARGIN) / (parseFloat(inputs.largo_cm) + MARGIN)
+          (Number(selectedPalo.largo_cm || 0) + MARGIN) /
+            (parseFloat(inputs.largo_cm) + MARGIN)
         )
       : 0;
   const totalPossible = piecesPerPalo * (selectedPalo?.stock ?? 0);
@@ -140,16 +177,24 @@ const TipoTacosForm = () => {
       fd.append("largo_cm", inputs.largo_cm);
       fd.append("ancho_cm", inputs.ancho_cm);
       fd.append("espesor_mm", inputs.espesor_mm);
-      const precio = currentUser?.tipo === "encargado" ? "0" : inputs.precio_unidad;
-      fd.append("precio_unidad", precio);
       fd.append("stock", inputs.stock);
-      if (fotoFile) fd.append("foto", fotoFile);
+
+      if (fotoFile) {
+        fd.append("foto", fotoFile);
+      } else if (id && borrarFoto) {
+        // Marca explícita para que el backend borre la foto
+        fd.append("borrar_foto", "1");
+      }
 
       if (id) {
-        await api.put(`/tipotacos/${id}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+        await api.put(`/tipotacos/${id}`, fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
         setErr("Tipo de taco actualizado.");
       } else {
-        await api.post("/tipotacos/agregar", fd, { headers: { "Content-Type": "multipart/form-data" } });
+        await api.post("/tipotacos/agregar", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
         setErr("Tipo de taco creado.");
       }
       setMessageType("success");
@@ -235,11 +280,6 @@ const TipoTacosForm = () => {
                     <p>
                       <strong>Stock actual:</strong> {selectedPalo.stock}
                     </p>
-                    {currentUser?.tipo !== "encargado" && (
-                      <p>
-                        <strong>Precio unidad:</strong> {selectedPalo.precio_unidad}
-                      </p>
-                    )}
                     <p>
                       <strong>Piezas por tirante:</strong> {piecesPerPalo}
                     </p>
@@ -250,6 +290,7 @@ const TipoTacosForm = () => {
                 </div>
               )}
             </div>
+
             <div>
               <label
                 htmlFor="titulo"
@@ -266,6 +307,7 @@ const TipoTacosForm = () => {
                 className="w-full p-2 border rounded"
               />
             </div>
+
             <div>
               <label
                 htmlFor="largo_cm"
@@ -283,6 +325,7 @@ const TipoTacosForm = () => {
                 className="w-full p-2 border rounded"
               />
             </div>
+
             <div>
               <label
                 htmlFor="ancho_cm"
@@ -300,6 +343,7 @@ const TipoTacosForm = () => {
                 className="w-full p-2 border rounded"
               />
             </div>
+
             <div>
               <label
                 htmlFor="espesor_mm"
@@ -317,25 +361,7 @@ const TipoTacosForm = () => {
                 className="w-full p-2 border rounded"
               />
             </div>
-            {currentUser?.tipo !== "encargado" && (
-              <div>
-                <label
-                  htmlFor="precio_unidad"
-                  className="block mb-1 text-sm font-medium text-neutral-800"
-                >
-                  Precio Unitario
-                </label>
-                <input
-                  id="precio_unidad"
-                  name="precio_unidad"
-                  value={inputs.precio_unidad}
-                  onChange={handleChange}
-                  placeholder="0.00"
-                  inputMode="decimal"
-                  className="w-full p-2 border rounded"
-                />
-              </div>
-            )}
+
             <div>
               <label
                 htmlFor="stock"
@@ -355,6 +381,7 @@ const TipoTacosForm = () => {
                 className="w-full p-2 border rounded"
               />
             </div>
+
             <div>
               <label
                 htmlFor="foto"
@@ -413,12 +440,34 @@ const TipoTacosForm = () => {
             className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {submitting && (
-              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              <svg
+                className="h-4 w-4 animate-spin"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                />
               </svg>
             )}
-            {id ? (submitting ? "Actualizando..." : "Guardar Cambios") : submitting ? "Agregando..." : "Crear Tipo de Taco"}
+            {id
+              ? submitting
+                ? "Actualizando..."
+                : "Guardar Cambios"
+              : submitting
+              ? "Agregando..."
+              : "Crear Tipo de Taco"}
           </button>
 
           <p className="mt-4 text-center text-sm">

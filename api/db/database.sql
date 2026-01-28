@@ -144,12 +144,14 @@ CREATE TABLE prototipo_pallet (
     id_tipo_patin INT NULL,
     cantidad_patines INT,
     comentarios VARCHAR(255),
+    stock INT DEFAULT 0,
 	foto VARCHAR(255),
     id_cliente INT,
 	estado BOOLEAN DEFAULT TRUE,
     FOREIGN KEY (id_tipo_patin) REFERENCES tipo_patines(id_tipo_patin),
     FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente)
 );
+
 
 CREATE TABLE prototipo_tipo_tablas (
     id_prototipo INT NOT NULL,
@@ -299,8 +301,9 @@ CREATE TABLE fuegoya_pago_aplicaciones (
   UNIQUE KEY uq_pago_venta (id_pago, id_ventaFuegoya),
   INDEX ix_aplicaciones_venta (id_ventaFuegoya)
 );
+delete from venta_fuegoya;
 
---  Vista de pendiente por venta
+-- (Opcional pero útil) Vista de pendiente por venta
 DROP VIEW IF EXISTS vw_vfy_pendiente;
 CREATE VIEW vw_vfy_pendiente AS
 SELECT
@@ -317,11 +320,11 @@ LEFT JOIN fuegoya_pago_aplicaciones a
   ON a.id_ventaFuegoya = v.id_ventaFuegoya
 GROUP BY v.id_ventaFuegoya, v.id_cliente, v.fecha_realizada, v.precio_total, v.estadopago, v.fechapago;
 
---  Índice para buscar rápido las ventas “a crédito” más antiguas
+-- (Opcional) Índice para buscar rápido las ventas “a crédito” más antiguas
 CREATE INDEX ix_vfy_cliente_estado_fecha
 ON venta_fuegoya (id_cliente, estadopago, fecha_realizada, id_ventaFuegoya);
 
-/* VIEW para listar las materias primas con stock bajo 'menor a 500' */
+/* VIEW para listar las materias primas con stock bajo 'menor a 100' */
 CREATE VIEW stock_bajo AS
 SELECT 'materiaprima' AS origen, id_materia_prima AS id, titulo, stock
 FROM materiaprima WHERE stock < 500
@@ -341,7 +344,7 @@ CREATE INDEX ix_prototipo_clavos_parent ON prototipo_clavos (id_materia_prima);
 CREATE INDEX ix_ptt_taco ON prototipo_tipo_tacos (id_tipo_taco);
 CREATE INDEX ix_patines_taco ON tipo_patines (id_tipo_taco);
 CREATE INDEX ix_pp_patin ON prototipo_pallet (id_tipo_patin);
-
+-- 1) BOM detallado (incluye PATÍN con cantidad)
 
 DROP VIEW IF EXISTS vw_prototipo_bom_detalle;
 CREATE VIEW vw_prototipo_bom_detalle AS
@@ -401,7 +404,7 @@ FROM prototipo_fibras pf
 JOIN materiaprima mp ON mp.id_materia_prima = pf.id_materia_prima
 
 UNION ALL
-/* ====== PATÍN ====== */
+/* ====== PATÍN (usa cantidad_patines del prototipo) ====== */
 SELECT
   pp.id_prototipo,
   'patin'                           AS categoria,
@@ -416,8 +419,9 @@ JOIN tipo_patines tp ON tp.id_tipo_patin = pp.id_tipo_patin
 WHERE pp.id_tipo_patin IS NOT NULL
   AND COALESCE(pp.cantidad_patines, 0) > 0;
 
---2) Costo total por prototipo (suma el BOM)
-
+-- ===========================================
+-- 2) Costo total por prototipo (suma el BOM)
+-- ===========================================
 DROP VIEW IF EXISTS vw_prototipo_costo_total;
 CREATE VIEW vw_prototipo_costo_total AS
 SELECT 

@@ -64,6 +64,24 @@ const PrototipoPalletList = () => {
 
   const modalImg = toDelete ? (toDelete.foto_url || toDelete.foto || null) : null;
 
+  const handleAddStock = async (id_prototipo, cantidad, descontarMP) => {
+  try {
+    await api.post("/prototipos/ajustarstock", {
+      id_prototipo,
+      cantidad,
+      descontar_mp: descontarMP,
+    });
+
+    // Recargar lista
+    fetchPrototipos();
+  } catch (err) {
+    console.error(err);
+    throw err;
+  }
+};
+
+
+
   return (
     <section className="p-4 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-6">
@@ -96,7 +114,9 @@ const PrototipoPalletList = () => {
             prototipo={p}
             onEdit={handleEdit}
             onDelete={() => handleDeleteClick(p)}
+            onAddStock={handleAddStock}
           />
+
         ))}
         {filtered.length === 0 && (
           <p className="col-span-full text-center text-gray-500">

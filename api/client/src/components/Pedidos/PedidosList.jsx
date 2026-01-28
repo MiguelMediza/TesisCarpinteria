@@ -70,19 +70,16 @@ const PedidosList = () => {
     }
   };
 
-  const handleEstadoChanged = async (id_pedido, newStatus) => {
-    try {
-      setPedidos(curr =>
-        curr.map(p =>
-          p.id_pedido === id_pedido ? { ...p, estado: newStatus } : p
-        )
-      );
-      await api.put(`/pedidos/${id_pedido}/estado`, { estado: newStatus });
-    } catch (e) {
-      console.error(e);
-      setError("No se pudo cambiar el estado del pedido.");
-      fetchPedidos();
-    }
+  // ✅ CAMBIO IMPORTANTE:
+  //   El card ya hace el PUT /pedidos/:id/estado.
+  //   Acá SOLO sincronizamos el estado en memoria.
+  const handleEstadoChanged = (id_pedido, newStatus) => {
+    setPedidos(curr =>
+      curr.map(p =>
+        p.id_pedido === id_pedido ? { ...p, estado: newStatus } : p
+      )
+    );
+    // ❌ YA NO llamamos a la API acá (evitamos doble PUT y doble validación).
   };
 
   const resetFiltros = () => {
@@ -96,19 +93,31 @@ const PedidosList = () => {
     let arr = [...pedidos];
 
     if (idCliente) {
-      arr = arr.filter(p => String(p.id_cliente ?? p.cliente_id ?? "") === String(idCliente));
+      arr = arr.filter(
+        p => String(p.id_cliente ?? p.cliente_id ?? "") === String(idCliente)
+      );
     }
     if (estado) {
-      arr = arr.filter(p => (p.estado || "").toLowerCase() === estado.toLowerCase());
+      arr = arr.filter(
+        p => (p.estado || "").toLowerCase() === estado.toLowerCase()
+      );
     }
     if (desde) {
-      arr = arr.filter(p => (p.fecha_realizado || p.fecha_realizada || "") >= desde);
+      arr = arr.filter(
+        p => (p.fecha_realizado || p.fecha_realizada || "") >= desde
+      );
     }
     if (hasta) {
-      arr = arr.filter(p => (p.fecha_realizado || p.fecha_realizada || "") <= hasta);
+      arr = arr.filter(
+        p => (p.fecha_realizado || p.fecha_realizada || "") <= hasta
+      );
     }
 
-    arr.sort((a, b) => String(b.fecha_realizado || b.fecha_realizada || "").localeCompare(String(a.fecha_realizado || a.fecha_realizada || "")));
+    arr.sort((a, b) =>
+      String(b.fecha_realizado || b.fecha_realizada || "").localeCompare(
+        String(a.fecha_realizado || a.fecha_realizada || "")
+      )
+    );
 
     return arr;
   }, [pedidos, idCliente, estado, desde, hasta]);
@@ -148,7 +157,9 @@ const PedidosList = () => {
           <option value="">Cliente (todos)</option>
           {clientes.map(c => (
             <option key={c.id_cliente} value={c.id_cliente}>
-              {c.es_empresa ? c.nombre_empresa : `${c.nombre} ${c.apellido || ""}`}
+              {c.es_empresa
+                ? c.nombre_empresa
+                : `${c.nombre} ${c.apellido || ""}`}
             </option>
           ))}
         </select>
@@ -191,7 +202,7 @@ const PedidosList = () => {
             pedido={p}
             onEdit={handleEdit}
             onDelete={() => handleDeleteClick(p)}
-            onEstadoChanged={handleEstadoChanged} 
+            onEstadoChanged={handleEstadoChanged}
           />
         ))}
         {pedidosFiltrados.length === 0 && (

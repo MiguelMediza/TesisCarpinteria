@@ -16,6 +16,7 @@ const PrototipoPalletForm = () => {
     cantidad_patines: "",
     comentarios: "",
     id_cliente: "",
+    stock: "",
   });
 
   const [clientes, setClientes] = useState([]);
@@ -40,6 +41,8 @@ const PrototipoPalletForm = () => {
 
   const [fotoFile, setFotoFile] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [hadServerFoto, setHadServerFoto] = useState(false);
+  const [borrarFoto, setBorrarFoto] = useState(false);
 
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
@@ -84,9 +87,19 @@ const PrototipoPalletForm = () => {
           cantidad_patines: data.cantidad_patines?.toString() || "",
           comentarios: data.comentarios || "",
           id_cliente: data.id_cliente?.toString() || "",
+          stock: data.stock?.toString() || "0",
         });
 
-        if (data.foto_url || data.foto) setPreview(data.foto_url || data.foto);
+        const img = data.foto_url || data.foto || null;
+        if (img) {
+          setPreview(img);
+          setHadServerFoto(true);
+          setBorrarFoto(false);
+        } else {
+          setPreview(null);
+          setHadServerFoto(false);
+          setBorrarFoto(false);
+        }
 
         const bom = data.bom_detalle || [];
         const tabs = bom
@@ -151,12 +164,18 @@ const PrototipoPalletForm = () => {
     if (!f) return;
     setFotoFile(f);
     setPreview(URL.createObjectURL(f));
+    setBorrarFoto(false); 
   };
 
   const clearImage = () => {
     setFotoFile(null);
     setPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+    if (id && hadServerFoto) {
+      setBorrarFoto(true);
+    } else {
+      setBorrarFoto(false);
+    }
   };
 
   const handleChange = (e) => {
@@ -220,7 +239,9 @@ const PrototipoPalletForm = () => {
         const r = rows[i];
         if (r[idField]) {
           if (!isValidQty(r[qtyField])) {
-            return `Ingrese una cantidad válida (> 0) para ${label} en la fila ${i + 1}`;
+            return `Ingrese una cantidad válida (> 0) para ${label} en la fila ${
+              i + 1
+            }`;
           }
         }
       }
@@ -243,17 +264,6 @@ const PrototipoPalletForm = () => {
     if (!hasAtLeastOne(detClavos, "id_materia_prima", "cantidad_lleva")) {
       return "Debe seleccionar al menos un tipo de clavo con cantidad > 0.";
     }
-    const sinPatin = !inputs.id_tipo_patin;
-    if (sinPatin) {
-      if (!hasAtLeastOne(detTacos, "id_tipo_taco", "cantidad_lleva")) {
-        return "Si no selecciona patín, debe agregar al menos un tipo de taco con cantidad > 0.";
-      }
-    } else {
-      if (!isValidQty(inputs.cantidad_patines)) {
-        return "La cantidad de patines es obligatoria y debe ser mayor a 0.";
-      }
-    }
-
     return null;
   };
 
@@ -322,7 +332,11 @@ const PrototipoPalletForm = () => {
         )
       );
 
-      if (fotoFile) formData.append("foto", fotoFile);
+      if (fotoFile) {
+        formData.append("foto", fotoFile);
+      } else if (id && borrarFoto) {
+        formData.append("borrar_foto", "1");
+      }
 
       if (id) {
         await api.put(`/prototipos/${id}`, formData, {
@@ -340,7 +354,21 @@ const PrototipoPalletForm = () => {
       setTimeout(() => navigate("/prototipos/listar"), 800);
     } catch (e) {
       console.error(e);
-      setErr("Error al guardar el prototipo.");
+
+      const status = e?.response?.status;
+      const apiMsg = e?.response?.data?.error || e?.response?.data?.message;
+
+      let msg = "Error al guardar el prototipo.";
+
+      if (apiMsg) {
+        msg = apiMsg;
+      } else if (status === 413) {
+        msg = "La imagen es demasiado pesada.";
+      } else if (status === 400) {
+        msg = "Datos inválidos enviados al servidor.";
+      }
+
+      setErr(msg);
       setMessageType("error");
     } finally {
       setSubmitting(false);
@@ -374,7 +402,9 @@ const PrototipoPalletForm = () => {
           <fieldset disabled={submitting} className="space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block mb-1 text-sm font-medium">Título *</label>
+                <label className="block mb-1 text-sm font-medium">
+                  Título *
+                </label>
                 <input
                   type="text"
                   name="titulo"
@@ -385,7 +415,9 @@ const PrototipoPalletForm = () => {
                 />
               </div>
               <div>
-                <label className="block mb-1 text-sm font-medium">Medidas</label>
+                <label className="block mb-1 text-sm font-medium">
+                  Medidas
+                </label>
                 <input
                   type="text"
                   name="medidas"
@@ -441,6 +473,22 @@ const PrototipoPalletForm = () => {
                 </div>
               )}
             </div>
+
+            {id && (
+              <div>
+                <label className="block mb-1 text-sm font-medium">
+                  Stock actual
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  name="stock"
+                  value={inputs.stock}
+                  onChange={handleChange}
+                  className="w-full p-2 rounded border border-neutral-300 bg-neutral-100"
+                />
+              </div>
+            )}
 
             <div>
               <label className="block mb-1 text-sm font-medium">
@@ -513,6 +561,7 @@ const PrototipoPalletForm = () => {
               </div>
             </div>
 
+            {/* TABLAS */}
             <div>
               <p className="text-sm font-semibold mb-2">Tipo de tablas</p>
               {detTablas.map((r, i) => (
@@ -530,7 +579,8 @@ const PrototipoPalletForm = () => {
                     <option value="">Seleccionar tipo tabla</option>
                     {tipoTablas.map((tt) => (
                       <option key={tt.id_tipo_tabla} value={tt.id_tipo_tabla}>
-                        {tt.titulo} ({tt.largo_cm}×{tt.ancho_cm}×{tt.espesor_mm})
+                        {tt.titulo} ({tt.largo_cm}×{tt.ancho_cm}×{tt.espesor_mm}
+                        )
                       </option>
                     ))}
                   </select>
@@ -586,6 +636,7 @@ const PrototipoPalletForm = () => {
               </button>
             </div>
 
+            {/* TACOS */}
             <div>
               <p className="text-sm font-semibold mb-2">Tipo de tacos</p>
               {detTacos.map((r, i) => (
@@ -603,7 +654,8 @@ const PrototipoPalletForm = () => {
                     <option value="">Seleccionar tipo taco</option>
                     {tipoTacos.map((tt) => (
                       <option key={tt.id_tipo_taco} value={tt.id_tipo_taco}>
-                        {tt.titulo} ({tt.largo_cm}×{tt.ancho_cm}×{tt.espesor_mm})
+                        {tt.titulo} ({tt.largo_cm}×{tt.ancho_cm}×{tt.espesor_mm}
+                        )
                       </option>
                     ))}
                   </select>
@@ -659,6 +711,7 @@ const PrototipoPalletForm = () => {
               </button>
             </div>
 
+            {/* CLAVOS */}
             <div>
               <p className="text-sm font-semibold mb-2">Clavos</p>
               {detClavos.map((r, i) => (
@@ -736,6 +789,7 @@ const PrototipoPalletForm = () => {
               </button>
             </div>
 
+            {/* FIBRAS */}
             <div>
               <p className="text-sm font-semibold mb-2">Fibras</p>
               {detFibras.map((r, i) => (

@@ -1,7 +1,6 @@
-import React, { useEffect, useState, useRef, useContext } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { api } from "../../api";
-import { AuthContext } from "../../context/authContext";
 import tablasBackground from "../../assets/tablasBackground.jpg";
 import Alert from "../Modals/Alert";
 
@@ -9,7 +8,6 @@ const TABLES_PER_PATIN = 1;
 const TACOS_PER_PATIN = 3;
 
 const TipoPatinesForm = () => {
-  const { currentUser } = useContext(AuthContext);
   const { id } = useParams();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -28,8 +26,12 @@ const TipoPatinesForm = () => {
   const [tacos, setTacos] = useState([]);
   const [selectedTabla, setSelectedTabla] = useState(null);
   const [selectedTaco, setSelectedTaco] = useState(null);
+
   const [preview, setPreview] = useState(null);
   const [logoFile, setLogoFile] = useState(null);
+  const [hadServerLogo, setHadServerLogo] = useState(false);
+  const [borrarLogo, setBorrarLogo] = useState(false);
+
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -52,12 +54,22 @@ const TipoPatinesForm = () => {
           stock: data.stock?.toString() || "",
           comentarios: data.comentarios || "",
         });
+
         const tabla = tablas.find((t) => t.id_tipo_tabla === data.id_tipo_tabla);
         const taco = tacos.find((t) => t.id_tipo_taco === data.id_tipo_taco);
         if (tabla) setSelectedTabla(tabla);
         if (taco) setSelectedTaco(taco);
+
         const img = data.logo_url || null;
-        if (img) setPreview(img);
+        if (img) {
+          setPreview(img);
+          setHadServerLogo(true);
+          setBorrarLogo(false);
+        } else {
+          setPreview(null);
+          setHadServerLogo(false);
+          setBorrarLogo(false);
+        }
       })
       .catch(() => {
         setErr("No se pudo cargar el tipo de patín.");
@@ -70,7 +82,8 @@ const TipoPatinesForm = () => {
     if (!inputs.id_tipo_taco) return "Selecciona un taco.";
     if (!inputs.titulo) return "El título es requerido.";
     if (!inputs.medidas) return "Las medidas son requeridas.";
-    if (!inputs.stock || !Number.isInteger(+inputs.stock) || +inputs.stock < 0) return "Stock inválido.";
+    if (!inputs.stock || !Number.isInteger(+inputs.stock) || +inputs.stock < 0)
+      return "Stock inválido.";
     return null;
   };
 
@@ -97,12 +110,20 @@ const TipoPatinesForm = () => {
     if (!f) return;
     setLogoFile(f);
     setPreview(URL.createObjectURL(f));
+    // si sube nueva imagen, ya no estamos borrando la anterior
+    setBorrarLogo(false);
   };
 
   const clearLogo = () => {
     setLogoFile(null);
     setPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+    // si había logo en el server y estamos editando, marcar borrado
+    if (id && hadServerLogo) {
+      setBorrarLogo(true);
+    } else {
+      setBorrarLogo(false);
+    }
   };
 
   const stockMax =
@@ -112,14 +133,6 @@ const TipoPatinesForm = () => {
           Math.floor((selectedTaco.stock ?? 0) / TACOS_PER_PATIN)
         )
       : undefined;
-
-  const precioPreview =
-    selectedTabla && selectedTaco
-      ? (
-          Number(selectedTabla?.precio_unidad || 0) * TABLES_PER_PATIN +
-          Number(selectedTaco?.precio_unidad || 0) * TACOS_PER_PATIN
-        ).toFixed(2)
-      : null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -139,13 +152,22 @@ const TipoPatinesForm = () => {
       fd.append("medidas", inputs.medidas);
       fd.append("stock", inputs.stock);
       fd.append("comentarios", inputs.comentarios);
-      if (logoFile) fd.append("logo", logoFile);
+
+      if (logoFile) {
+        fd.append("logo", logoFile);
+      } else if (id && borrarLogo) {
+        fd.append("borrar_logo", "1");
+      }
 
       if (id) {
-        await api.put(`/tipopatines/${id}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+        await api.put(`/tipopatines/${id}`, fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
         setErr("Tipo de patín actualizado.");
       } else {
-        await api.post("/tipopatines/agregar", fd, { headers: { "Content-Type": "multipart/form-data" } });
+        await api.post("/tipopatines/agregar", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
         setErr("Tipo de patín creado.");
       }
       setMessageType("success");
@@ -180,11 +202,20 @@ const TipoPatinesForm = () => {
         <h1 className="text-2xl font-bold text-neutral-900 text-center mb-4">
           {id ? "Editar Tipo de Patín" : "Nuevo Tipo de Patín"}
         </h1>
-        <form className="space-y-4" onSubmit={handleSubmit} encType="multipart/form-data" aria-busy={submitting}>
+        <form
+          className="space-y-4"
+          onSubmit={handleSubmit}
+          encType="multipart/form-data"
+          aria-busy={submitting}
+        >
           <fieldset disabled={submitting} className="space-y-4">
             <div>
               <label className="block mb-1 text-sm font-medium">Tabla utilizada</label>
-              <select value={inputs.id_tipo_tabla} onChange={handleParentTabla} className="w-full p-2 border rounded">
+              <select
+                value={inputs.id_tipo_tabla}
+                onChange={handleParentTabla}
+                className="w-full p-2 border rounded"
+              >
                 <option value="" disabled>
                   Selecciona tabla
                 </option>
@@ -195,9 +226,14 @@ const TipoPatinesForm = () => {
                 ))}
               </select>
             </div>
+
             <div>
               <label className="block mb-1 text-sm font-medium">Taco utilizado</label>
-              <select value={inputs.id_tipo_taco} onChange={handleParentTaco} className="w-full p-2 border rounded">
+              <select
+                value={inputs.id_tipo_taco}
+                onChange={handleParentTaco}
+                className="w-full p-2 border rounded"
+              >
                 <option value="" disabled>
                   Selecciona taco
                 </option>
@@ -208,6 +244,7 @@ const TipoPatinesForm = () => {
                 ))}
               </select>
             </div>
+
             {selectedTabla && selectedTaco && (
               <div className="text-sm text-gray-700">
                 <p>
@@ -221,17 +258,7 @@ const TipoPatinesForm = () => {
                 </p>
               </div>
             )}
-            {currentUser?.tipo === "admin" && (
-              <div className="text-sm text-gray-700">
-                <p>
-                  <strong>Precio calculado (auto): </strong>
-                  {precioPreview !== null ? `$ ${precioPreview}` : "—"}
-                </p>
-                <p className="text-xs text-gray-500">
-                  Se calcula como: precio tabla × {TABLES_PER_PATIN} + precio taco × {TACOS_PER_PATIN}.
-                </p>
-              </div>
-            )}
+
             <input
               name="titulo"
               value={inputs.titulo}
@@ -239,6 +266,7 @@ const TipoPatinesForm = () => {
               placeholder="Título"
               className="w-full p-2 border rounded"
             />
+
             <input
               name="medidas"
               value={inputs.medidas}
@@ -246,6 +274,7 @@ const TipoPatinesForm = () => {
               placeholder="Medidas"
               className="w-full p-2 border rounded"
             />
+
             <input
               name="stock"
               value={inputs.stock}
@@ -256,6 +285,7 @@ const TipoPatinesForm = () => {
               max={stockMax !== undefined ? stockMax : undefined}
               className="w-full p-2 border rounded"
             />
+
             <textarea
               name="comentarios"
               value={inputs.comentarios}
@@ -263,6 +293,7 @@ const TipoPatinesForm = () => {
               placeholder="Comentarios"
               className="w-full p-2 border rounded"
             />
+
             <div>
               <label>Logo</label>
               <input
@@ -300,19 +331,43 @@ const TipoPatinesForm = () => {
               </Alert>
             </div>
           )}
+
           <button
             type="submit"
             disabled={submitting}
             className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {submitting && (
-              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              <svg
+                className="h-4 w-4 animate-spin"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                />
               </svg>
             )}
-            {id ? (submitting ? "Actualizando..." : "Guardar Cambios") : submitting ? "Agregando..." : "Crear Tipo de Patín"}
+            {id
+              ? submitting
+                ? "Actualizando..."
+                : "Guardar Cambios"
+              : submitting
+              ? "Agregando..."
+              : "Crear Tipo de Patín"}
           </button>
+
           <p className="mt-4 text-center text-sm">
             <Link to="/tipopatines/listar" className="underline">
               Volver al listado

@@ -40,7 +40,7 @@ const FuegoYaForm = () => {
   }, [id]);
 
   const validateInputs = () => {
-    if (!inputs.tipo) return "Selecciona un tipo.";
+    if (!String(inputs.tipo || "").trim()) return "El tipo (nombre) es requerido.";
     if (currentUser?.tipo !== "encargado") {
       if (!inputs.precio_unidad) return "El precio unitario es requerido.";
       if (isNaN(inputs.precio_unidad) || Number(inputs.precio_unidad) <= 0)
@@ -85,14 +85,20 @@ const FuegoYaForm = () => {
     try {
       setSubmitting(true);
       const formData = new FormData();
-      Object.entries(inputs).forEach(([key, value]) => {
-        if (key === "precio_unidad") {
-          const precio = currentUser?.tipo === "encargado" ? "0" : value;
-          formData.append(key, precio);
-        } else {
-          formData.append(key, value);
-        }
-      });
+Object.entries(inputs).forEach(([key, value]) => {
+  if (key === "precio_unidad") {
+    const precio = currentUser?.tipo === "encargado" ? "0" : value;
+    formData.append(key, precio);
+    return;
+  }
+
+  if (key === "tipo") {
+    formData.append(key, String(value ?? "").trim()); // ✅ texto libre, limpio
+    return;
+  }
+
+  formData.append(key, value);
+});
       if (fotoFile) formData.append("foto", fotoFile);
 
       if (id) {
@@ -154,21 +160,15 @@ const FuegoYaForm = () => {
               >
                 Tipo
               </label>
-              <select
-                name="tipo"
-                id="tipo"
-                value={inputs.tipo}
-                onChange={handleChange}
-                className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-              >
-                <option value="" disabled>
-                  Selecciona un tipo
-                </option>
-                <option value="Clasica 22">Clasica 22</option>
-                <option value="Piccolina">Piccolina</option>
-                <option value="50mm">50mm Transparente</option>
-                <option value="Clasica 12 granel">Clasica de 12 Granel</option>
-              </select>
+<input
+  type="text"
+  name="tipo"
+  id="tipo"
+  value={inputs.tipo}
+  onChange={handleChange}
+  placeholder="Ej: Clásica 22"
+  className="w-full p-2 rounded border border-neutral-300 bg-neutral-100 text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+/>
             </div>
 
             {currentUser?.tipo !== "encargado" && (

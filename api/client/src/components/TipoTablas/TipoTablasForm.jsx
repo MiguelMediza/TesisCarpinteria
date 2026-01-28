@@ -1,12 +1,12 @@
-import React, { useEffect, useState, useRef, useContext } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { api } from "../../api";
-import { AuthContext } from "../../context/authContext";
 import tablasBackground from "../../assets/tablasBackground.jpg";
 import Alert from "../Modals/Alert";
 
+const MARGIN = 0.5;
+
 const TipoTablasForm = () => {
-  const { currentUser } = useContext(AuthContext);
   const { id } = useParams();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -17,7 +17,7 @@ const TipoTablasForm = () => {
     largo_cm: "",
     ancho_cm: "",
     espesor_mm: "",
-    precio_unidad: "",
+    piezas_por_tabla: "", // ⭐ NUEVO
     cepillada: "",
     stock: "",
   };
@@ -30,12 +30,16 @@ const TipoTablasForm = () => {
   const [preview, setPreview] = useState(null);
   const [hadServerFoto, setHadServerFoto] = useState(false);
   const [borrarFoto, setBorrarFoto] = useState(false);
+  const [piezasTouched, setPiezasTouched] = useState(false); 
   const [err, setErr] = useState("");
   const [messageType, setMessageType] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    api.get("/tablas/listar").then(({ data }) => setTablas(data || [])).catch(() => {});
+    api
+      .get("/tablas/listar")
+      .then(({ data }) => setTablas(data || []))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -50,11 +54,13 @@ const TipoTablasForm = () => {
           largo_cm: data.largo_cm?.toString() || "",
           ancho_cm: data.ancho_cm?.toString() || "",
           espesor_mm: data.espesor_mm?.toString() || "",
-          precio_unidad: data.precio_unidad?.toString() || "",
+          piezas_por_tabla: data.piezas_por_tabla?.toString() || "", 
           cepillada: data.cepillada ? "1" : "0",
           stock: data.stock?.toString() || "",
         });
-        const parent = tablas.find((t) => t.id_materia_prima === data.id_materia_prima);
+        const parent = tablas.find(
+          (t) => t.id_materia_prima === data.id_materia_prima
+        );
         if (parent) {
           setSelectedTabla(parent);
           setTablaPreview(parent.foto_url || parent.foto || null);
@@ -68,6 +74,7 @@ const TipoTablasForm = () => {
           setHadServerFoto(false);
           setBorrarFoto(false);
         }
+        setPiezasTouched(true); 
       })
       .catch(() => {
         setErr("No se pudo cargar el tipo de tabla.");
@@ -84,13 +91,35 @@ const TipoTablasForm = () => {
     if (isNaN(inputs.ancho_cm) || +inputs.ancho_cm <= 0) return "Ancho inválido.";
     if (!inputs.espesor_mm) return "El espesor es requerido.";
     if (isNaN(inputs.espesor_mm) || +inputs.espesor_mm <= 0) return "Espesor inválido.";
-    if (currentUser?.tipo !== "encargado") {
-      if (!inputs.precio_unidad) return "El precio unitario es requerido.";
-      if (isNaN(inputs.precio_unidad) || +inputs.precio_unidad <= 0) return "Precio inválido.";
-    }
     if (!inputs.cepillada) return "Selecciona cepillada si/no.";
     if (!inputs.stock) return "El stock es requerido.";
     if (!Number.isInteger(+inputs.stock) || +inputs.stock < 0) return "Stock inválido.";
+
+    if (inputs.piezas_por_tabla) {
+      const pz = parseInt(inputs.piezas_por_tabla, 10);
+      if (!Number.isInteger(pz) || pz <= 0) {
+        return "Piezas por tabla inválidas.";
+      }
+    }
+
+    // Validar que realmente se pueda sacar al menos 1 pieza
+    const parentLargo = selectedTabla ? Number(selectedTabla.largo_cm || 0) : 0;
+    const childLargo = parseFloat(inputs.largo_cm);
+    const autoPieces =
+      parentLargo && childLargo
+        ? Math.floor((parentLargo + MARGIN) / (childLargo + MARGIN))
+        : 0;
+
+    const manualPz = inputs.piezas_por_tabla
+      ? parseInt(inputs.piezas_por_tabla, 10)
+      : NaN;
+    const effectivePieces =
+      Number.isInteger(manualPz) && manualPz > 0 ? manualPz : autoPieces;
+
+    if (effectivePieces <= 0) {
+      return "No se pueden obtener piezas desde la tabla padre con el largo/piezas configurados.";
+    }
+
     return null;
   };
 
@@ -104,10 +133,17 @@ const TipoTablasForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    if (["largo_cm", "ancho_cm", "espesor_mm", "precio_unidad"].includes(name)) {
+
+    if (["largo_cm", "ancho_cm", "espesor_mm"].includes(name)) {
       if (!/^[0-9]*\.?[0-9]*$/.test(value)) return;
     }
     if (name === "stock" && !/^\d*$/.test(value)) return;
+
+    if (name === "piezas_por_tabla") {
+      if (!/^\d*$/.test(value)) return;
+      setPiezasTouched(true);
+    }
+
     setInputs((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -130,14 +166,34 @@ const TipoTablasForm = () => {
     }
   };
 
-  const MARGIN = 0.5;
-  const piecesPerTabla =
+  // cálculo automático según largo padre/hijo
+  const autoPieces =
     selectedTabla && inputs.largo_cm
       ? Math.floor(
-          (Number(selectedTabla?.largo_cm || 0) + MARGIN) / (parseFloat(inputs.largo_cm) + MARGIN)
+          (Number(selectedTabla?.largo_cm || 0) + MARGIN) /
+            (parseFloat(inputs.largo_cm) + MARGIN)
         )
       : 0;
-  const totalPossible = piecesPerTabla * (selectedTabla?.stock ?? 0);
+
+  // autocompletar en ALTA si el usuario aún no tocó el campo
+  useEffect(() => {
+    if (!id && !piezasTouched) {
+      setInputs((prev) => ({
+        ...prev,
+        piezas_por_tabla:
+          autoPieces > 0 ? String(autoPieces) : "",
+      }));
+    }
+  }, [autoPieces, id, piezasTouched]);
+
+  const manualPz = inputs.piezas_por_tabla
+    ? parseInt(inputs.piezas_por_tabla, 10)
+    : NaN;
+  const effectivePieces =
+    Number.isInteger(manualPz) && manualPz > 0 ? manualPz : autoPieces;
+
+  const totalPossible =
+    effectivePieces * (selectedTabla?.stock ?? 0);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -156,8 +212,7 @@ const TipoTablasForm = () => {
       fd.append("largo_cm", inputs.largo_cm);
       fd.append("ancho_cm", inputs.ancho_cm);
       fd.append("espesor_mm", inputs.espesor_mm);
-      const precio = currentUser?.tipo === "encargado" ? "0" : inputs.precio_unidad;
-      fd.append("precio_unidad", precio);
+      fd.append("piezas_por_tabla", inputs.piezas_por_tabla || ""); // ⭐ NUEVO
       fd.append("cepillada", inputs.cepillada);
       fd.append("stock", inputs.stock);
       if (fotoFile) {
@@ -166,10 +221,14 @@ const TipoTablasForm = () => {
         fd.append("borrar_foto", "1");
       }
       if (id) {
-        await api.put(`/tipotablas/${id}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+        await api.put(`/tipotablas/${id}`, fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
         setErr("Tipo de tabla actualizado.");
       } else {
-        await api.post("/tipotablas/agregar", fd, { headers: { "Content-Type": "multipart/form-data" } });
+        await api.post("/tipotablas/agregar", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
         setErr("Tipo de tabla creado.");
       }
       setMessageType("success");
@@ -213,7 +272,12 @@ const TipoTablasForm = () => {
           {id ? "Editar Tipo de Tabla" : "Nuevo Tipo de Tabla"}
         </h1>
 
-        <form className="space-y-4" onSubmit={handleSubmit} encType="multipart/form-data" aria-busy={submitting}>
+        <form
+          className="space-y-4"
+          onSubmit={handleSubmit}
+          encType="multipart/form-data"
+          aria-busy={submitting}
+        >
           <fieldset disabled={submitting} className="space-y-4">
             <div>
               <label
@@ -251,16 +315,13 @@ const TipoTablasForm = () => {
                     <p>
                       <strong>Stock actual:</strong> {selectedTabla.stock}
                     </p>
-                    {currentUser?.tipo !== "encargado" && (
-                      <p>
-                        <strong>Precio unidad:</strong> {selectedTabla.precio_unidad}
-                      </p>
-                    )}
                     <p>
-                      <strong>Piezas por tabla:</strong> {piecesPerTabla}
+                      <strong>Piezas por tabla (sugeridas):</strong>{" "}
+                      {autoPieces || 0}
                     </p>
                     <p>
-                      <strong>Total posible:</strong> {totalPossible}
+                      <strong>Total posible (según piezas usadas):</strong>{" "}
+                      {totalPossible}
                     </p>
                   </div>
                 </div>
@@ -290,7 +351,11 @@ const TipoTablasForm = () => {
                   htmlFor={k}
                   className="block mb-1 text-sm font-medium text-neutral-800"
                 >
-                  {k === "largo_cm" ? "Largo (cm)" : k === "ancho_cm" ? "Ancho (cm)" : "Espesor (mm)"}
+                  {k === "largo_cm"
+                    ? "Largo (cm)"
+                    : k === "ancho_cm"
+                    ? "Ancho (cm)"
+                    : "Espesor (mm)"}
                 </label>
                 <input
                   id={k}
@@ -304,25 +369,28 @@ const TipoTablasForm = () => {
               </div>
             ))}
 
-            {currentUser?.tipo !== "encargado" && (
-              <div>
-                <label
-                  htmlFor="precio_unidad"
-                  className="block mb-1 text-sm font-medium text-neutral-800"
-                >
-                  Precio Unitario
-                </label>
-                <input
-                  id="precio_unidad"
-                  name="precio_unidad"
-                  value={inputs.precio_unidad}
-                  onChange={handleChange}
-                  placeholder="0.00"
-                  inputMode="decimal"
-                  className="w-full p-2 border rounded"
-                />
-              </div>
-            )}
+            <div>
+              <label
+                htmlFor="piezas_por_tabla"
+                className="block mb-1 text-sm font-medium text-neutral-800"
+              >
+                Piezas por tabla (unidades que salen del padre)
+              </label>
+              <input
+                id="piezas_por_tabla"
+                name="piezas_por_tabla"
+                value={inputs.piezas_por_tabla}
+                onChange={handleChange}
+                placeholder={autoPieces > 0 ? String(autoPieces) : "Ej: 5"}
+                inputMode="numeric"
+                pattern="\d*"
+                className="w-full p-2 border rounded"
+              />
+              <p className="mt-1 text-xs text-neutral-700">
+                Sugerido según medidas: {autoPieces || 0} piezas. Podés
+                ajustarlo manualmente si en la práctica se corta distinto.
+              </p>
+            </div>
 
             <div>
               <label
@@ -421,12 +489,34 @@ const TipoTablasForm = () => {
             className="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {submitting && (
-              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              <svg
+                className="h-4 w-4 animate-spin"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                />
               </svg>
             )}
-            {id ? (submitting ? "Actualizando..." : "Guardar Cambios") : submitting ? "Agregando..." : "Crear Tipo de Tabla"}
+            {id
+              ? submitting
+                ? "Actualizando..."
+                : "Guardar Cambios"
+              : submitting
+              ? "Agregando..."
+              : "Crear Tipo de Tabla"}
           </button>
 
           <p className="mt-4 text-center text-sm">

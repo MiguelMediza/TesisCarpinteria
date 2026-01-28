@@ -48,7 +48,6 @@ const ClientesForm = () => {
 
   const validateInputs = () => {
     if (!inputs.nombre) return "El nombre es requerido.";
-    if (!inputs.email) return "El email es requerido.";
     if (inputs.es_empresa === "1") {
       if (!inputs.nombre_empresa) return "El nombre de la empresa es requerido.";
       if (!inputs.direccion_empresa) return "La dirección de la empresa es requerida.";

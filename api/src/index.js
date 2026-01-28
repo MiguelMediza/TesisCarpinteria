@@ -9,7 +9,6 @@ import { PORT, CORS_ORIGIN } from "./config.js";
 
 import indexRoutes from "./routes/index.routes.js";
 import authRoutes from "./routes/usuarios.routes.js";
-import proveedoresRouter from "./routes/proveedores.routes.js";
 import tablasRouter from "./routes/tablas.routes.js";
 import palosRouter from "./routes/palos.routes.js";
 import clavosRouter from "./routes/clavos.routes.js";
@@ -28,7 +27,7 @@ import pedidosRouter from "./routes/pedidos.routes.js";
 import ventafuegoyaRouter from "./routes/ventafuegoya.routes.js";
 import clientesfuegoyaRouter from "./routes/clientesfuegoya.routes.js";
 import estadisticasRouter from "./routes/estadisticas.routes.js";
-
+import entregasRoutes from "./routes/entregas.routes.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const clientDist = path.resolve(__dirname, "../client/dist");
@@ -80,7 +79,6 @@ app.use(
 // ─── Rutas API ────────────────────────────────────────────────────────────────
 app.use("/api/src", indexRoutes);
 app.use("/api/src/usuarios", authRoutes);
-app.use("/api/src/proveedores", proveedoresRouter);
 app.use("/api/src/tablas", tablasRouter);
 app.use("/api/src/palos", palosRouter);
 app.use("/api/src/clavos", clavosRouter);
@@ -99,6 +97,7 @@ app.use("/api/src/pedidos", pedidosRouter);
 app.use("/api/src/ventafuegoya", ventafuegoyaRouter);
 app.use("/api/src/clientesfuegoya", clientesfuegoyaRouter);
 app.use("/api/src/estadisticas", estadisticasRouter);
+app.use("/api/src/entregas", entregasRoutes);
 
 app.use((req, res, next) => {
   const isGet = req.method === "GET";

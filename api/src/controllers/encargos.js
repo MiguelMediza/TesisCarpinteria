@@ -8,7 +8,6 @@ export const createEncargo = async (req, res) => {
       fecha_realizado,
       fecha_prevista_llegada,
       comentarios,
-      id_proveedor,
       materias_primas 
     } = req.body;
 
@@ -18,9 +17,9 @@ export const createEncargo = async (req, res) => {
 
     //Insertar en encargo
     const [encargoResult] = await connection.query(
-      `INSERT INTO encargos (fecha_realizado, fecha_prevista_llegada, comentarios, id_proveedor)
-       VALUES (?, ?, ?, ?)`,
-      [fecha_realizado, fecha_prevista_llegada, comentarios || null, id_proveedor]
+      `INSERT INTO encargos (fecha_realizado, fecha_prevista_llegada, comentarios)
+       VALUES (?, ?, ?)`,
+      [fecha_realizado, fecha_prevista_llegada, comentarios || null]
     );
     const id_encargo = encargoResult.insertId;
     console.log("✅ Encargo creado:", id_encargo);
@@ -84,13 +83,11 @@ export const getEncargoById = async (req, res) => {
   }
 };
 
-//Listar todos los encargos con proveedor y detalles
 export const listEncargos = async (req, res) => {
   try {
     const [encargos] = await pool.query(`
-      SELECT e.*, p.nombre_empresa
+      SELECT e.*
       FROM encargos e
-      LEFT JOIN proveedores p ON e.id_proveedor = p.id_proveedor
       ORDER BY e.fecha_realizado DESC
     `);
 
@@ -154,7 +151,6 @@ export const updateEncargo = async (req, res) => {
       fecha_realizado,
       fecha_prevista_llegada,
       comentarios,
-      id_proveedor,
       materias_primas 
     } = req.body;
 
@@ -176,14 +172,12 @@ export const updateEncargo = async (req, res) => {
       `UPDATE encargos SET
         fecha_realizado = ?,
         fecha_prevista_llegada = ?,
-        comentarios = ?,
-        id_proveedor = ?
+        comentarios = ?
        WHERE id_encargo = ?`,
       [
         fecha_realizado,
         fecha_prevista_llegada,
         comentarios || null,
-        id_proveedor,
         id
       ]
     );

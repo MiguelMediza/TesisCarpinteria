@@ -220,15 +220,6 @@ const Nav = () => {
                 {/* Otros menús */}
                 <li>
                   <Link
-                    to="/proveedores/listar"
-                    onClick={handleNavigate}
-                    className="block py-2 px-3 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
-                  >
-                    Proveedores
-                  </Link>
-                </li>
-                <li>
-                  <Link
                     to="/encargos/listar"
                     onClick={handleNavigate}
                     className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
@@ -252,6 +243,15 @@ const Nav = () => {
                     className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
                   >
                     Pedidos
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/entregas/listar"
+                    onClick={handleNavigate}
+                    className="block py-2 px-1 hover:text-blue-700 dark:text-white md:dark:hover:text-blue-500"
+                  >
+                    Entregas
                   </Link>
                 </li>
                 <li>

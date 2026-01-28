@@ -2,7 +2,7 @@ import React, { useContext } from "react";
 import { AuthContext } from "../../context/authContext";
 
 const pillByEstado = (estado) => {
-  switch ((estado || "").toLowerCase()) {
+  switch (String(estado || "").toLowerCase()) {
     case "recibido":
       return "bg-emerald-50 text-emerald-700 ring-emerald-200";
     case "realizado":
@@ -12,13 +12,13 @@ const pillByEstado = (estado) => {
   }
 };
 
-const getInitials = (empresa = "", id = "") => {
-  const base = (empresa || "").trim() || `E${id || ""}`;
-  return base
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((p) => p.charAt(0).toUpperCase())
-    .join("");
+// Sin empresa / proveedor. Solo usa el id del encargo.
+const getInitials = (id) => {
+  const s = String(id ?? "").trim();
+  if (!s) return "E";
+  // Si querés 2 caracteres fijos, podés usar los últimos 2:
+  // return `E${s}`.slice(-2);
+  return `E${s}`;
 };
 
 const formatDate = (dateString) => {
@@ -39,19 +39,19 @@ const EncargosCard = ({
   onMarkReceived,
   marking = false,
 }) => {
-  const { currentUser } = useContext(AuthContext); 
+  const { currentUser } = useContext(AuthContext);
 
   const {
     id_encargo,
     fecha_realizado,
     fecha_prevista_llegada,
     comentarios,
-    nombre_empresa,
     estado,
     detalles = [],
   } = encargo || {};
 
-  const initials = getInitials(nombre_empresa, id_encargo);
+  const initials = getInitials(id_encargo);
+  const comentariosText = String(comentarios ?? "").trim();
 
   return (
     <div
@@ -90,17 +90,11 @@ const EncargosCard = ({
 
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
-            <p className="text-[12px] text-slate-500">Proveedor</p>
-            <p className="text-sm font-medium text-slate-800">
-              {nombre_empresa || "Sin proveedor"}
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
             <p className="text-[12px] text-slate-500">Fecha realizada</p>
             <p className="text-sm text-slate-800">
               {fecha_realizado ? formatDate(fecha_realizado) : "No especificada"}
             </p>
+
             <p className="mt-2 text-[12px] text-slate-500">
               Fecha prevista de llegada
             </p>
@@ -115,7 +109,7 @@ const EncargosCard = ({
         <div className="mt-3 rounded-xl border border-slate-100 bg-white p-3">
           <p className="text-[12px] text-slate-500">Comentarios</p>
           <p className="text-sm text-slate-800">
-            {comentarios?.trim() || "Sin comentarios"}
+            {comentariosText || "Sin comentarios"}
           </p>
         </div>
 
@@ -212,5 +206,5 @@ const EncargosCard = ({
     </div>
   );
 };
- 
+
 export default EncargosCard;

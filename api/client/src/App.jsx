@@ -11,8 +11,6 @@ import {
 
 import Nav from "./components/Nav";
 import Home from "./pages/home/Home";
-import Proveedores from "./pages/proveedores/Proveedores";
-import ProveedoresList from "./pages/proveedores/ProveedoresList";
 import Tablas from "./pages/tablas/Tablas";
 import TablasList from "./pages/tablas/TablasList";
 import Palos from "./pages/palos/Palos";
@@ -46,7 +44,9 @@ import Pedidos from "./pages/pedidos/Pedidos";
 import PedidosList from "./pages/pedidos/PedidosList";
 import VentaFuegoYa from "./pages/ventaFuegoYa/VentaFuegoYa";
 import VentaFuegoYaList from "./pages/ventaFuegoYa/VentaFuegoYaList";
-
+import Entregas from "./pages/entregas/Entregas";
+import EntregasList from "./pages/entregas/EntregasList";
+import EntregaDetalle from "./pages/entregas/EntregasDetalle";  // lo creamos abajo
 import ClientesFuegoYa from "./pages/clientesFuegoYa/ClientesFuegoYa";
 import ClientesFuegoYaList from "./pages/clientesFuegoYa/ClientesFuegoYaList";
 
@@ -55,35 +55,36 @@ function App() {
 
   const { darkMode } = useContext(DarkModeContext);
 
-  const Layout = ({ darkMode }) => {
-    const [navH, setNavH] = useState(72);
+  const Layout = () => {
+  const [navH, setNavH] = useState(72);
 
-    useEffect(() => {
-      const el = document.getElementById("app-navbar");
-      if (!el) return;
+  useEffect(() => {
+    const el = document.getElementById("app-navbar");
+    if (!el) return;
 
-      const update = () => setNavH(el.offsetHeight || 72);
+    const update = () => setNavH(el.offsetHeight || 72);
 
-      update();
-      const ro = new ResizeObserver(update);
-      ro.observe(el);
-      window.addEventListener("resize", update);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    window.addEventListener("resize", update);
 
-      return () => {
-        ro.disconnect();
-        window.removeEventListener("resize", update);
-      };
-    }, []);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, []);
 
-    return (
-      <div className={`theme-${darkMode ? "dark" : "light"}`}>
-        <Nav />
-        <main className="min-h-screen" style={{ paddingTop: navH }}>
-          <Outlet />
-        </main>
-      </div>
-    );
-  };
+  return (
+    <div className={`theme-${darkMode ? "dark" : "light"}`}>
+      <Nav />
+      <main className="min-h-screen" style={{ paddingTop: navH }}>
+        <Outlet />
+      </main>
+    </div>
+  );
+};
+
 
   const ProtectedRoute = ({ children }) => {
     if (!currentUser) {
@@ -142,15 +143,6 @@ function App() {
         },
 
         // ——— Rutas generales ———
-        {
-          path: "/proveedores",
-          element: <Proveedores />,
-        },
-        {
-          path: "/proveedores/listar",
-          element: <ProveedoresList />,
-        },
-        { path: "proveedores/:id", element: <Proveedores /> },
 
         { path: "/tablas", element: <Tablas /> },
         { path: "/tablas/listar", element: <TablasList /> },
@@ -229,6 +221,10 @@ function App() {
             </FuegoYaOrAdminRoute>
           ),
         },
+
+{ path: "/entregas", element: <Entregas /> },
+{ path: "/entregas/listar", element: <EntregasList /> },
+{ path: "/entregas/:id", element: <EntregaDetalle /> }, 
 
         // ——— Pellets ———
         { path: "/pellets", element: <Pellets /> },

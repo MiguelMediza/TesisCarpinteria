@@ -89,15 +89,6 @@ const EncargosList = () => {
 
       {error && <p className="mb-4 text-red-500">{error}</p>}
 
-      <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Buscar por proveedor..."
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-          className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {filteredEncargos.map((e) => (
