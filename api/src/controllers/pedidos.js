@@ -14,24 +14,21 @@ const toDateComparable = (s) => {
   const raw = String(s || "").trim();
   if (!raw) return null;
 
-  // Si viene "YYYY-MM-DD", forzamos hora para evitar problemas por zona horaria
+  // "YYYY-MM-DD"
   if (isISODateOnly(raw)) return new Date(`${raw}T00:00:00`);
 
-  // Si viene "YYYY-MM-DD HH:mm:ss" lo pasamos a ISO-like
+  // "YYYY-MM-DD HH:mm:ss"
   if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(:\d{2})?$/.test(raw)) {
     const norm = raw.replace(" ", "T");
     return new Date(norm.length === 16 ? `${norm}:00` : norm);
   }
 
-  // ISO u otros formatos parseables
   return new Date(raw);
 };
 
 const isStrictlyAfter = (a, b) => {
-  // true si a > b
   if (!a || !b) return false;
 
-  // Si ambas son date-only, comparo por string (seguro y simple)
   const A = String(a).trim();
   const B = String(b).trim();
   if (isISODateOnly(A) && isISODateOnly(B)) return A > B;
@@ -43,8 +40,7 @@ const isStrictlyAfter = (a, b) => {
   return da.getTime() > db.getTime();
 };
 
-
-const KERF_CM = 0.5; // recorte por corte (cm)
+const KERF_CM = 0.5;
 
 const piezasPorPadre = (largoPadre, largoHijo) => {
   const Lp = Number(largoPadre || 0);
@@ -58,6 +54,9 @@ const piezasPorPadre = (largoPadre, largoHijo) => {
 
 const ceilDiv = (a, b) => Math.ceil(Number(a) / Math.max(Number(b), 1));
 
+/**
+ * Totales por entregas (vista vw_pedido_entrega_resumen)
+ */
 async function getTotalesEntrega(conn, id_pedido) {
   const [tot] = await conn.query(
     `
@@ -84,11 +83,38 @@ async function getTotalesEntrega(conn, id_pedido) {
   };
 }
 
+/**
+ * ✅ Sincroniza estado del pedido según entregas:
+ * - Sin entregas => pendiente
+ * - Parcial => listo
+ * - Completo => entregado
+ * NO pisa cancelado.
+ */
+export async function syncEstadoPedidoPorEntregas(conn, id_pedido) {
+  const tot = await getTotalesEntrega(conn, id_pedido);
+
+  let nuevoEstado = "pendiente";
+  if (tot.total_entregado > 0) {
+    nuevoEstado = tot.completo ? "entregado" : "listo";
+  }
+
+  await conn.query(
+    `
+    UPDATE pedidos
+    SET estado = ?
+    WHERE id_pedido = ?
+      AND eliminado = FALSE
+      AND estado <> 'cancelado'
+    `,
+    [nuevoEstado, id_pedido]
+  );
+
+  return { nuevoEstado, totales: tot };
+}
 
 /**
- * Convierte insumos_stock del body a Map usable:
- * key: `${cat}:${id}` => cantidad
- * Solo tabla/taco (patín se expande a tabla/taco desde BOM).
+ * Convierte insumos_stock del body a Map usable.
+ * (Se mantiene por compatibilidad de tus endpoints de preview/requerimientos)
  */
 function buildSelOverrideMap(insumos_stock) {
   const map = new Map();
@@ -109,14 +135,9 @@ function buildSelOverrideMap(insumos_stock) {
 }
 
 /* =========================================================================
-   BOM (ÚNICA fuente) + expansión patín => (1 tabla + 3 tacos)
+   BOM + expansión patín => (1 tabla + 3 tacos)
 ============================================================================ */
 
-/**
- * Obtiene requerimientos BOM para el pedido (solo sobre cantidad_a_producir):
- * Devuelve Maps por categoría (tabla/taco/clavo/fibra) y ya expande patines:
- * - 1 patín => 1 tabla + 3 tacos (según tu regla)
- */
 async function getReqBOMMaps(conn, id_pedido) {
   const [rows] = await conn.query(
     `
@@ -134,11 +155,11 @@ async function getReqBOMMaps(conn, id_pedido) {
     [id_pedido]
   );
 
-  const reqTabla = new Map(); // id_tipo_tabla -> { req, titulo }
-  const reqTaco = new Map();  // id_tipo_taco  -> { req, titulo }
-  const reqClavo = new Map(); // id_materia_prima -> { req, titulo }
-  const reqFibra = new Map(); // id_materia_prima -> { req, titulo }
-  const reqPatin = new Map(); // id_tipo_patin -> { req, titulo }
+  const reqTabla = new Map();
+  const reqTaco = new Map();
+  const reqClavo = new Map();
+  const reqFibra = new Map();
+  const reqPatin = new Map();
 
   for (const r of rows) {
     const cat = r.categoria;
@@ -178,7 +199,7 @@ async function getReqBOMMaps(conn, id_pedido) {
         const idTT = Number(rel.id_tipo_tabla);
         const cur = reqTabla.get(idTT);
         reqTabla.set(idTT, {
-          req: (cur?.req || 0) + cantPatines, // 1 tabla por patín
+          req: (cur?.req || 0) + cantPatines,
           titulo: cur?.titulo || `Tipo tabla #${idTT}`,
         });
       }
@@ -187,7 +208,7 @@ async function getReqBOMMaps(conn, id_pedido) {
         const idTK = Number(rel.id_tipo_taco);
         const cur = reqTaco.get(idTK);
         reqTaco.set(idTK, {
-          req: (cur?.req || 0) + cantPatines * 3, // ✅ 3 tacos por patín
+          req: (cur?.req || 0) + cantPatines * 3,
           titulo: cur?.titulo || `Tipo taco #${idTK}`,
         });
       }
@@ -197,10 +218,6 @@ async function getReqBOMMaps(conn, id_pedido) {
   return { reqTabla, reqTaco, reqClavo, reqFibra };
 }
 
-/**
- * Lee selección guardada (tabla pedido_insumos_stock).
- * key `${cat}:${id}` => cantidad_desde_stock
- */
 async function getSeleccionesStock(conn, id_pedido) {
   const [rows] = await conn.query(
     `SELECT categoria, id_item, cantidad_desde_stock FROM pedido_insumos_stock WHERE id_pedido = ?`,
@@ -213,15 +230,8 @@ async function getSeleccionesStock(conn, id_pedido) {
   return map;
 }
 
-/* =========================================================================
-   Plan de producción (usa selección DB o override del modal)
-============================================================================ */
-
 /**
- * Construye el plan completo de consumo:
- * - Usa stock de tipo_tablas/tipo_tacos según selección (DB o override del modal)
- * - Lo restante se produce consumiendo stock del padre (materiaprima)
- * - Clavos/Fibras se descuentan directo de materiaprima
+ * Construye plan de consumo (se mantiene por compatibilidad de preview/requerimientos)
  */
 async function buildPlanProduccion(conn, id_pedido, insumos_stock_override = null) {
   const { reqTabla, reqTaco, reqClavo, reqFibra } = await getReqBOMMaps(conn, id_pedido);
@@ -297,7 +307,7 @@ async function buildPlanProduccion(conn, id_pedido, insumos_stock_override = nul
     tacos: [],
     clavos: [],
     fibras: [],
-    consumo_base: new Map(), // id_materia_prima -> padres a descontar
+    consumo_base: new Map(),
   };
 
   // TABLAS
@@ -374,7 +384,7 @@ async function buildPlanProduccion(conn, id_pedido, insumos_stock_override = nul
     });
   }
 
-  // CLAVOS / FIBRAS (directo de materiaprima)
+  // CLAVOS / FIBRAS (directo)
   for (const [idMP, infoReq] of reqClavo.entries()) {
     const meta = mpInfo.get(idMP);
     plan.clavos.push({
@@ -398,13 +408,9 @@ async function buildPlanProduccion(conn, id_pedido, insumos_stock_override = nul
 }
 
 /* =========================================================================
-   ENDPOINTS NUEVOS
+   ENDPOINTS (preview / requerimientos / selección)
 ============================================================================ */
 
-/**
- * GET /pedidos/:id/produccionpreview
- * Devuelve insumos (tabla/taco) con stock actual y sugerido_desde_stock (max posible).
- */
 export const produccionPreview = async (req, res) => {
   const conn = await pool.getConnection();
   try {
@@ -510,22 +516,14 @@ export const produccionPreview = async (req, res) => {
   }
 };
 
-/**
- * GET /pedidos/:id/requerimientosproduccion
- * Calcula plan completo (usa selección guardada en DB).
- */
 export const getRequerimientosProduccionPedido = async (req, res) => {
   const conn = await pool.getConnection();
-
   try {
     const { id } = req.params;
 
-    // Plan calculado (tablas/tacos/clavos/fibras + consumo_base agregado)
     const plan = await buildPlanProduccion(conn, id);
 
-    // IDs de materiaprima base (padres) + clavos + fibras para traer stock/titulo confiable
     const baseIds = Array.from(plan.consumo_base.keys()).map(Number);
-
     const clavoIds = (plan.clavos || []).map((c) => Number(c.id_materia_prima));
     const fibraIds = (plan.fibras || []).map((f) => Number(f.id_materia_prima));
 
@@ -533,7 +531,6 @@ export const getRequerimientosProduccionPedido = async (req, res) => {
       (x) => Number.isFinite(x) && x > 0
     );
 
-    // Map id_materia_prima -> {titulo, stock}
     const mpMap = new Map();
     if (mpIds.length) {
       const [rows] = await conn.query(
@@ -553,9 +550,7 @@ export const getRequerimientosProduccionPedido = async (req, res) => {
       }
     }
 
-    // ✅ Mantengo tu formato anterior (compatibilidad)
     const consumoBaseArr = [];
-    // ✅ Nuevo: detalle más confiable para el front (titulo + stock + insuficiente)
     const consumoBaseDetalle = [];
 
     for (const [id_mp_raw, cant_raw] of plan.consumo_base.entries()) {
@@ -567,7 +562,6 @@ export const getRequerimientosProduccionPedido = async (req, res) => {
       const stock = Number(meta?.stock ?? 0);
 
       consumoBaseArr.push({ id_materia_prima, requerido });
-
       consumoBaseDetalle.push({
         id_materia_prima,
         titulo,
@@ -578,11 +572,8 @@ export const getRequerimientosProduccionPedido = async (req, res) => {
       });
     }
 
-    consumoBaseDetalle.sort((a, b) =>
-      String(a.titulo || "").localeCompare(String(b.titulo || ""))
-    );
+    consumoBaseDetalle.sort((a, b) => String(a.titulo || "").localeCompare(String(b.titulo || "")));
 
-    // ✅ Enriquecer clavos/fibras con stock/titulo confiable + flags
     const clavos = (plan.clavos || []).map((c) => {
       const id_materia_prima = Number(c.id_materia_prima);
       const requerido = Number(c.requerido || 0);
@@ -621,7 +612,6 @@ export const getRequerimientosProduccionPedido = async (req, res) => {
       };
     });
 
-    // (Opcional) resumen rápido de faltantes
     const faltantes = [
       ...consumoBaseDetalle
         .filter((x) => x.insuficiente)
@@ -655,22 +645,14 @@ export const getRequerimientosProduccionPedido = async (req, res) => {
     return res.status(200).json({
       tablas: plan.tablas,
       tacos: plan.tacos,
-
-      // ✅ ahora con flags de insuficiencia
       clavos,
       fibras,
 
-      // ✅ compatibilidad
       consumo_base: consumoBaseArr,
-
-      // ✅ NUEVO (recomendado usar esto en el modal)
       consumo_base_detalle: consumoBaseDetalle,
-
-      // ✅ opcional para mostrar alerta global
       faltantes,
 
-      nota:
-        "Los requerimientos se calculan sobre cantidad_a_producir del pedido (pallets desde stock ya están descontados).",
+      nota: "Los requerimientos se calculan sobre cantidad_a_producir del pedido.",
       meta: { kerf_cm: KERF_CM, patin_equiv: { tabla: 1, taco: 3 } },
     });
   } catch (e) {
@@ -681,11 +663,6 @@ export const getRequerimientosProduccionPedido = async (req, res) => {
   }
 };
 
-
-/**
- * PUT /pedidos/:id/insumosstock
- * body: { insumos: [{ categoria:'tabla'|'taco', id_item, cantidad_desde_stock }] }
- */
 export const setInsumosStockPedido = async (req, res) => {
   const conn = await pool.getConnection();
   try {
@@ -706,7 +683,6 @@ export const setInsumosStockPedido = async (req, res) => {
       const idItem = parseInt(it?.id_item, 10);
       const qty = parseInt(it?.cantidad_desde_stock ?? 0, 10);
 
-      // ✅ solo tabla/taco (patín se expande desde BOM)
       if (!["tabla", "taco"].includes(cat)) {
         await conn.rollback();
         return res.status(400).json({ message: `Categoría inválida: ${cat}` });
@@ -736,7 +712,9 @@ export const setInsumosStockPedido = async (req, res) => {
     await conn.commit();
     return res.status(200).json({ message: "Selección de stock guardada." });
   } catch (e) {
-    try { await conn.rollback(); } catch {}
+    try {
+      await conn.rollback();
+    } catch {}
     console.error(e);
     return res.status(500).json({ message: "Error guardando selección." });
   } finally {
@@ -745,7 +723,7 @@ export const setInsumosStockPedido = async (req, res) => {
 };
 
 /* =========================================================================
-   TU API EXISTENTE (implementaciones seguras y consistentes)
+   PEDIDOS CRUD
 ============================================================================ */
 
 export const createPedido = async (req, res) => {
@@ -755,7 +733,6 @@ export const createPedido = async (req, res) => {
       id_cliente,
       fecha_realizado,
       fecha_de_entrega = null,
-      // estado viene del front o postman, pero lo ignoramos
       estado: _estadoIgnored,
       comentarios = null,
       items = [],
@@ -768,14 +745,10 @@ export const createPedido = async (req, res) => {
       return res.status(400).json("Fecha inválida.");
     }
 
-    // ✅ fecha_de_entrega opcional, pero si viene debe ser estrictamente posterior
     if (fecha_de_entrega && !isStrictlyAfter(fecha_de_entrega, fecha_realizado)) {
-      return res
-        .status(400)
-        .json("La fecha de entrega debe ser posterior a la fecha realizada.");
+      return res.status(400).json("La fecha de entrega debe ser posterior a la fecha realizada.");
     }
 
-    // ✅ Estado siempre pendiente (blindado)
     const estadoFinal = "pendiente";
 
     await conn.beginTransaction();
@@ -785,13 +758,7 @@ export const createPedido = async (req, res) => {
       INSERT INTO pedidos (id_cliente, estado, fecha_realizado, fecha_de_entrega, comentarios, eliminado)
       VALUES (?, ?, ?, ?, ?, FALSE)
       `,
-      [
-        parseInt(id_cliente, 10),
-        estadoFinal,
-        fecha_realizado,
-        fecha_de_entrega || null,
-        comentarios || null,
-      ]
+      [parseInt(id_cliente, 10), estadoFinal, fecha_realizado, fecha_de_entrega || null, comentarios || null]
     );
 
     const id_pedido = ins.insertId;
@@ -802,31 +769,22 @@ export const createPedido = async (req, res) => {
       for (const it of items) {
         if (!it?.id_prototipo || !it?.cantidad_pallets) {
           await conn.rollback();
-          return res
-            .status(400)
-            .json("Cada ítem requiere id_prototipo y cantidad_pallets (> 0).");
+          return res.status(400).json("Cada ítem requiere id_prototipo y cantidad_pallets (> 0).");
         }
 
         const idProt = parseInt(it.id_prototipo, 10);
         const qty = parseInt(it.cantidad_pallets, 10);
-        const qtyStock = parseInt(it.cantidad_desde_stock ?? 0, 10);
 
         if (!Number.isInteger(qty) || qty <= 0) {
           await conn.rollback();
           return res.status(400).json("cantidad_pallets debe ser entero > 0.");
         }
-        if (!Number.isInteger(qtyStock) || qtyStock < 0) {
-          await conn.rollback();
-          return res.status(400).json("cantidad_desde_stock debe ser entero >= 0.");
-        }
-        if (qtyStock > qty) {
-          await conn.rollback();
-          return res
-            .status(400)
-            .json(`cantidad_desde_stock (${qtyStock}) > cantidad_pallets (${qty}).`);
-        }
 
-        // ✅ si se usa stock de pallets terminados: se descuenta al crear pedido
+        // ✅ YA NO SE USA STOCK EXISTENTE EN PEDIDOS (se gestiona en ENTREGAS)
+        const qtyStock = 0;
+
+        // ⛔️ BLOQUE COMENTADO: validación y descuento de stock de prototipo al crear pedido
+        /*
         if (qtyStock > 0) {
           const [[prot]] = await conn.query(
             `SELECT stock FROM prototipo_pallet WHERE id_prototipo = ? FOR UPDATE`,
@@ -836,25 +794,20 @@ export const createPedido = async (req, res) => {
             await conn.rollback();
             return res.status(400).json(`Prototipo ${idProt} no existe.`);
           }
-
           const stockActual = Number(prot.stock ?? 0);
           if (stockActual < qtyStock) {
             await conn.rollback();
             return res.status(409).json({
               message: "Stock insuficiente de pallets terminados.",
-              detalle: {
-                id_prototipo: idProt,
-                stock_actual: stockActual,
-                solicitado_desde_stock: qtyStock,
-              },
+              detalle: { id_prototipo: idProt, stock_actual: stockActual, solicitado_desde_stock: qtyStock },
             });
           }
-
           await conn.query(
             `UPDATE prototipo_pallet SET stock = stock - ? WHERE id_prototipo = ?`,
             [qtyStock, idProt]
           );
         }
+        */
 
         values.push([
           id_pedido,
@@ -863,7 +816,7 @@ export const createPedido = async (req, res) => {
           it.numero_lote || null,
           it.numero_tratamiento || null,
           it.comentarios || null,
-          qtyStock,
+          0, // ✅ cantidad_desde_stock siempre 0
         ]);
       }
 
@@ -890,47 +843,15 @@ export const createPedido = async (req, res) => {
   }
 };
 
-
 export const changeEstadoPedido = async (req, res) => {
   const conn = await pool.getConnection();
-
-  // ✅ helper local (evita "getTotalesEntrega is not defined")
-  const getTotalesEntrega = async (connection, id_pedido) => {
-    const [rows] = await connection.query(
-      `
-      SELECT
-        COALESCE(SUM(pedido),0)    AS total_pedido,
-        COALESCE(SUM(entregado),0) AS total_entregado,
-        COALESCE(SUM(faltante),0)  AS total_faltante
-      FROM vw_pedido_entrega_resumen
-      WHERE id_pedido = ?
-      `,
-      [id_pedido]
-    );
-
-    const total_pedido = Number(rows?.[0]?.total_pedido || 0);
-    const total_entregado = Number(rows?.[0]?.total_entregado || 0);
-    const total_faltante = Number(rows?.[0]?.total_faltante || 0);
-
-    return {
-      total_pedido,
-      total_entregado,
-      total_faltante,
-      completo: total_faltante <= 0 && total_pedido > 0,
-    };
-  };
-
   try {
     const { id } = req.params;
-    const { estado: nuevoEstado, insumos_stock } = req.body;
+    const { estado: nuevoEstado } = req.body;
 
     const id_pedido = parseInt(id, 10);
     if (!Number.isInteger(id_pedido) || id_pedido <= 0) {
       return res.status(400).json({ message: "id_pedido inválido." });
-    }
-
-    if (!isValidEstado(nuevoEstado)) {
-      return res.status(400).json({ message: "Estado inválido." });
     }
 
     const [[pedido]] = await conn.query(
@@ -941,216 +862,42 @@ export const changeEstadoPedido = async (req, res) => {
       return res.status(404).json({ message: "Pedido no encontrado o eliminado." });
     }
 
-    const estadoActual = pedido.estado;
-
-    const requiereStockBase =
-      estadoActual === "pendiente" &&
-      nuevoEstado !== "pendiente" &&
-      nuevoEstado !== "cancelado";
-
     await conn.beginTransaction();
 
-    if (requiereStockBase) {
-      // ✅ respeta lo que eligió el modal si viene insumos_stock
-      const plan = await buildPlanProduccion(conn, id_pedido, insumos_stock);
-      const faltantes = [];
-
-      // 1) stock derivado: SOLO lo que se eligió usar desde stock
-      for (const t of plan.tablas) {
-        if (t.cantidad_desde_stock > 0) {
-          const [[r]] = await conn.query(
-            `SELECT stock FROM tipo_tablas WHERE id_tipo_tabla = ? FOR UPDATE`,
-            [t.id_tipo_tabla]
-          );
-          const st = Number(r?.stock ?? 0);
-          if (st < t.cantidad_desde_stock) {
-            faltantes.push({
-              categoria: "tabla",
-              id_item: t.id_tipo_tabla,
-              requerido: t.cantidad_desde_stock,
-              disponible: st,
-              motivo: "stock insuficiente del tipo_tabla seleccionado",
-            });
-          }
-        }
-      }
-
-      for (const t of plan.tacos) {
-        if (t.cantidad_desde_stock > 0) {
-          const [[r]] = await conn.query(
-            `SELECT stock FROM tipo_tacos WHERE id_tipo_taco = ? FOR UPDATE`,
-            [t.id_tipo_taco]
-          );
-          const st = Number(r?.stock ?? 0);
-          if (st < t.cantidad_desde_stock) {
-            faltantes.push({
-              categoria: "taco",
-              id_item: t.id_tipo_taco,
-              requerido: t.cantidad_desde_stock,
-              disponible: st,
-              motivo: "stock insuficiente del tipo_taco seleccionado",
-            });
-          }
-        }
-      }
-
-      // 2) stock base (materiaprima) para producir el resto
-      for (const [id_mp, reqPadres] of plan.consumo_base.entries()) {
-        const [[r]] = await conn.query(
-          `SELECT stock, titulo FROM materiaprima WHERE id_materia_prima = ? FOR UPDATE`,
-          [id_mp]
-        );
-        const st = Number(r?.stock ?? 0);
-        if (st < Number(reqPadres || 0)) {
-          faltantes.push({
-            categoria: "base",
-            id_item: id_mp,
-            requerido: Number(reqPadres || 0),
-            disponible: st,
-            motivo: r?.titulo || "materiaprima base",
-          });
-        }
-      }
-
-      // 3) clavos/fibras directo
-      for (const c of plan.clavos) {
-        const [[r]] = await conn.query(
-          `SELECT stock, titulo FROM materiaprima WHERE id_materia_prima = ? FOR UPDATE`,
-          [c.id_materia_prima]
-        );
-        const st = Number(r?.stock ?? 0);
-        if (st < c.requerido) {
-          faltantes.push({
-            categoria: "clavo",
-            id_item: c.id_materia_prima,
-            requerido: c.requerido,
-            disponible: st,
-            motivo: r?.titulo,
-          });
-        }
-      }
-
-      for (const f of plan.fibras) {
-        const [[r]] = await conn.query(
-          `SELECT stock, titulo FROM materiaprima WHERE id_materia_prima = ? FOR UPDATE`,
-          [f.id_materia_prima]
-        );
-        const st = Number(r?.stock ?? 0);
-        if (st < f.requerido) {
-          faltantes.push({
-            categoria: "fibra",
-            id_item: f.id_materia_prima,
-            requerido: f.requerido,
-            disponible: st,
-            motivo: r?.titulo,
-          });
-        }
-      }
-
-      if (faltantes.length) {
-        await conn.rollback();
-        return res.status(409).json({
-          message: "Stock insuficiente para iniciar producción.",
-          faltantes,
-        });
-      }
-
-      // ✅ Descontar
-      // A) derivados (solo lo seleccionado)
-      for (const t of plan.tablas) {
-        const cant = Number(t.cantidad_desde_stock || 0);
-        if (cant <= 0) continue;
-
-        const [r] = await conn.query(
-          `UPDATE tipo_tablas SET stock = stock - ? WHERE id_tipo_tabla = ? AND stock >= ?`,
-          [cant, t.id_tipo_tabla, cant]
-        );
-        if (r.affectedRows !== 1) {
-          throw new Error(`No se pudo descontar tipo_tablas ${t.id_tipo_tabla}`);
-        }
-      }
-
-      for (const t of plan.tacos) {
-        const cant = Number(t.cantidad_desde_stock || 0);
-        if (cant <= 0) continue;
-
-        const [r] = await conn.query(
-          `UPDATE tipo_tacos SET stock = stock - ? WHERE id_tipo_taco = ? AND stock >= ?`,
-          [cant, t.id_tipo_taco, cant]
-        );
-        if (r.affectedRows !== 1) {
-          throw new Error(`No se pudo descontar tipo_tacos ${t.id_tipo_taco}`);
-        }
-      }
-
-      // B) padres/base
-      for (const [id_mp, reqPadres] of plan.consumo_base.entries()) {
-        const cant = Number(reqPadres || 0);
-        if (cant <= 0) continue;
-
-        const [r] = await conn.query(
-          `UPDATE materiaprima SET stock = stock - ? WHERE id_materia_prima = ? AND stock >= ?`,
-          [cant, id_mp, cant]
-        );
-        if (r.affectedRows !== 1) {
-          throw new Error(`No se pudo descontar materiaprima base ${id_mp}`);
-        }
-      }
-
-      // C) clavos/fibras directo
-      for (const c of plan.clavos) {
-        const cant = Number(c.requerido || 0);
-        if (cant <= 0) continue;
-
-        const [r] = await conn.query(
-          `UPDATE materiaprima SET stock = stock - ? WHERE id_materia_prima = ? AND stock >= ?`,
-          [cant, c.id_materia_prima, cant]
-        );
-        if (r.affectedRows !== 1) {
-          throw new Error(`No se pudo descontar clavo ${c.id_materia_prima}`);
-        }
-      }
-
-      for (const f of plan.fibras) {
-        const cant = Number(f.requerido || 0);
-        if (cant <= 0) continue;
-
-        const [r] = await conn.query(
-          `UPDATE materiaprima SET stock = stock - ? WHERE id_materia_prima = ? AND stock >= ?`,
-          [cant, f.id_materia_prima, cant]
-        );
-        if (r.affectedRows !== 1) {
-          throw new Error(`No se pudo descontar fibra ${f.id_materia_prima}`);
-        }
-      }
+    // ✅ Permitimos cancelar manualmente (si querés mantener esa acción)
+    if (String(nuevoEstado || "").toLowerCase() === "cancelado") {
+      await conn.query(
+        `UPDATE pedidos SET estado = 'cancelado' WHERE id_pedido = ? AND eliminado = FALSE`,
+        [id_pedido]
+      );
+      await conn.commit();
+      return res.status(200).json({ message: "Pedido cancelado." });
     }
 
-    // ✅ Si intentan marcar "entregado" desde el select:
-    // solo lo permitimos si el pedido está COMPLETO (según entregas registradas)
-    if (nuevoEstado === "entregado") {
-      const tot = await getTotalesEntrega(conn, id_pedido);
-
-      if (!tot.completo) {
-        await conn.rollback();
-        return res.status(409).json({
-          code: "PEDIDO_NO_COMPLETO",
-          message:
-            "Este pedido todavía no está completamente entregado. Registrá una entrega parcial/completa desde Entregas.",
-          totales: tot,
-        });
-      }
-    }
-
-    // ✅ Cambio de estado (sin tocar entregas_transporte acá)
-    await conn.query(
-      `UPDATE pedidos SET estado = ? WHERE id_pedido = ? AND eliminado = FALSE`,
-      [nuevoEstado, id_pedido]
-    );
+    // ✅ Para cualquier otro caso: estado AUTOMÁTICO por entregas
+    const r = await syncEstadoPedidoPorEntregas(conn, id_pedido);
 
     await conn.commit();
-    return res.status(200).json({ message: "Estado actualizado." });
+    return res.status(200).json({
+      message: "Estado gestionado automáticamente por entregas.",
+      estado: r.nuevoEstado,
+      totales: r.totales,
+    });
+
+    /**
+     * ⛔️ BLOQUE COMENTADO (antes validabas stock y descontabas insumos acá):
+     * - Validación de stock suficiente (tipo_tablas/tacos/materiaprima/clavos/fibras)
+     * - Descuento de stock por cambio de estado
+     * - Bloqueo de 'entregado' si no está completo
+     *
+     * Ahora:
+     * - El stock se descuenta en ENTREGAS (sin validaciones)
+     * - El estado se calcula desde vw_pedido_entrega_resumen
+     */
   } catch (err) {
-    try { await conn.rollback(); } catch {}
+    try {
+      await conn.rollback();
+    } catch {}
     console.error("❌ changeEstadoPedido:", err);
     return res.status(500).json({ error: "Internal server error", details: err.message });
   } finally {
@@ -1158,15 +905,6 @@ export const changeEstadoPedido = async (req, res) => {
   }
 };
 
-
-/* =========================================================================
-   Endpoints básicos (para que tus routes compilen)
-   Si ya los tenías en otra parte, podés mantener los tuyos.
-============================================================================ */
-
-/**
- * GET /pedidos/listar
- */
 export const listPedidos = async (req, res) => {
   const conn = await pool.getConnection();
   try {
@@ -1182,10 +920,6 @@ export const listPedidos = async (req, res) => {
   }
 };
 
-/**
- * GET /pedidos/listarfull?estado=&id_cliente=&desde=&hasta=
- * Devuelve pedidos + items para el front.
- */
 export const listPedidosFull = async (req, res) => {
   const conn = await pool.getConnection();
   try {
@@ -1194,10 +928,23 @@ export const listPedidosFull = async (req, res) => {
     const where = ["p.eliminado = FALSE"];
     const params = [];
 
-    if (estado) { where.push("LOWER(p.estado) = LOWER(?)"); params.push(String(estado)); }
-    if (id_cliente) { where.push("p.id_cliente = ?"); params.push(Number(id_cliente)); }
-    if (desde) { where.push("DATE(p.fecha_realizado) >= DATE(?)"); params.push(String(desde)); }
-    if (hasta) { where.push("DATE(p.fecha_realizado) <= DATE(?)"); params.push(String(hasta)); }
+    if (estado) {
+      // OJO: ahora el estado real que usás para entregas es pendiente/listo/entregado/cancelado
+      where.push("LOWER(p.estado) = LOWER(?)");
+      params.push(String(estado));
+    }
+    if (id_cliente) {
+      where.push("p.id_cliente = ?");
+      params.push(Number(id_cliente));
+    }
+    if (desde) {
+      where.push("DATE(p.fecha_realizado) >= DATE(?)");
+      params.push(String(desde));
+    }
+    if (hasta) {
+      where.push("DATE(p.fecha_realizado) <= DATE(?)");
+      params.push(String(hasta));
+    }
 
     const [rows] = await conn.query(
       `
@@ -1209,7 +956,6 @@ export const listPedidosFull = async (req, res) => {
         p.fecha_de_entrega,
         p.comentarios,
 
-        -- cliente_display
         CASE
           WHEN c.es_empresa = 1 THEN COALESCE(c.nombre_empresa, 'Empresa')
           ELSE TRIM(CONCAT(COALESCE(c.nombre,''),' ',COALESCE(c.apellido,'')))
@@ -1234,7 +980,6 @@ export const listPedidosFull = async (req, res) => {
       params
     );
 
-    // agrupar rows por pedido
     const map = new Map();
     for (const r of rows) {
       if (!map.has(r.id_pedido)) {
@@ -1274,9 +1019,6 @@ export const listPedidosFull = async (req, res) => {
   }
 };
 
-/**
- * GET /pedidos/:id
- */
 export const getPedidoById = async (req, res) => {
   const conn = await pool.getConnection();
   try {
@@ -1321,7 +1063,6 @@ export const updatePedido = async (req, res) => {
       fecha_de_entrega = null,
       comentarios = null,
       items = [],
-      // si viene estado desde el front/postman, lo ignoramos
       estado: _estadoIgnored,
     } = req.body;
 
@@ -1332,11 +1073,8 @@ export const updatePedido = async (req, res) => {
       return res.status(400).json("Fecha inválida.");
     }
 
-    // ✅ fecha_de_entrega opcional, pero si viene debe ser estrictamente posterior
     if (fecha_de_entrega && !isStrictlyAfter(fecha_de_entrega, fecha_realizado)) {
-      return res
-        .status(400)
-        .json("La fecha de entrega debe ser posterior a la fecha realizada.");
+      return res.status(400).json("La fecha de entrega debe ser posterior a la fecha realizada.");
     }
 
     await conn.beginTransaction();
@@ -1351,15 +1089,14 @@ export const updatePedido = async (req, res) => {
       return res.status(404).json({ message: "Pedido no encontrado o eliminado." });
     }
 
-    // Mantenés tu regla: solo editable si está pendiente
+    // Solo editable si está pendiente (sin entregas)
     if (pedido.estado !== "pendiente") {
       await conn.rollback();
-      return res
-        .status(409)
-        .json({ message: "Solo se puede editar un pedido en estado pendiente." });
+      return res.status(409).json({ message: "Solo se puede editar un pedido sin entregas." });
     }
 
-    // 1) Reponer stock de pallets terminados que estaban “desde stock” antes
+    // ⛔️ YA NO SE REPONE NI DESCUENTA STOCK DE PROTOTIPOS DESDE PEDIDOS
+    /*
     const [oldItems] = await conn.query(
       `SELECT id_prototipo, cantidad_desde_stock FROM pedido_prototipo_pallet WHERE id_pedido = ?`,
       [id]
@@ -1374,70 +1111,35 @@ export const updatePedido = async (req, res) => {
         );
       }
     }
+    */
 
-    // 2) Borrar items viejos
     await conn.query(`DELETE FROM pedido_prototipo_pallet WHERE id_pedido = ?`, [id]);
 
-    // 3) Insertar items nuevos (y re-deducir stock si qtyStock > 0)
     if (Array.isArray(items) && items.length > 0) {
       const values = [];
 
       for (const it of items) {
         if (!it?.id_prototipo || !it?.cantidad_pallets) {
           await conn.rollback();
-          return res
-            .status(400)
-            .json("Cada ítem requiere id_prototipo y cantidad_pallets (> 0).");
+          return res.status(400).json("Cada ítem requiere id_prototipo y cantidad_pallets (> 0).");
         }
 
         const idProt = parseInt(it.id_prototipo, 10);
         const qty = parseInt(it.cantidad_pallets, 10);
-        const qtyStock = parseInt(it.cantidad_desde_stock ?? 0, 10);
 
         if (!Number.isInteger(qty) || qty <= 0) {
           await conn.rollback();
           return res.status(400).json("cantidad_pallets debe ser entero > 0.");
         }
-        if (!Number.isInteger(qtyStock) || qtyStock < 0) {
-          await conn.rollback();
-          return res.status(400).json("cantidad_desde_stock debe ser entero >= 0.");
-        }
-        if (qtyStock > qty) {
-          await conn.rollback();
-          return res
-            .status(400)
-            .json(`cantidad_desde_stock (${qtyStock}) > cantidad_pallets (${qty}).`);
-        }
 
+        const qtyStock = 0; // ✅ siempre 0
+
+        // ⛔️ BLOQUE COMENTADO: validar/descontar stock de prototipo aquí no va más
+        /*
         if (qtyStock > 0) {
-          const [[prot]] = await conn.query(
-            `SELECT stock FROM prototipo_pallet WHERE id_prototipo = ? FOR UPDATE`,
-            [idProt]
-          );
-
-          if (!prot) {
-            await conn.rollback();
-            return res.status(400).json(`Prototipo ${idProt} no existe.`);
-          }
-
-          const stockActual = Number(prot.stock ?? 0);
-          if (stockActual < qtyStock) {
-            await conn.rollback();
-            return res.status(409).json({
-              message: "Stock insuficiente de pallets terminados.",
-              detalle: {
-                id_prototipo: idProt,
-                stock_actual: stockActual,
-                solicitado_desde_stock: qtyStock,
-              },
-            });
-          }
-
-          await conn.query(
-            `UPDATE prototipo_pallet SET stock = stock - ? WHERE id_prototipo = ?`,
-            [qtyStock, idProt]
-          );
+          ...
         }
+        */
 
         values.push([
           id,
@@ -1446,7 +1148,7 @@ export const updatePedido = async (req, res) => {
           it.numero_lote || null,
           it.numero_tratamiento || null,
           it.comentarios || null,
-          qtyStock,
+          0, // ✅ cantidad_desde_stock siempre 0
         ]);
       }
 
@@ -1460,20 +1162,13 @@ export const updatePedido = async (req, res) => {
       );
     }
 
-    // ✅ Estado blindado: sigue pendiente
     await conn.query(
       `
       UPDATE pedidos
       SET id_cliente = ?, estado = 'pendiente', fecha_realizado = ?, fecha_de_entrega = ?, comentarios = ?
       WHERE id_pedido = ? AND eliminado = FALSE
       `,
-      [
-        parseInt(id_cliente, 10),
-        fecha_realizado,
-        fecha_de_entrega || null,
-        comentarios || null,
-        id,
-      ]
+      [parseInt(id_cliente, 10), fecha_realizado, fecha_de_entrega || null, comentarios || null, id]
     );
 
     await conn.commit();
@@ -1489,11 +1184,6 @@ export const updatePedido = async (req, res) => {
   }
 };
 
-
-/**
- * DELETE /pedidos/:id
- * Soft delete + repone pallets desde stock que se habían descontado al crear/editar.
- */
 export const deletePedido = async (req, res) => {
   const conn = await pool.getConnection();
   try {
@@ -1510,7 +1200,8 @@ export const deletePedido = async (req, res) => {
       return res.status(404).json({ message: "Pedido no encontrado o ya eliminado." });
     }
 
-    // Reponer pallets terminados usados desde stock
+    // ⛔️ Ya no reponemos pallets “desde stock” al borrar
+    /*
     const [items] = await conn.query(
       `SELECT id_prototipo, cantidad_desde_stock FROM pedido_prototipo_pallet WHERE id_pedido = ?`,
       [id]
@@ -1525,6 +1216,7 @@ export const deletePedido = async (req, res) => {
         );
       }
     }
+    */
 
     await conn.query(`UPDATE pedidos SET eliminado = TRUE WHERE id_pedido = ?`, [id]);
     await conn.query(`DELETE FROM entregas_transporte WHERE id_pedido = ?`, [id]);
@@ -1533,7 +1225,9 @@ export const deletePedido = async (req, res) => {
     await conn.commit();
     return res.status(200).json({ message: "Pedido eliminado." });
   } catch (e) {
-    try { await conn.rollback(); } catch {}
+    try {
+      await conn.rollback();
+    } catch {}
     console.error(e);
     return res.status(500).json({ message: "Error eliminando pedido.", details: e.message });
   } finally {

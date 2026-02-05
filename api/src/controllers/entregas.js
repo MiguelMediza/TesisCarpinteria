@@ -90,33 +90,35 @@ const getTotalesTx = async (connection, id_pedido) => {
     total_entregado,
     total_faltante,
     completo: total_faltante <= 0 && total_pedido > 0,
+    hayEntregas: total_entregado > 0,
   };
 };
 
-const syncPedidoEstadoEntregadoTx = async (connection, id_pedido) => {
+/**
+ * Sincroniza estado del pedido según entregas:
+ * - Sin entregas => pendiente
+ * - Parcial => listo
+ * - Completo => entregado
+ * NO pisa cancelado.
+ */
+const syncPedidoEstadoPorEntregasTx = async (connection, id_pedido) => {
   const tot = await getTotalesTx(connection, id_pedido);
 
-  if (tot.completo) {
-    await connection.query(
-      `
-      UPDATE pedidos
-      SET estado = 'entregado'
-      WHERE id_pedido = ?
-        AND estado <> 'cancelado'
-      `,
-      [id_pedido]
-    );
-  } else {
-    await connection.query(
-      `
-      UPDATE pedidos
-      SET estado = 'listo'
-      WHERE id_pedido = ?
-        AND estado = 'entregado'
-      `,
-      [id_pedido]
-    );
+  let nuevoEstado = "pendiente";
+  if (tot.total_entregado > 0) {
+    nuevoEstado = tot.completo ? "entregado" : "listo";
   }
+
+  await connection.query(
+    `
+    UPDATE pedidos
+    SET estado = ?
+    WHERE id_pedido = ?
+      AND eliminado = FALSE
+      AND estado <> 'cancelado'
+    `,
+    [nuevoEstado, id_pedido]
+  );
 
   return tot;
 };
@@ -125,7 +127,7 @@ const syncPedidoEstadoEntregadoTx = async (connection, id_pedido) => {
  * Stock helpers (TX safe)
  */
 const requireAndDiscountStockTx = async (connection, id_prototipo, qty, tituloForMsg = null) => {
-  // Bloquea fila del prototipo
+  // Bloquear fila del prototipo para evitar carreras
   const [[pp]] = await connection.query(
     `SELECT stock, titulo FROM prototipo_pallet WHERE id_prototipo = ? FOR UPDATE`,
     [id_prototipo]
@@ -150,6 +152,7 @@ const requireAndDiscountStockTx = async (connection, id_prototipo, qty, tituloFo
         code: "STOCK_INSUFICIENTE_PALLET",
         message: `Stock insuficiente de "${titulo}". Stock: ${stockActual}, solicita: ${qty}.`,
         id_prototipo,
+        titulo,
         stock_actual: stockActual,
         solicitado: qty,
       },
@@ -165,9 +168,7 @@ const requireAndDiscountStockTx = async (connection, id_prototipo, qty, tituloFo
     return {
       ok: false,
       status: 500,
-      payload: {
-        message: `No se pudo descontar stock del prototipo #${id_prototipo}.`,
-      },
+      payload: { message: `No se pudo descontar stock del prototipo #${id_prototipo}.` },
     };
   }
 
@@ -175,17 +176,19 @@ const requireAndDiscountStockTx = async (connection, id_prototipo, qty, tituloFo
 };
 
 const restoreStockTx = async (connection, id_prototipo, qty) => {
-  if (!id_prototipo || qty <= 0) return;
+  const idp = Number(id_prototipo || 0);
+  const q = Number(qty || 0);
+  if (!idp || q <= 0) return;
+
   await connection.query(
     `UPDATE prototipo_pallet SET stock = stock + ? WHERE id_prototipo = ?`,
-    [qty, id_prototipo]
+    [q, idp]
   );
 };
 
 /**
- * ✅ MODIFICADO
  * GET /entregas/listar?desde=&hasta=&id_pedido=&id_cliente=&estado=&q=
- * Ahora devuelve también: detalles[] por entrega
+ * Devuelve también: detalles[] por entrega
  */
 export const listEntregas = async (req, res) => {
   try {
@@ -294,8 +297,8 @@ export const listEntregas = async (req, res) => {
 
       if (r.id_entrega_detalle != null) {
         const qty = Number(r.cantidad_entregada || 0);
-
         const obj = map.get(idEntrega);
+
         obj.items_count += 1;
         obj.total_entregado += qty;
 
@@ -371,7 +374,6 @@ export const getResumenPedido = async (req, res) => {
 };
 
 /**
- * ✅ FIX CHICO
  * GET /entregas/pedido/:id/listar
  */
 export const listEntregasByPedido = async (req, res) => {
@@ -532,7 +534,7 @@ export const createEntrega = async (req, res) => {
     if (!id_pedido) return res.status(400).json({ message: "id_pedido es obligatorio." });
     if (!detallesIn.length) return res.status(400).json({ message: "Debe enviar detalles." });
 
-    // Validar duplicados en el body (evita ER_DUP_ENTRY)
+    // Duplicados en body
     const seen = new Set();
     for (const d of detallesIn) {
       const idp = toInt(d?.id_prototipo);
@@ -555,7 +557,9 @@ export const createEntrega = async (req, res) => {
     );
     if (!pedidoRows.length) return res.status(404).json({ message: "Pedido no encontrado." });
     if (pedidoRows[0].estado === "cancelado") {
-      return res.status(409).json({ message: "No se pueden registrar entregas para un pedido cancelado." });
+      return res
+        .status(409)
+        .json({ message: "No se pueden registrar entregas para un pedido cancelado." });
     }
 
     await connection.beginTransaction();
@@ -594,6 +598,8 @@ export const createEntrega = async (req, res) => {
       }
 
       const faltante = Number(info.faltante || 0);
+
+      // ✅ No más de lo necesario para cumplir el pedido
       if (qty > faltante) {
         await connection.rollback();
         return res.status(409).json({
@@ -604,14 +610,13 @@ export const createEntrega = async (req, res) => {
         });
       }
 
-      // ✅ Validar y descontar stock de pallets terminados (TX safe)
+      // ✅ Validar y descontar stock real (pallet terminado)
       const chk = await requireAndDiscountStockTx(connection, id_prototipo, qty, info.titulo);
       if (!chk.ok) {
         await connection.rollback();
         return res.status(chk.status).json(chk.payload);
       }
 
-      // Insert detalle
       await connection.query(
         `
         INSERT INTO entrega_detalles (id_entrega, id_pedido, id_prototipo, cantidad_entregada)
@@ -621,7 +626,7 @@ export const createEntrega = async (req, res) => {
       );
     }
 
-    const totales = await syncPedidoEstadoEntregadoTx(connection, id_pedido);
+    const totales = await syncPedidoEstadoPorEntregasTx(connection, id_pedido);
 
     await connection.commit();
 
@@ -672,7 +677,7 @@ export const updateEntregaHeader = async (req, res) => {
       id_entrega,
     ]);
 
-    const totales = await syncPedidoEstadoEntregadoTx(connection, id_pedido);
+    const totales = await syncPedidoEstadoPorEntregasTx(connection, id_pedido);
 
     await connection.commit();
 
@@ -702,7 +707,7 @@ export const replaceEntregaDetalles = async (req, res) => {
     if (!id_entrega) return res.status(400).json({ message: "id_entrega inválido." });
     if (!detallesIn.length) return res.status(400).json({ message: "Debe enviar detalles." });
 
-    // validar duplicados
+    // Duplicados
     const seen = new Set();
     for (const d of detallesIn) {
       const idp = toInt(d?.id_prototipo);
@@ -733,7 +738,7 @@ export const replaceEntregaDetalles = async (req, res) => {
     const resumenRows = await getResumenPedidoTx(connection, id_pedido);
     const resumenMap = buildResumenMap(resumenRows);
 
-    // Traer detalles actuales
+    // Detalles actuales
     const [actualRows] = await connection.query(
       `
       SELECT id_prototipo, cantidad_entregada
@@ -746,7 +751,7 @@ export const replaceEntregaDetalles = async (req, res) => {
       (actualRows || []).map((r) => [Number(r.id_prototipo), Number(r.cantidad_entregada || 0)])
     );
 
-    // ✅ 1) Reponer stock de lo que tenía esta entrega antes
+    // ✅ 1) Restaurar stock de lo que tenía esta entrega antes
     for (const r of actualRows || []) {
       const idp = Number(r.id_prototipo);
       const qtyOld = Number(r.cantidad_entregada || 0);
@@ -758,7 +763,9 @@ export const replaceEntregaDetalles = async (req, res) => {
     // ✅ 2) Borrar detalles anteriores
     await connection.query(`DELETE FROM entrega_detalles WHERE id_entrega = ?`, [id_entrega]);
 
-    // ✅ 3) Insertar nuevos detalles, validando cap (faltante + antesEnEsta) y stock real, descontando stock
+    // ✅ 3) Insertar nuevos detalles, validando:
+    // - cap = faltanteActual + antesEnEsta (para permitir reponer/ajustar)
+    // - stock real (después de restaurar)
     for (const d of detallesIn) {
       const id_prototipo = toInt(d.id_prototipo);
       const qty = toInt(d.cantidad_entregada);
@@ -784,11 +791,12 @@ export const replaceEntregaDetalles = async (req, res) => {
       const antesEnEsta = Number(actualMap.get(Number(id_prototipo)) || 0);
       const cap = faltanteActual + antesEnEsta;
 
+      // ✅ No más de lo necesario para cumplir el pedido (cap)
       if (qty > cap) {
         await connection.rollback();
         return res.status(409).json({
           code: "ENTREGA_SUPERA_FALTANTE",
-          message: `No puede entregar ${qty}. Máximo permitido ahora: ${cap}.`,
+          message: `No puede entregar ${qty}. Faltante actual: ${cap}.`,
           id_prototipo,
           faltante: cap,
         });
@@ -810,7 +818,7 @@ export const replaceEntregaDetalles = async (req, res) => {
       );
     }
 
-    const totales = await syncPedidoEstadoEntregadoTx(connection, id_pedido);
+    const totales = await syncPedidoEstadoPorEntregasTx(connection, id_pedido);
 
     await connection.commit();
 
@@ -848,7 +856,7 @@ export const deleteEntrega = async (req, res) => {
     }
     const id_pedido = Number(h[0].id_pedido);
 
-    // ✅ Reponer stock de todos los detalles antes de borrar
+    // ✅ Restaurar stock de todos los detalles antes de borrar
     const [det] = await connection.query(
       `SELECT id_prototipo, cantidad_entregada FROM entrega_detalles WHERE id_entrega = ?`,
       [id_entrega]
@@ -862,11 +870,10 @@ export const deleteEntrega = async (req, res) => {
       }
     }
 
-    // ✅ borrar detalles primero (por si no hay ON DELETE CASCADE)
     await connection.query(`DELETE FROM entrega_detalles WHERE id_entrega = ?`, [id_entrega]);
     await connection.query(`DELETE FROM entregas_transporte WHERE id_entrega = ?`, [id_entrega]);
 
-    const totales = await syncPedidoEstadoEntregadoTx(connection, id_pedido);
+    const totales = await syncPedidoEstadoPorEntregasTx(connection, id_pedido);
 
     await connection.commit();
 
@@ -907,7 +914,7 @@ export const deleteEntregaDetalle = async (req, res) => {
     }
     const id_pedido = Number(h[0].id_pedido);
 
-    // ✅ traer qty para reponer antes de borrar
+    // ✅ traer qty para restaurar stock antes de borrar
     const [[row]] = await connection.query(
       `SELECT cantidad_entregada FROM entrega_detalles WHERE id_entrega = ? AND id_prototipo = ?`,
       [id_entrega, protId]
@@ -932,6 +939,7 @@ export const deleteEntregaDetalle = async (req, res) => {
       return res.status(404).json({ message: "Detalle no encontrado." });
     }
 
+    // si quedó vacía, borrar cabecera
     const [[cnt]] = await connection.query(
       `SELECT COUNT(*) AS c FROM entrega_detalles WHERE id_entrega = ?`,
       [id_entrega]
@@ -940,7 +948,7 @@ export const deleteEntregaDetalle = async (req, res) => {
       await connection.query(`DELETE FROM entregas_transporte WHERE id_entrega = ?`, [id_entrega]);
     }
 
-    const totales = await syncPedidoEstadoEntregadoTx(connection, id_pedido);
+    const totales = await syncPedidoEstadoPorEntregasTx(connection, id_pedido);
 
     await connection.commit();
 

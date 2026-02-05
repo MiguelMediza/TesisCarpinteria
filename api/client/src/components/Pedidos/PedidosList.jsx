@@ -4,15 +4,34 @@ import { Link, useNavigate } from "react-router-dom";
 import PedidosCard from "./PedidosCard";
 import DeleteConfirm from "../Modals/DeleteConfirm";
 
-const ESTADOS = ["pendiente","en_produccion","listo","entregado","cancelado"];
+// ✅ Estados NUEVOS (los 3 que manejamos ahora)
+const ESTADOS = [
+  { value: "sin_entregas", label: "Sin entregas" },
+  { value: "parcialmente_entregado", label: "Parcialmente entregado" },
+  { value: "entregado", label: "Entregado" },
+];
+
+// ✅ Mapea estado REAL de DB => estado para filtro UI
+// (según tu backend: sin entregas => pendiente, parcial => listo, completo => entregado)
+const mapDbEstadoToUi = (dbEstado) => {
+  const st = String(dbEstado || "").toLowerCase().trim();
+
+  if (st === "entregado") return "entregado";
+  if (st === "listo") return "parcialmente_entregado";
+
+  // "pendiente" (y cualquier otro sin entregas) => sin_entregas
+  // Si dejás "en_produccion" por alguna razón, lo consideramos "sin_entregas" a nivel UI
+  return "sin_entregas";
+};
 
 const PedidosList = () => {
   const [pedidos, setPedidos] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [error, setError] = useState("");
 
+  // ✅ estado ahora es el filtro UI (sin_entregas | parcialmente_entregado | entregado)
   const [estado, setEstado] = useState("");
-  const [idCliente, setIdCliente] = useState(""); 
+  const [idCliente, setIdCliente] = useState("");
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
 
@@ -33,8 +52,24 @@ const PedidosList = () => {
 
   const fetchPedidos = useCallback(async () => {
     try {
+      // ✅ Si querés que el backend filtre "correcto" a los 3 estados:
+      // - sin_entregas => pendiente
+      // - parcialmente_entregado => listo
+      // - entregado => entregado
+      //
+      // Si tu endpoint /pedidos/listarfull todavía no soporta estos 3 nombres,
+      // igual va a funcionar porque abajo aplicamos el filtro local.
+      const estadoDb =
+        estado === "sin_entregas"
+          ? "pendiente"
+          : estado === "parcialmente_entregado"
+          ? "listo"
+          : estado === "entregado"
+          ? "entregado"
+          : undefined;
+
       const params = {
-        estado: estado || undefined,
+        estado: estadoDb,
         id_cliente: idCliente ? Number(idCliente) : undefined,
         desde: desde || undefined,
         hasta: hasta || undefined,
@@ -61,7 +96,7 @@ const PedidosList = () => {
   const confirmDelete = async () => {
     try {
       await api.delete(`/pedidos/${toDelete.id_pedido}`);
-      setPedidos(prev => prev.filter(p => p.id_pedido !== toDelete.id_pedido));
+      setPedidos((prev) => prev.filter((p) => p.id_pedido !== toDelete.id_pedido));
     } catch (err) {
       console.error(err);
       setError("Error al eliminar el pedido.");
@@ -70,16 +105,12 @@ const PedidosList = () => {
     }
   };
 
-  // ✅ CAMBIO IMPORTANTE:
-  //   El card ya hace el PUT /pedidos/:id/estado.
-  //   Acá SOLO sincronizamos el estado en memoria.
+  // ✅ El card hace el PUT /pedidos/:id/estado.
+  // Acá SOLO sincronizamos el estado en memoria.
   const handleEstadoChanged = (id_pedido, newStatus) => {
-    setPedidos(curr =>
-      curr.map(p =>
-        p.id_pedido === id_pedido ? { ...p, estado: newStatus } : p
-      )
+    setPedidos((curr) =>
+      curr.map((p) => (p.id_pedido === id_pedido ? { ...p, estado: newStatus } : p))
     );
-    // ❌ YA NO llamamos a la API acá (evitamos doble PUT y doble validación).
   };
 
   const resetFiltros = () => {
@@ -94,23 +125,20 @@ const PedidosList = () => {
 
     if (idCliente) {
       arr = arr.filter(
-        p => String(p.id_cliente ?? p.cliente_id ?? "") === String(idCliente)
+        (p) => String(p.id_cliente ?? p.cliente_id ?? "") === String(idCliente)
       );
     }
+
+    // ✅ Filtro UI por los 3 estados (derivado del estado DB)
     if (estado) {
-      arr = arr.filter(
-        p => (p.estado || "").toLowerCase() === estado.toLowerCase()
-      );
+      arr = arr.filter((p) => mapDbEstadoToUi(p.estado) === estado);
     }
+
     if (desde) {
-      arr = arr.filter(
-        p => (p.fecha_realizado || p.fecha_realizada || "") >= desde
-      );
+      arr = arr.filter((p) => (p.fecha_realizado || p.fecha_realizada || "") >= desde);
     }
     if (hasta) {
-      arr = arr.filter(
-        p => (p.fecha_realizado || p.fecha_realizada || "") <= hasta
-      );
+      arr = arr.filter((p) => (p.fecha_realizado || p.fecha_realizada || "") <= hasta);
     }
 
     arr.sort((a, b) =>
@@ -139,12 +167,12 @@ const PedidosList = () => {
         <select
           value={estado}
           onChange={(e) => setEstado(e.target.value)}
-          className="md:col-span-2 p-2 border border-gray-300 rounded"
+          className="md:col-span-3 p-2 border border-gray-300 rounded"
         >
           <option value="">Estado (todos)</option>
-          {ESTADOS.map(es => (
-            <option key={es} value={es}>
-              {es.replace("_", " ")}
+          {ESTADOS.map((es) => (
+            <option key={es.value} value={es.value}>
+              {es.label}
             </option>
           ))}
         </select>
@@ -155,11 +183,9 @@ const PedidosList = () => {
           className="md:col-span-3 p-2 border border-gray-300 rounded"
         >
           <option value="">Cliente (todos)</option>
-          {clientes.map(c => (
+          {clientes.map((c) => (
             <option key={c.id_cliente} value={c.id_cliente}>
-              {c.es_empresa
-                ? c.nombre_empresa
-                : `${c.nombre} ${c.apellido || ""}`}
+              {c.es_empresa ? c.nombre_empresa : `${c.nombre} ${c.apellido || ""}`}
             </option>
           ))}
         </select>
