@@ -1,9 +1,7 @@
 
 import { Router } from "express";
-import { listStockBajo } from "../controllers/stockBajo.js";
 const router = Router();
 
-router.get("/stockbajo", listStockBajo);
 
 // Proxy de imágenes para PDF
 router.get("/files/proxy", async (req, res) => {
