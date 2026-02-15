@@ -15,6 +15,7 @@ const ClientesFuegoYaList = () => {
 
   const [creditMap, setCreditMap] = useState(new Map());
   const [loadingCredit, setLoadingCredit] = useState(false);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -22,7 +23,7 @@ const ClientesFuegoYaList = () => {
     (async () => {
       try {
         const { data } = await api.get("/clientesfuegoya/listar", {
-          params: { estado: 1 }, 
+          params: { estado: 1 },
         });
         if (!alive) return;
         setClientes(Array.isArray(data) ? data : []);
@@ -31,16 +32,19 @@ const ClientesFuegoYaList = () => {
         if (alive) setError("No se pudieron cargar los clientes de FuegoYa.");
       }
     })();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const filtered = useMemo(() => {
     const q = searchTerm.toLowerCase().trim();
     if (!q) return clientes;
-    return clientes.filter((c) =>
-      (c.nombre || "").toLowerCase().includes(q) ||
-      (c.telefono || "").toLowerCase().includes(q) ||
-      (c.email || "").toLowerCase().includes(q)
+    return clientes.filter(
+      (c) =>
+        (c.nombre || "").toLowerCase().includes(q) ||
+        (c.telefono || "").toLowerCase().includes(q) ||
+        (c.email || "").toLowerCase().includes(q)
     );
   }, [clientes, searchTerm]);
 
@@ -69,13 +73,15 @@ const ClientesFuegoYaList = () => {
         if (alive) setLoadingCredit(false);
       }
     })();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, [filtered]);
 
   const handleEdit = (id) => navigate(`/clientesfuegoya/${id}`);
 
   const handleDeleteClick = (cliente) => {
-    setDeleteError("");      
+    setDeleteError("");
     setToDelete(cliente);
   };
 
@@ -85,15 +91,13 @@ const ClientesFuegoYaList = () => {
     setDeleteError("");
     try {
       await api.delete(`/clientesfuegoya/${toDelete.id_cliente}`);
-      setClientes((prev) =>
-        prev.filter((c) => c.id_cliente !== toDelete.id_cliente)
-      );
+      setClientes((prev) => prev.filter((c) => c.id_cliente !== toDelete.id_cliente));
       setCreditMap((prev) => {
         const next = new Map(prev);
         next.delete(toDelete.id_cliente);
         return next;
       });
-      setToDelete(null); 
+      setToDelete(null);
     } catch (err) {
       console.error("❌ Error al eliminar cliente FuegoYa:", err);
       let msg = "No se pudo deshabilitar el cliente.";
@@ -108,21 +112,15 @@ const ClientesFuegoYaList = () => {
   };
 
   const cancelDelete = () => {
-    if (deleting) return; 
+    if (deleting) return;
     setDeleteError("");
     setToDelete(null);
   };
 
   return (
-    <section className="p-4 bg-gray-50 min-h-screen">
+    <section className="p-4 pb-24 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Clientes FuegoYa</h1>
-        <Link
-          to="/clientesfuegoya"
-          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
-        >
-          + Nuevo Cliente Fuego Ya
-        </Link>
       </div>
 
       {error && <p className="mb-4 text-red-500">{error}</p>}
@@ -138,9 +136,7 @@ const ClientesFuegoYaList = () => {
       </div>
 
       {loadingCredit && (
-        <p className="mb-2 text-sm text-gray-500">
-          Cargando crédito de clientes…
-        </p>
+        <p className="mb-2 text-sm text-gray-500">Cargando crédito de clientes…</p>
       )}
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -169,6 +165,24 @@ const ClientesFuegoYaList = () => {
         error={deleteError}
         loading={deleting}
       />
+
+      {/* Botón flotante siempre visible */}
+      <Link
+        to="/clientesfuegoya"
+        className="
+          fixed bottom-6 right-6 z-50
+          inline-flex items-center gap-2
+          rounded-full bg-green-600 px-5 py-3
+          text-white font-semibold shadow-lg
+          hover:bg-green-700 active:scale-[0.98]
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-green-300
+        "
+        title="Nuevo cliente"
+        aria-label="Nuevo cliente"
+      >
+        <span className="text-lg leading-none">＋</span>
+        <span>Nuevo cliente</span>
+      </Link>
     </section>
   );
 };

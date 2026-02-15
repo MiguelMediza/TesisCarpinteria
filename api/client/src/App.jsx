@@ -18,7 +18,8 @@ import { DarkModeContext } from "./context/darkModeContext";
 import { AuthContext } from "./context/authContext";
 import VentaFuegoYa from "./pages/ventaFuegoYa/VentaFuegoYa";
 import VentaFuegoYaList from "./pages/ventaFuegoYa/VentaFuegoYaList";
-
+import ClientesFuegoYa from "./pages/clientesFuegoYa/ClientesFuegoYa";
+import ClientesFuegoYaList from "./pages/clientesFuegoYa/ClientesFuegoYaList";
 
 function App() {
   const { currentUser } = useContext(AuthContext);

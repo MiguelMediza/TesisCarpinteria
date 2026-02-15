@@ -11,6 +11,9 @@ const FuegoYaList = () => {
   const [toDelete, setToDelete] = useState(null);
   const navigate = useNavigate();
 
+  const [deleteErr, setDeleteErr] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
   useEffect(() => {
     const fetchFuegoYa = async () => {
       try {
@@ -27,57 +30,48 @@ const FuegoYaList = () => {
   const handleEdit = (id) => navigate(`/fuegoya/${id}`);
   const handleDeleteClick = (f) => setToDelete(f);
 
-const [deleteErr, setDeleteErr] = useState("");
-const [deleting, setDeleting] = useState(false);
-
-const cancelDelete = () => {
-  setToDelete(null);
-  setDeleteErr("");        
-};
-
-const confirmDelete = async () => {
-  if (!toDelete) return;
-  try {
-    setDeleting(true);
-    setDeleteErr("");
-
-    await api.delete(`/fuegoya/${toDelete.id_fuego_ya}`);
-
-    setFuegoYa(prev => prev.filter(t => t.id_fuego_ya !== toDelete.id_fuego_ya));
+  const cancelDelete = () => {
     setToDelete(null);
-  } catch (err) {
-    console.error(err);
+    setDeleteErr("");
+  };
 
-    const msg =
-      err?.response?.data?.message ||
-      err?.response?.data?.error ||
-      (typeof err?.response?.data === "string" ? err.response.data : "") ||
-      (err?.response?.status === 409
-        ? "No se puede eliminar: el registro está referenciado por otras entidades."
-        : "No se pudo eliminar la FuegoYa.");
+  const confirmDelete = async () => {
+    if (!toDelete) return;
+    try {
+      setDeleting(true);
+      setDeleteErr("");
 
-    setDeleteErr(msg);   
-  } finally {
-    setDeleting(false);
-  }
-};
+      await api.delete(`/fuegoya/${toDelete.id_fuego_ya}`);
+
+      setFuegoYa((prev) => prev.filter((t) => t.id_fuego_ya !== toDelete.id_fuego_ya));
+      setToDelete(null);
+    } catch (err) {
+      console.error(err);
+
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        (typeof err?.response?.data === "string" ? err.response.data : "") ||
+        (err?.response?.status === 409
+          ? "No se puede eliminar: el registro está referenciado por otras entidades."
+          : "No se pudo eliminar la FuegoYa.");
+
+      setDeleteErr(msg);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const filteredFuegoYa = fuegoya.filter((t) =>
     (t.tipo || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
- const modalImgSrc = toDelete?.foto_url || toDelete?.foto || null;
+  const modalImgSrc = toDelete?.foto_url || toDelete?.foto || null;
 
   return (
-    <section className="p-4 bg-gray-50 min-h-screen">
+    <section className="p-4 pb-24 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Fuego Ya</h1>
-        <Link
-          to="/fuegoya"
-          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
-        >
-          + Nuevo Fuego Ya
-        </Link>
       </div>
 
       {error && <p className="mb-4 text-red-500">{error}</p>}
@@ -114,9 +108,27 @@ const confirmDelete = async () => {
         imageSrc={modalImgSrc}
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
-        error={deleteErr}       
-        loading={deleting}  
+        error={deleteErr}
+        loading={deleting}
       />
+
+      {/* Botón flotante siempre visible */}
+      <Link
+        to="/fuegoya"
+        className="
+          fixed bottom-6 right-6 z-50
+          inline-flex items-center gap-2
+          rounded-full bg-green-600 px-5 py-3
+          text-white font-semibold shadow-lg
+          hover:bg-green-700 active:scale-[0.98]
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-green-300
+        "
+        title="Nuevo Fuego Ya"
+        aria-label="Nuevo Fuego Ya"
+      >
+        <span className="text-lg leading-none">＋</span>
+        <span>Nuevo Fuego Ya</span>
+      </Link>
     </section>
   );
 };

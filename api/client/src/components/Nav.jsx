@@ -181,6 +181,17 @@ const canSeeFuegoYa = currentUser?.tipo === "fuegoya";
                     Venta FuegoYa
                   </Link>
                 </li>
+
+                <li>
+                  <Link
+                    to="/horasmaquinas/listar"
+                    onClick={handleNavigate}
+                    className="block px-3 py-1 rounded border border-green-600 text-green-700 hover:bg-green-50 hover:text-green-800 transition
+                               dark:text-green-300 dark:border-green-400 dark:hover:bg-green-900/30 dark:hover:text-green-200"
+                  >
+                    Horas Máquinas
+                  </Link>
+                </li>
               </>
             )}
 

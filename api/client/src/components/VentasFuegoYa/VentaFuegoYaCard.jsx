@@ -22,7 +22,11 @@ const formatDate = (s) => {
 
   const dObj = new Date(str);
   if (Number.isNaN(dObj.getTime())) return "";
-  return dObj.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return dObj.toLocaleDateString("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 };
 
 const formatDateTime = (s) => {
@@ -62,7 +66,7 @@ const chipBase =
 
 const VentaFuegoYaCard = ({ venta, onEdit, onDelete, onPagoChanged }) => {
   const { currentUser } = useContext(AuthContext);
-  // Cambio mínimo: privilegios también para tipo "fuegoya"
+  // Privilegios también para tipo "fuegoya"
   const isAdmin = currentUser?.tipo === "admin" || currentUser?.tipo === "fuegoya";
 
   const {
@@ -91,12 +95,28 @@ const VentaFuegoYaCard = ({ venta, onEdit, onDelete, onPagoChanged }) => {
   const [fechaPagoLocal, setFechaPagoLocal] = useState(fechapago || null);
   const [changing, setChanging] = useState(false);
 
+  const clienteTitle = (cliente_display?.trim() || "Sin cliente").toString();
+
+  const subtitle = useMemo(() => {
+    const parts = [];
+    if ((cantidadbolsas ?? null) !== null && String(cantidadbolsas).trim() !== "") {
+      const n = Number(cantidadbolsas);
+      const label = Number.isFinite(n)
+        ? `${n} ${n === 1 ? "bolsa" : "bolsas"}`
+        : `${cantidadbolsas} bolsas`;
+      parts.push(label);
+    }
+    if (fuego_ya_tipo?.toString().trim()) parts.push(fuego_ya_tipo.toString().trim());
+    return parts.join(" • ");
+  }, [cantidadbolsas, fuego_ya_tipo]);
+
   const handleTogglePago = async () => {
     if (!id_ventaFuegoya) return;
     const nuevo = estadopago === "pago" ? "credito" : "pago";
 
     const prevEstado = estadopago;
     const prevFecha = fechaPagoLocal;
+
     setChanging(true);
     setEstadopago(nuevo);
 
@@ -124,57 +144,59 @@ const VentaFuegoYaCard = ({ venta, onEdit, onDelete, onPagoChanged }) => {
         hover:-translate-y-0.5 hover:shadow-lg flex flex-col
       "
     >
-      <div className="relative h-20 w-full bg-gradient-to-r from-sky-50 to-indigo-50">
-        <h3
-          className="
-            absolute inset-0 flex items-center justify-center
-            px-4 text-center text-base font-semibold text-slate-900
-            leading-tight line-clamp-2
-          "
-        >
-          {`Venta Fuego Ya #${id_ventaFuegoya ?? "—"}`}
-        </h3>
+      {/* Header compacto */}
+      <div className="relative border-b border-slate-100 bg-gradient-to-r from-sky-50 to-indigo-50 px-4 py-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-base font-semibold text-slate-900 leading-snug line-clamp-2">
+              {clienteTitle}
+            </h3>
+            {!!subtitle && (
+              <p className="mt-0.5 text-xs text-slate-600 line-clamp-1">
+                {subtitle}
+              </p>
+            )}
+          </div>
 
-        <span
-          className={`
-            absolute top-3 right-3 px-2 py-0.5 text-[11px] font-medium
-            rounded-full ring-1 shadow-sm ${badgePagoLook(estadopago)}
-          `}
-          title={`Estado: ${estadopago}`}
-        >
-          {estadopago === "pago" ? "Pagado" : "Crédito"}
-        </span>
+          <span
+            className={`
+              shrink-0 mt-0.5 px-2 py-0.5 text-[11px] font-medium
+              rounded-full ring-1 shadow-sm ${badgePagoLook(estadopago)}
+            `}
+            title={`Estado: ${estadopago}`}
+          >
+            {estadopago === "pago" ? "Pagado" : "Crédito"}
+          </span>
+        </div>
+
+        {/* ID chiquito opcional (si querés mostrarlo sin agrandar) */}
+        <p className="mt-1 text-[11px] text-slate-500">
+          Venta #{id_ventaFuegoya ?? "—"}
+        </p>
       </div>
 
       <div className="p-4">
-
+        {/* Foto SOLO si existe (sin placeholder) */}
         {imgSrc ? (
-          <div className="w-full h-44 rounded-xl overflow-hidden bg-slate-50 ring-1 ring-slate-200">
+          <div className="w-full h-36 rounded-xl overflow-hidden bg-slate-50 ring-1 ring-slate-200">
             <Image
               src={imgSrc}
               alt={`Venta ${id_ventaFuegoya ?? ""}`}
-              style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+                display: "block",
+              }}
               loading="lazy"
               fallback="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'/>"
               preview={{ mask: <span style={{ fontSize: 12 }}>Click para ampliar</span> }}
             />
           </div>
-        ) : (
-          <div className="w-full h-44 rounded-xl bg-slate-50 ring-1 ring-slate-200 grid place-items-center text-slate-400 text-sm select-none">
-            Sin imagen
-          </div>
-        )}
-
-        <div className="mt-3 text-sm text-slate-600">
-          <span className="font-medium text-slate-800">Cliente:</span>{" "}
-          <span className="text-slate-800">
-            {cliente_display?.trim() || "Sin cliente"}
-          </span>
-          {fuego_ya_tipo ? <span className="text-slate-500"> • {fuego_ya_tipo}</span> : null}
-        </div>
+        ) : null}
 
         <div className="mt-3 flex flex-wrap gap-2">
-          {/* Cantidad bolsas */}
+          {/* Cantidad bolsas (chip) */}
           {(cantidadbolsas ?? null) !== null && (
             <span
               className={`${chipBase} bg-amber-50 text-amber-800 ring-amber-200`}
@@ -227,9 +249,7 @@ const VentaFuegoYaCard = ({ venta, onEdit, onDelete, onPagoChanged }) => {
               px-3 py-2 text-sm rounded transition shadow-sm
               focus:outline-none focus-visible:ring-2
               ${toggleBtnClasses(estadopago, changing)}
-              ${estadopago === "pago"
-                ? "focus-visible:ring-red-300"
-                : "focus-visible:ring-emerald-300"}
+              ${estadopago === "pago" ? "focus-visible:ring-red-300" : "focus-visible:ring-emerald-300"}
             `}
             title={estadopago === "pago" ? "Volver a crédito" : "Marcar como pagado"}
           >

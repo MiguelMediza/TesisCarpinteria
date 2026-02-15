@@ -25,7 +25,7 @@ const VentaFuegoYaList = () => {
   const [error, setError]   = useState("");
 
   const [clientes, setClientes] = useState([]);
-  const [clienteId, setClienteId] = useState(""); 
+  const [clienteId, setClienteId] = useState("");
 
   const [estadopago, setEstadopago] = useState("");
 
@@ -61,9 +61,7 @@ const VentaFuegoYaList = () => {
       const params = new URLSearchParams();
 
       if (clienteId) {
-        const c = clientes.find(
-          (x) => String(x.id_cliente) === String(clienteId)
-        );
+        const c = clientes.find((x) => String(x.id_cliente) === String(clienteId));
         const nombre = (c?.nombre || "").trim();
         if (nombre) params.append("cliente", nombre);
       }
@@ -98,7 +96,7 @@ const VentaFuegoYaList = () => {
   const confirmDelete = async () => {
     try {
       await api.delete(`/ventafuegoya/${toDelete.id_ventaFuegoya}`);
-      setVentas(prev => prev.filter(v => v.id_ventaFuegoya !== toDelete.id_ventaFuegoya));
+      setVentas((prev) => prev.filter((v) => v.id_ventaFuegoya !== toDelete.id_ventaFuegoya));
     } catch (err) {
       console.error(err);
       setError("Error al eliminar la venta.");
@@ -117,15 +115,9 @@ const VentaFuegoYaList = () => {
   };
 
   return (
-    <section className="p-4 bg-gray-50 min-h-screen">
+    <section className="p-4 pb-24 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Ventas FuegoYa</h1>
-        <Link
-          to="/ventafuegoya"
-          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
-        >
-          + Nueva Venta
-        </Link>
       </div>
 
       {/* Filtros */}
@@ -184,7 +176,9 @@ const VentaFuegoYaList = () => {
           className="md:col-span-2 p-2 border border-gray-300 rounded"
         >
           {yearOptions.map((y) => (
-            <option key={y} value={y}>{y}</option>
+            <option key={y} value={y}>
+              {y}
+            </option>
           ))}
         </select>
 
@@ -234,6 +228,24 @@ const VentaFuegoYaList = () => {
         onCancel={cancelDelete}
         onConfirm={confirmDelete}
       />
+
+      {/* Botón flotante siempre visible */}
+      <Link
+        to="/ventafuegoya"
+        className="
+          fixed bottom-6 right-6 z-50
+          inline-flex items-center gap-2
+          rounded-full bg-green-600 px-5 py-3
+          text-white font-semibold shadow-lg
+          hover:bg-green-700 active:scale-[0.98]
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-green-300
+        "
+        title="Nueva venta"
+        aria-label="Nueva venta"
+      >
+        <span className="text-lg leading-none">＋</span>
+        <span>Nueva venta</span>
+      </Link>
     </section>
   );
 };
